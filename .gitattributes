@@ -1,7 +1,9 @@
-* text=auto
+* text=auto eol=lf
 *.sh text eol=lf
 *.patch text eol=lf
 *.md text eol=lf
 *.json text eol=lf
 *.yml text eol=lf
 *.csv text eol=lf
+*.patch -whitespace
+LICENSE* -whitespace
