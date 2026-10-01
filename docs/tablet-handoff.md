@@ -17,6 +17,16 @@ git commit -m "Describe the verified change"
 git push
 ```
 
-现有工作环境仍在 `/opt/mali-bridge` 和 `/opt/mali-bridge-canary`，Termux 日常入口保持现有配置。新独立安装在 `/opt/pad7spro-gpu`，目前有实例销毁故障，不能替换日常入口。详见 [验证状态](development-status.md)。
+现有工作环境仍在 `/opt/mali-bridge` 和 `/opt/mali-bridge-canary`，Termux 日常入口保持现有配置。新独立安装在 `/opt/pad7spro-gpu`，核心探针已通过，实际窗口回归尚未完成，暂不替换日常入口。详见 [验证状态](development-status.md)。
 
-接手者优先读 `README.md`、`docs/development-status.md`、`docs/build.md` 和 `sources.lock.json`，再定位新旧 libhybris 的分配器/释放差异。不要把已识别 Mali 或构建成功当作整套运行通过。
+接手者优先读 `README.md`、`docs/development-status.md`、`docs/build.md` 和 `sources.lock.json`，再继续窗口回归、APK重建和方便的安装/回退流程。不要把已识别 Mali 或构建成功当作整套运行通过。
+
+## 快捷核心检查
+
+在 Termux 中，使用 KernelSU root 运行 Android 侧脚本（这是当前设备的物理路径）：
+
+```sh
+su -W -c "/system/bin/sh /data/linux/debian/opt/pad7spro-gpu-release-test/repository/scripts/android-probe.sh"
+```
+
+该脚本在私有挂载命名空间绑定现有 Android 资源，检查 Vulkan 与 AHB。最后出现 `GPU_CORE_PROBES_OK` 才表示两项通过，不等于桌面/功耗验收完成。其他 root 实现不支持 `-W` 时使用相应 su 参数。

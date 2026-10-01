@@ -30,7 +30,7 @@ stage="$run/stage"
 deps="$stage$prefix"
 mkdir -p "$deps" "$run/src"
 python3 - "$repo" "$work/sources" "$run/src" <<'PY'
-import json, subprocess, sys
+import hashlib, json, subprocess, sys
 from pathlib import Path
 repo, cache, source = map(Path, sys.argv[1:])
 for item in json.loads((repo/'sources.lock.json').read_text())['git_sources']:
@@ -43,6 +43,22 @@ for item in json.loads((repo/'sources.lock.json').read_text())['git_sources']:
     for patch in item.get('patches',[]):
         subprocess.run(['git','apply','--check',str(repo/patch['path'])],cwd=target,check=True)
         subprocess.run(['git','apply',str(repo/patch['path'])],cwd=target,check=True)
+    for relative, expected in item.get('verify_files',{}).items():
+        if hashlib.sha256((target/relative).read_bytes()).hexdigest()!=expected:
+            raise RuntimeError('Post-patch source checksum mismatch: '+item['name']+'/'+relative)
+    if item['name']=='libhybris':
+        import re
+        hooks=(target/'hybris/common/hooks.c').read_text()
+        forbidden={'malloc','calloc','free','realloc','memalign','valloc','pvalloc',
+                   'strdup','strndup','asprintf','vasprintf','getdelim','getline',
+                   'scandir','malloc_usable_size','posix_memalign'}
+        for table in ('hooks_common','hooks_mm'):
+            body=re.search(r'static struct _hook '+table+r'\[\].*?\{(.*?)\n\};',hooks,re.S)
+            if not body: raise RuntimeError('Missing hook table: '+table)
+            present=set(re.findall(r'HOOK_\w+\(\s*(\w+)',body.group(1)))
+            if present & forbidden:
+                raise RuntimeError('Cross-allocator hooks restored: '+str(sorted(present & forbidden)))
+    print(item['name']+': patched source verified',flush=True)
 PY
 make -C "$run/src/android-headers" PREFIX="$prefix" DESTDIR="$stage" install
 export PKG_CONFIG_PATH="$deps/lib/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
@@ -73,6 +89,7 @@ cmake --build "$run/wsi-build" -j"$jobs"
 DESTDIR="$stage" cmake --install "$run/wsi-build"
 mkdir -p "$deps/android-override" "$deps/share/vulkan/icd.d"
 install -m 644 "$work/sources/libc.so" "$deps/android-override/libc.so"
+install -m 755 "$repo/scripts/gpu-run.sh" "$deps/bin/gpu-run"
 python3 - "$deps" "$prefix" "$repo" <<'PY'
 import json, sys
 from pathlib import Path

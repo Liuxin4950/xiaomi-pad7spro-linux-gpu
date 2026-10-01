@@ -1,6 +1,6 @@
 # 从固定源码构建
 
-构建入口为 `scripts/build.sh`。完整构建和独立安装已通过，但新栈实例销毁仍有运行时问题，尚不能标记为完成整套复现。见 [验证状态](development-status.md)。
+构建入口为 `scripts/build.sh`。完整构建和独立安装已通过，修复后的 Vulkan/AHB 探针也已通过，但尚不能标记为完成整套桌面复现。见 [验证状态](development-status.md)。
 
 ## 构建环境
 
@@ -47,4 +47,4 @@ bash scripts/build.sh --prefix /opt/pad7spro-gpu --jobs 4
 bash scripts/install.sh "$(cat build/last-stage.txt)"
 ```
 
-安装器不会覆盖已有前缀。当前供独立开发验证，新栈实例销毁问题解决前保留日常工作入口。
+安装器不会覆盖已有前缀。当前供独立开发验证，完整窗口回归完成前保留日常工作入口。

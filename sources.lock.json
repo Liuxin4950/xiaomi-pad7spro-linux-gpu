@@ -8,9 +8,15 @@
       "patches": [
         {
           "path": "patches/libhybris/0001-pad7spro-bridge.patch",
-          "sha256": "b0cf92dd605550a84692b79ea1d3c3bfbc7f0bdc554af0d9a7efb2a3194a638b"
+          "sha256": "a242d37b5728c59e59dfcd26e860b87ca0243e5e37dcd592a9efde0e51b93206"
         }
-      ]
+      ],
+      "verify_files": {
+        "hybris/common/hooks.c": "32462ed114047d0cd2f27195d3b5272c9920ac08378f82838b8b4cc262b08150",
+        "hybris/common/q/linker_main.cpp": "13c98c90076ed9a99512d62232d202481cf455c41dbc59436a42147f809b86cb",
+        "hybris/configure.ac": "d374b147dd20675b260158624687831fc043db35b70c0d7d2fc1dfaf1793fdfb",
+        "hybris/vulkan/vulkan.c": "4b4a7a234fc16d1c86978c43889693f9145b7a82e46e58f4935debcabb804d2e"
+      }
     },
     {
       "name": "wsi",

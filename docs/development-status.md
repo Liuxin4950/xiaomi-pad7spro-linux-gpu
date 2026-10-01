@@ -1,22 +1,30 @@
 # 当前验证状态
 
-日期：2026-10-01。此记录区分既有工作环境与新发行构建。
+日期：2026-10-01。开发版核心构建与运行探针已通过，完整桌面发行验收仍在进行。
 
-## 已通过
+## 已验证
 
-- 三个固定 Git revision、两个完整补丁、上游 libc SHA-256 核对。
-- 从固定源码构建 libhybris、独立 sysvk/AHB wrapper、Vulkan 探针及 WSI，完整构建真实退出码为 0。
-- 在独立 `/opt/pad7spro-gpu` 安装，未替换作者的 `/opt/mali-bridge` 或 canary 环境。
-- Termux:X11 补丁对固定上游提交的应用检查。
+- 固定三个上游 revision、完整 libhybris/WSI 补丁及修改版 libc 哈希。
+- 干净构建真实退出码为 0；构建前验证补丁后的关键源码哈希及分配器钩子策略。
+- 修复后新构建产物的 Vulkan 初始化、Mali-G925 识别和实例销毁连续三次通过。
+- 同一新产物的 AHardwareBuffer 分配、Unix socket 传输和释放连续三次通过。
+- `scripts/android-probe.sh` 同时完成两个探针，输出 `GPU_CORE_PROBES_OK`。
+- 提供统一 `gpu-run` 入口；`gpu-run probe` 已验证。GUI 子命令仍需实际窗口测试。
 
-## 尚未通过
+## 已修复的问题
 
-新栈探针可输出 `Mali-G925-Immortalis`、vendor `0x13b5`、Vulkan `1.3.278`，但销毁实例时发生 glibc `free(): invalid pointer`，真实退出码为 `134`。
+清理 canary 诊断代码时，补丁生成误匹配函数声明并恢复了上游分配器钩子，导致 Android 分配的内存被 glibc 释放。恢复工作设备已移除的分配器相关钩子后，非法指针退出问题消失。构建现在同时检查关键源码 SHA-256 与钩子策略，防止遗漏。
 
-对照结果：同一探针使用既有 stable/canary 库时正常退出；新栈禁用 WSI 后仍失败；替换为既有 canary libhybris 后通过。问题范围缩小到新构建的 libhybris。仅恢复原 `--enable-debug --enable-trace` 配置尚未解决问题。根因未确认，不能把这些对照当作修复。
+AHardwareBuffer 还要求在 chroot 中显式绑定 Android 原有 binderfs。仅 rbind `/dev` 可能被既有子挂载遮挡，出现 `/dev/binder` 无法打开；显式绑定后连续三次测试通过。不能在 chroot 新建 binderfs 实例。
 
-继续比较原二进制的实际分配器 hook 与新构建，定位 Android 与 glibc 分配/释放的边界。确认修复后再重跑完整构建、探针、X11/Chromium 和日常启动测试。
+Vulkan 识别阶段仍可能输出 Android 库的探测提示。这里的通过依据是目标硬件识别、真实退出码及随后成功的 AHB 调用，不是忽略错误后宣称成功。
 
-## 后续验收
+## 尚未完成
 
-安装、升级/回退、修补 APK 干净重建、60 FPS 的真实会话、中文输入候选框与菜单、长时稳定性和同条件功耗测试仍需完成。这是开发版，不是已验收的一键发行版。
+- 新栈的 X11/Chromium 实际画面、输入法候选框和菜单回归。
+- 修补版 Termux:X11 在明确工具链上的干净重建及升级/签名说明。
+- 自动升级、回退和卸载；当前安装器拒绝覆盖已有前缀。
+- 当前 60 FPS 配置下的长时稳定、休眠恢复与同条件功耗测试。
+- 完整干净 rootfs 的端到端安装验收和正式 `v0.1.0` 发行。
+
+现有 `/opt/mali-bridge` 与 canary 日常环境没有切换到新栈。新前缀 `/opt/pad7spro-gpu` 供独立开发验证。

@@ -1,8 +1,82 @@
 diff --git a/hybris/common/hooks.c b/hybris/common/hooks.c
-index eed4007..31a0d52 100644
+index eed4007..d0d855c 100644
 --- a/hybris/common/hooks.c
 +++ b/hybris/common/hooks.c
-@@ -3600,7 +3600,10 @@ static void* __hybris_load_linker(const char *path)
+@@ -2964,14 +2964,6 @@ static struct _hook hooks_common[] = {
+ 
+     HOOK_DIRECT(getenv),
+     HOOK_DIRECT_NO_DEBUG(printf),
+-    HOOK_INDIRECT(malloc),
+-    HOOK_INDIRECT(free),
+-    HOOK_DIRECT_NO_DEBUG(calloc),
+-    HOOK_DIRECT_NO_DEBUG(free),
+-    HOOK_DIRECT_NO_DEBUG(realloc),
+-    HOOK_DIRECT_NO_DEBUG(memalign),
+-    HOOK_DIRECT_NO_DEBUG(valloc),
+-    HOOK_DIRECT_NO_DEBUG(pvalloc),
+     HOOK_DIRECT(fread),
+     HOOK_DIRECT_NO_DEBUG(getxattr),
+     HOOK_DIRECT(mprotect),
+@@ -2998,7 +2990,6 @@ static struct _hook hooks_common[] = {
+     HOOK_DIRECT_NO_DEBUG(strcat),
+     HOOK_DIRECT_NO_DEBUG(strcasecmp),
+     HOOK_DIRECT_NO_DEBUG(strncasecmp),
+-    HOOK_DIRECT_NO_DEBUG(strdup),
+     HOOK_DIRECT_NO_DEBUG(strstr),
+     HOOK_DIRECT_NO_DEBUG(strtok),
+     HOOK_DIRECT_NO_DEBUG(strtok_r),
+@@ -3006,7 +2997,6 @@ static struct _hook hooks_common[] = {
+     HOOK_DIRECT_NO_DEBUG(strerror_r),
+     HOOK_DIRECT_NO_DEBUG(strnlen),
+     HOOK_DIRECT_NO_DEBUG(strncat),
+-    HOOK_DIRECT_NO_DEBUG(strndup),
+     HOOK_DIRECT_NO_DEBUG(strncmp),
+     HOOK_DIRECT_NO_DEBUG(strncpy),
+     HOOK_INDIRECT(strtod),
+@@ -3121,8 +3111,6 @@ static struct _hook hooks_common[] = {
+     HOOK_DIRECT_NO_DEBUG(popen),
+     HOOK_DIRECT_NO_DEBUG(puts),
+     HOOK_DIRECT_NO_DEBUG(sprintf),
+-    HOOK_DIRECT_NO_DEBUG(asprintf),
+-    HOOK_DIRECT_NO_DEBUG(vasprintf),
+     HOOK_DIRECT_NO_DEBUG(snprintf),
+     HOOK_DIRECT_NO_DEBUG(vsprintf),
+     HOOK_DIRECT_NO_DEBUG(vsnprintf),
+@@ -3147,8 +3135,6 @@ static struct _hook hooks_common[] = {
+     HOOK_INDIRECT(ftello),
+     HOOK_INDIRECT(fwrite),
+     HOOK_INDIRECT(getc),
+-    HOOK_INDIRECT(getdelim),
+-    HOOK_INDIRECT(getline),
+     HOOK_INDIRECT(putc),
+     HOOK_INDIRECT(rewind),
+     HOOK_INDIRECT(setbuf),
+@@ -3216,7 +3202,6 @@ static struct _hook hooks_common[] = {
+     HOOK_DIRECT_NO_DEBUG(seekdir),
+     HOOK_DIRECT_NO_DEBUG(telldir),
+     HOOK_DIRECT_NO_DEBUG(dirfd),
+-    HOOK_INDIRECT(scandir),
+     HOOK_INDIRECT(alphasort),
+     HOOK_INDIRECT(versionsort),
+     /* fcntl.h */
+@@ -3276,8 +3261,6 @@ static struct _hook hooks_mm[] = {
+     HOOK_DIRECT(clearenv),
+     HOOK_DIRECT_NO_DEBUG(dprintf),
+     HOOK_DIRECT_NO_DEBUG(mallinfo),
+-    HOOK_DIRECT(malloc_usable_size),
+-    HOOK_DIRECT(posix_memalign),
+     HOOK_DIRECT(mprotect),
+     HOOK_TO(__gnu_strerror_r, _hybris_hook__gnu_strerror_r),
+     HOOK_INDIRECT(pthread_rwlockattr_getkind_np),
+@@ -3366,7 +3349,6 @@ static struct _hook hooks_mm[] = {
+     /* dirent.h */
+     HOOK_TO(readdir64, _hybris_hook_readdir),
+     HOOK_TO(readdir64_r, _hybris_hook_readdir_r),
+-    HOOK_INDIRECT(scandir),
+     HOOK_TO(scandir64, _hybris_hook_scandir),
+ };
+ 
+@@ -3600,7 +3582,10 @@ static void* __hybris_load_linker(const char *path)
      return handle;
  }
  
@@ -14,7 +88,7 @@ index eed4007..31a0d52 100644
  
  static void __hybris_linker_init()
  {
-@@ -3693,12 +3696,10 @@ static void __hybris_linker_init()
+@@ -3693,12 +3678,10 @@ static void __hybris_linker_init()
          _android_set_application_target_sdk_version(sdk_version);
      }
  
