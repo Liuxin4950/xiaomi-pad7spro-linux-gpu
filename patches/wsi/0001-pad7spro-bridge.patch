@@ -1,0 +1,156 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 96af204..ccea012 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -23,6 +23,8 @@
+ cmake_minimum_required(VERSION 3.4.3)
+ project(VkLayer_window_system_integration)
+ 
++set(MALI_BRIDGE_PREFIX "/opt/mali-bridge" CACHE PATH "Isolated Mali bridge prefix")
++
+ find_package(PkgConfig REQUIRED)
+ pkg_check_modules(VULKAN_PKG_CONFIG vulkan)
+ 
+@@ -241,8 +243,6 @@ endif()
+ 
+ # X11 WSI
+ if(BUILD_WSI_X11)
+-   set(CMAKE_BUILD_TYPE "Debug")
+-
+    add_library(wsi_x11 STATIC
+       wsi/x11/surface_properties.cpp
+       wsi/x11/surface.cpp
+@@ -250,11 +250,16 @@ if(BUILD_WSI_X11)
+ 
+    target_include_directories(wsi_x11 PRIVATE
+       ${PROJECT_SOURCE_DIR}
++      ${MALI_BRIDGE_PREFIX}/include/android
+       ${VULKAN_CXX_INCLUDE}
+       ${CMAKE_CURRENT_BINARY_DIR})
+ 
+    target_compile_options(wsi_x11 INTERFACE "-DBUILD_WSI_X11=1")
+-   list(APPEND LINK_WSI_LIBS wsi_x11 xcb xcb-present xcb-xfixes xcb-dri3 X11-xcb android)
++   find_library(AHB_WRAPPER_LIBRARY ahb-wrapper
++      PATHS ${MALI_BRIDGE_PREFIX}/lib
++      NO_DEFAULT_PATH
++      REQUIRED)
++   list(APPEND LINK_WSI_LIBS wsi_x11 xcb xcb-present xcb-xfixes xcb-dri3 X11-xcb ${AHB_WRAPPER_LIBRARY})
+ else()
+    list(APPEND JSON_COMMANDS COMMAND sed -i '/VK_KHR_xcb_surface/d' ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_window_system_integration.json)
+    list(APPEND JSON_COMMANDS COMMAND sed -i '/VK_KHR_xlib_surface/d' ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_window_system_integration.json)
+@@ -318,3 +323,9 @@ add_custom_target(manifest_json ALL COMMAND
+ 
+ install(TARGETS ${PROJECT_NAME} DESTINATION share/vulkan/implicit_layer.d/)
+ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/VkLayer_window_system_integration.json DESTINATION share/vulkan/implicit_layer.d/)
++
++# Mali bridge: keep ahb-wrapper NEEDED (symbols are only used via dlsym,
++# so --as-needed would silently drop the dependency).
++if(MALI_BRIDGE_PREFIX)
++  target_link_libraries(${PROJECT_NAME} -Wl,--no-as-needed ${MALI_BRIDGE_PREFIX}/lib/libahb-wrapper.so -Wl,--as-needed)
++endif()
+diff --git a/layer/VkLayer_window_system_integration.json b/layer/VkLayer_window_system_integration.json
+index 3cfeebe..6080458 100644
+--- a/layer/VkLayer_window_system_integration.json
++++ b/layer/VkLayer_window_system_integration.json
+@@ -23,39 +23,10 @@
+         "device_extensions": [
+             {"name": "VK_KHR_shared_presentable_image", "spec_version": "1", "entrypoints": ["vkGetSwapchainStatusKHR"]},
+             {"name": "VK_EXT_image_compression_control_swapchain", "spec_version": "1"},
+-            {
+-                "name": "VK_KHR_swapchain",
+-                "spec_version": "70",
+-                "entrypoints": [
+-                    "vkAcquireNextImageKHR",
+-                    "vkCreateSwapchainKHR",
+-                    "vkDestroySwapchainKHR",
+-                    "vkGetSwapchainImagesKHR",
+-                    "vkQueuePresentKHR",
+-                    "vkAcquireNextImage2KHR",
+-                    "vkGetDeviceGroupPresentCapabilitiesKHR",
+-                    "vkGetDeviceGroupSurfacePresentModesKHR",
+-                    "vkGetPhysicalDevicePresentRectanglesKHR"
+-                ]
+-            },
+-            {"name": "VK_KHR_present_id", "spec_version": "1"},
+-            {
+-                "name": "VK_EXT_swapchain_maintenance1",
+-                "spec_version": "1",
+-                "entrypoints": [
+-                    "vkReleaseSwapchainImagesEXT"
+-                ]
+-            },
+-            {
+-                "name": "VK_EXT_present_timing",
+-                "spec_version": "1",
+-                "entrypoints": [
+-                    "vkSetSwapchainPresentTimingQueueSizeEXT",
+-                    "vkGetSwapchainTimingPropertiesEXT",
+-                    "vkGetSwapchainTimeDomainPropertiesEXT",
+-                    "vkGetPastPresentationTimingEXT"
+-                ]
+-            }
++            {"name": "VK_EXT_swapchain_maintenance1", "spec_version": "1", "entrypoints": ["vkReleaseSwapchainImagesEXT"]},
++            {"name": "VK_EXT_present_timing", "spec_version": "1", "entrypoints": ["vkSetSwapchainPresentTimingQueueSizeEXT", "vkGetSwapchainTimingPropertiesEXT", "vkGetSwapchainTimeDomainPropertiesEXT", "vkGetPastPresentationTimingEXT"]},
++            {"name": "VK_KHR_swapchain", "spec_version": "70", "entrypoints": ["vkAcquireNextImageKHR", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkQueuePresentKHR", "vkAcquireNextImage2KHR", "vkGetDeviceGroupPresentCapabilitiesKHR", "vkGetDeviceGroupSurfacePresentModesKHR", "vkGetPhysicalDevicePresentRectanglesKHR"]},
++            {"name": "VK_KHR_present_id", "spec_version": "1"}
+         ],
+         "disable_environment": {
+             "DISABLE_WSI_LAYER": "1"
+diff --git a/util/custom_allocator.hpp b/util/custom_allocator.hpp
+index a34164a..64a8247 100644
+--- a/util/custom_allocator.hpp
++++ b/util/custom_allocator.hpp
+@@ -28,6 +28,7 @@
+ #include <string>
+ #include <cassert>
+ #include <memory>
++#include <stdexcept>
+ 
+ #include <vulkan/vulkan.h>
+ 
+diff --git a/wsi/x11/surface_properties.cpp b/wsi/x11/surface_properties.cpp
+index b27ea1d..00c3d6c 100644
+--- a/wsi/x11/surface_properties.cpp
++++ b/wsi/x11/surface_properties.cpp
+@@ -284,8 +284,8 @@ CreateXlibSurfaceKHR(VkInstance instance, const VkXlibSurfaceCreateInfoKHR *pCre
+ {
+    const VkXcbSurfaceCreateInfoKHR CreateInfo = {
+       .sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
+-      .flags = 0,
+       .pNext = NULL,
++      .flags = 0,
+       .connection = XGetXCBConnection(pCreateInfo->dpy),
+       .window = static_cast<xcb_window_t>(pCreateInfo->window),
+    };
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 89a6c2f..6396a8d 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -53,6 +53,8 @@
+ #include "swapchain.hpp"
+ #include "util/log.hpp"
+ #include "wsi/swapchain_base.hpp"
++#include <stdexcept>
++#include <system_error>
+ 
+ namespace wsi
+ {
+@@ -359,6 +361,8 @@ void swapchain::present_event_thread()
+          {
+             for (auto &image : m_swapchain_images)
+             {
++               if (image.status == swapchain_image::INVALID || image.data == nullptr)
++                  continue;
+                auto data = reinterpret_cast<x11_image_data *>(image.data);
+                auto iter = std::find_if(data->pending_completions.begin(), data->pending_completions.end(),
+                                         [complete](auto &pending_completion) -> bool {
+@@ -432,6 +436,9 @@ bool swapchain::free_image_found()
+       assert(pixmap.has_value());
+       for (int i = 0; i < m_swapchain_images.size(); i++)
+       {
++         if (m_swapchain_images[i].status == swapchain_image::INVALID ||
++             m_swapchain_images[i].data == nullptr)
++            continue;
+          auto data = reinterpret_cast<x11_image_data *>(m_swapchain_images[i].data);
+          if (data->pixmap == pixmap.value())
+          {

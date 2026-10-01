@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "git_sources": [
+    {
+      "name": "libhybris",
+      "url": "https://github.com/Linux-on-droid/libhybris.git",
+      "commit": "29e0fa6da0166261f6b9437582fe2d56bab8530c",
+      "patches": [
+        {
+          "path": "patches/libhybris/0001-pad7spro-bridge.patch",
+          "sha256": "b0cf92dd605550a84692b79ea1d3c3bfbc7f0bdc554af0d9a7efb2a3194a638b"
+        }
+      ]
+    },
+    {
+      "name": "wsi",
+      "url": "https://github.com/xMeM/vulkan-wsi-layer.git",
+      "commit": "d5624d42d8b2debbd910ad25662a05c751eb38b7",
+      "patches": [
+        {
+          "path": "patches/wsi/0001-pad7spro-bridge.patch",
+          "sha256": "16631e67e1f8b018a5aec314a009fd61bec5fe97d53f507a3b7381226eb76e75"
+        }
+      ]
+    },
+    {
+      "name": "android-headers",
+      "url": "https://github.com/Linux-on-droid/android-headers-30.git",
+      "commit": "a6261c5cce8e945868b68318e867e382dea4bffd",
+      "patches": []
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "libc.so",
+      "url": "https://raw.githubusercontent.com/Linux-on-droid/vendor_lindroid/eadbb70f13209133d96a5355464388db8c6578de/prebuilt/arm64/libc.so",
+      "sha256": "f7f745a72ae91c4dcb937077232baa4a6feea80453cc68483210cb00245f1875",
+      "origin": "Linux-on-droid patched bionic runtime dependency; identical to the existing working device file"
+    }
+  ]
+}

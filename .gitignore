@@ -1,0 +1,21 @@
+# Local build output and device data
+build/
+out/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.so
+*.so.*
+*.o
+*.a
+*.tar
+*.tar.gz
+*.log
+*.jks
+*.keystore
+.env
+.env.*
+__pycache__/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,38 @@
+{
+  "captured_on": "2026-10-01",
+  "status": "pre-publication draft",
+  "files": {
+    "reference/termux/desktop-zink.sh": {
+      "bytes": 5052,
+      "sha256": "79f162b2d6c20f5fdc182677c8c1fd840cb92e0b553815f0a8c2af9f1633e99e",
+      "source": "device snapshot captured 2026-10-01",
+      "changes": [
+        "Reference default changed from 120 FPS to 60 FPS; device file not modified."
+      ]
+    },
+    "reference/termux/debian-shell.sh": {
+      "bytes": 18860,
+      "sha256": "521585f040d5321bc5cb9aa1401131350079ded70e99c2e4a61a8fe82dee83ee",
+      "source": "device snapshot captured 2026-10-01",
+      "changes": []
+    },
+    "reference/termux/debian-stop.sh": {
+      "bytes": 3822,
+      "sha256": "1e8417d7ba37a7767da6cba1f91c60c686994bb3afe80b5b3faaeadcb3fc5c50",
+      "source": "device snapshot captured 2026-10-01",
+      "changes": []
+    },
+    "reference/chroot/gpu-app.sh": {
+      "bytes": 1941,
+      "sha256": "577331c097a159d248f9e802a957eb4595d10d137e7e515e1f32dc7d590ff729",
+      "source": "device snapshot captured 2026-10-01",
+      "changes": []
+    },
+    "patches/termux-x11/termux-x11-gpu-popup-fix.patch": {
+      "bytes": 8551,
+      "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e",
+      "source": "device snapshot captured 2026-10-01",
+      "changes": []
+    }
+  }
+}

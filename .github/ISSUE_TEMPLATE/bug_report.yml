@@ -1,0 +1,29 @@
+name: 问题报告
+description: 提交可复现的问题和测试条件
+title: "[Bug] "
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境和版本
+      description: 机型、固件、Debian、Termux、X11、应用、桥接版本。无需设备序列号。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 运行入口、固定负载、发生问题的操作顺序。
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 预期结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 验证材料
+      description: 渲染器、GPU重建情况、相关日志或画面。功耗问题附测量条件与原始采样。移除账户、令牌及个人内容。

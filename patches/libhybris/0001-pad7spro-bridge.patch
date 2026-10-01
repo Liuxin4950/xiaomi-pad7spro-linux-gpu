@@ -1,0 +1,83 @@
+diff --git a/hybris/common/hooks.c b/hybris/common/hooks.c
+index eed4007..31a0d52 100644
+--- a/hybris/common/hooks.c
++++ b/hybris/common/hooks.c
+@@ -3600,7 +3600,10 @@ static void* __hybris_load_linker(const char *path)
+     return handle;
+ }
+ 
+-static int linker_initialized = 0;
++/* Android linker setup is shared by all callers of android_dlopen/dlsym.
++ * A plain boolean allows two Chromium GPU threads to initialize the same
++ * linker state concurrently. Initialization must happen once per process. */
++static pthread_once_t linker_once = PTHREAD_ONCE_INIT;
+ 
+ static void __hybris_linker_init()
+ {
+@@ -3693,12 +3696,10 @@ static void __hybris_linker_init()
+         _android_set_application_target_sdk_version(sdk_version);
+     }
+ 
+-    linker_initialized = 1;
+ }
+ 
+ #define ENSURE_LINKER_IS_LOADED() \
+-    if (!linker_initialized) \
+-        __hybris_linker_init();
++    pthread_once(&linker_once, __hybris_linker_init)
+ 
+ /* NOTE: As we're not linking directly with the linker anymore
+  * but several users are using android_* functions directly we
+diff --git a/hybris/common/q/linker_main.cpp b/hybris/common/q/linker_main.cpp
+index a78ffbf..bb9da01 100644
+--- a/hybris/common/q/linker_main.cpp
++++ b/hybris/common/q/linker_main.cpp
+@@ -789,6 +789,11 @@ extern "C" void android_linker_init(int sdk_version, void* (*get_hooked_symbol)(
+ #else
+ extern "C" void android_linker_init(int sdk_version, void* (*get_hooked_symbol)(const char*, const char*), int enable_linker_gdb_support) {
+ #endif
++  // This entry point can run after a previous linker operation has protected
++  // allocator-backed namespace objects. Keep them writable for the entire
++  // initialization, including path parsing and namespace setup.
++  ProtectedDataGuard protected_data_guard;
++
+   // Get a few environment variables.
+   const char* LD_DEBUG = getenv("HYBRIS_LD_DEBUG");
+   if (LD_DEBUG != nullptr) {
+diff --git a/hybris/configure.ac b/hybris/configure.ac
+index eaf859f..918883e 100644
+--- a/hybris/configure.ac
++++ b/hybris/configure.ac
+@@ -364,12 +364,13 @@ AC_CONFIG_FILES([
+ AC_CHECK_HEADERS(vulkan/vulkan.h, HAS_VULKAN_HEADERS=yes)
+ AM_CONDITIONAL([HAS_VULKAN_HEADERS], [test x"$HAS_VULKAN_HEADERS" = x"yes"])
+ 
+-AM_COND_IF([HAS_VULKAN_HEADERS], [AC_CONFIG_FILES([
+-	vulkan/Makefile
+-	vulkan/platforms/Makefile
+-	vulkan/platforms/common/Makefile
+-	vulkan/platforms/null/Makefile
+-	vulkan/platforms/wayland/Makefile])])
++if test x"$HAS_VULKAN_HEADERS" = x"yes"; then
++	AC_CONFIG_FILES([vulkan/Makefile])
++	AC_CONFIG_FILES([vulkan/platforms/Makefile])
++	AC_CONFIG_FILES([vulkan/platforms/common/Makefile])
++	AC_CONFIG_FILES([vulkan/platforms/null/Makefile])
++	AC_CONFIG_FILES([vulkan/platforms/wayland/Makefile])
++fi
+ 
+ AC_OUTPUT
+ 
+diff --git a/hybris/vulkan/vulkan.c b/hybris/vulkan/vulkan.c
+index 915ece6..b65d66e 100644
+--- a/hybris/vulkan/vulkan.c
++++ b/hybris/vulkan/vulkan.c
+@@ -671,7 +671,7 @@ VULKAN_IDLOAD(vkCreatePrivateDataSlotEXT);
+ VULKAN_IDLOAD(vkDestroyPrivateDataSlotEXT);
+ VULKAN_IDLOAD(vkSetPrivateDataEXT);
+ VULKAN_IDLOAD(vkGetPrivateDataEXT);
+-#if VK_HEADER_VERSION >= 269
++#if 0
+ VULKAN_IDLOAD(vkCreateCudaModuleNV);
+ VULKAN_IDLOAD(vkGetCudaModuleCacheNV);
+ VULKAN_IDLOAD(vkCreateCudaFunctionNV);
