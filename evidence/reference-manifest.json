@@ -1,13 +1,13 @@
 {
   "captured_on": "2026-10-01",
-  "status": "pre-publication draft",
+  "status": "Active development configuration deployed to author device",
   "files": {
     "reference/termux/desktop-zink.sh": {
-      "bytes": 5052,
-      "sha256": "79f162b2d6c20f5fdc182677c8c1fd840cb92e0b553815f0a8c2af9f1633e99e",
-      "source": "device snapshot captured 2026-10-01",
+      "bytes": 5691,
+      "sha256": "108455e4e46674b65e0a16a390dfa41922d154b824f7d61a33b5f96cfa4263c8",
+      "source": "device configuration updated and deployed 2026-10-07",
       "changes": [
-        "Reference default changed from 120 FPS to 60 FPS; device file not modified."
+        "Deployed to Android Termux script; future sessions use unified gpu-run environment and default 60 FPS."
       ]
     },
     "reference/termux/debian-shell.sh": {
@@ -23,10 +23,12 @@
       "changes": []
     },
     "reference/chroot/gpu-app.sh": {
-      "bytes": 1941,
-      "sha256": "577331c097a159d248f9e802a957eb4595d10d137e7e515e1f32dc7d590ff729",
-      "source": "device snapshot captured 2026-10-01",
-      "changes": []
+      "bytes": 446,
+      "sha256": "9f47ca56962561b5be355d277ae26913ff67d4aa149829815dfb2af2679a41e4",
+      "source": "device configuration updated and deployed 2026-10-07",
+      "changes": [
+        "Deployed as compatibility wrapper; desktop and URL handlers now use /usr/local/bin/gpu-run."
+      ]
     },
     "patches/termux-x11/termux-x11-gpu-popup-fix.patch": {
       "bytes": 8551,
@@ -34,5 +36,6 @@
       "source": "device snapshot captured 2026-10-01",
       "changes": []
     }
-  }
+  },
+  "updated_on": "2026-10-07"
 }

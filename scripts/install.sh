@@ -8,12 +8,15 @@ export TMPDIR=/tmp
 stage=${1:?usage: install.sh STAGE [/opt/pad7spro-gpu]}
 prefix=${2:-/opt/pad7spro-gpu}
 [[ "$prefix" =~ ^/opt/[a-zA-Z0-9_.-]+$ ]] || exit 64
+[[ "${prefix##*/}" != . && "${prefix##*/}" != .. ]] || exit 64
 stage=$(realpath "$stage")
 source="$stage$prefix"
 [[ -d "$source" && -f "$source/sources.lock.json" ]] || { echo 'Not a complete build stage' >&2; exit 78; }
 for file in lib/libsysvk.so lib/libahb-wrapper.so lib/libhybris-common.so.1 lib/libhybris/linker/q.so \
   lib/libhardware.so android-override/libc.so share/vulkan/icd.d/sysvk_icd.json \
-  share/vulkan/implicit_layer.d/libVkLayer_window_system_integration.so bin/probe-vulkan; do
+  share/vulkan/implicit_layer.d/libVkLayer_window_system_integration.so \
+  lib/libwebkit-gpu-policy.so bin/gpu-run bin/gpu-launcher bin/trae-start \
+  bin/probe-vulkan bin/probe-ahb bin/probe-present; do
   [[ -f "$source/$file" ]] || { echo "Missing stage file: $file" >&2; exit 78; }
 done
 python3 - "$source" "$prefix" <<'PY'

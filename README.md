@@ -1,67 +1,99 @@
 # Xiaomi Pad 7S Pro Linux GPU
 
-在已取得 root 权限的小米平板 7S Pro 上，使 Debian chroot 中部分 Linux 图形应用通过桥接调用 Android 原厂 Vulkan 驱动，并用 Termux:X11 显示。
+让已 root 的小米平板 7S Pro 中的 Debian arm64 chroot 图形软件调用 Android 原厂 Mali Vulkan 驱动，并通过 Termux:X11 显示。
 
-**状态：预发布开发与验证。** 方案已在作者设备上运行。此目录已加入固定依赖版本、完整 libhybris/WSI 补丁、自行编写的 sysvk/AHB 桥接组件和统一构建入口。核心构建与运行探针已通过，完整桌面安装与验收仍在进行，当前尚不是已验收的发行包。
+**状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
 
-**2026-10-01 实际进展：** 干净构建通过；新产物的 Vulkan 初始化/销毁和 AHardwareBuffer 分配/传输/释放各连续三次通过。新增 `gpu-run` 和 Android 侧快捷检查。实际桌面窗口、APK 重建和功耗验收仍未完成，当前为开发版。见 [验证状态](docs/development-status.md)。
+## 日常使用
 
-## 适用环境
+1. 在 Android 的 Termux:Widget 中点 `debian-zink`，它调用 `~/mali-work/desktop-zink.sh`。
+2. 进入 XFCE 后直接使用原来的应用图标。桌面、菜单和 URL 入口已统一到新 GPU 栈。
+3. 当前会话默认带有 Zink、Vulkan ICD/WSI 和 BGRA 传输配置。兼容的 OpenGL/Vulkan 软件通常可以直接继承这些设置；GPU 应用启动器是可选菜单工具。
 
-| 项目 | 核对记录 |
-|---|---|
-| 设备 | Xiaomi Pad 7S Pro，型号 `25053RP5CC` |
-| SoC / GPU | 玄戒 XRING O1 / Arm Immortalis-G925；依设备既有 GPU 记录 |
-| Android | 16，API 36 |
-| HyperOS | `OS3.0.303.0.WOTCNXM` |
-| Linux | Debian 13.7，arm64，root chroot |
-| 桌面 | XFCE；当前配置关闭 XFWM 合成器 |
-| Termux | `0.118.3` |
-| Termux:X11 | `1.03.01-d55f1b7-29.09.26`，另带本项目的 Present/限帧补丁 |
-| 参考显示配置 | 原生分辨率，`-max-fps 60` |
+给新应用设置快捷方式时，可保留原来的程序参数和 `%U` / `%F` 占位符，使用统一入口：
 
-版本信息于 2026-10-01 读取。运行效果主要依据 2026-09-27 至 09-29 的设备记录，本次整理未重新启动桌面测试。其他机型、GPU、固件与 proot 环境尚未验证。项目不提供取得 root 权限的步骤。
+```ini
+Exec=/usr/local/bin/gpu-run auto /path/to/application
+```
 
-## 已记录的能力与边界
+`auto` 识别已知 Chromium/Electron 名称及保守的 Electron 发行布局；未知程序接收硬件环境。特殊框架可明确选择：
 
-| 应用/功能 | 状态 |
-|---|---|
-| Chromium | 既有记录已验证 ANGLE Vulkan/Mali 图形渲染 |
-| Trae CN | 2026-09-28 起统一使用 ANGLE Vulkan；旧 `gl-egl` 入口已弃用 |
-| ChatGPT 桌面应用 | 窗口与 GPU 路径有验证记录；在线内容曾受服务超时影响 |
-| 中文输入候选框、Chromium/Electron 弹出菜单 | Termux:X11 GPU Present 裁剪补丁已在作者设备验证 |
-| CC Switch（WebKitGTK/Tauri） | 当前仍使用 CPU 渲染；不能套用 Electron 参数 |
-| 视频硬解 | 尚未接通，不能从图形 GPU 加速推断已支持 |
-| 通用应用加速、长期稳定、续航改善 | 需要独立验证；没有覆盖所有应用的结论 |
+```sh
+gpu-run gl application           # OpenGL → Mesa Zink
+gpu-run vulkan application       # 原生 Vulkan
+gpu-run electron application     # Electron → ANGLE Vulkan
+gpu-run webkit application       # WebKitGTK 4.1 专用适配
+gpu-run cc-switch               # 已适配的 CC Switch
+gpu-run --software auto application  # 显式软件渲染
+```
+
+入口不会因硬件启动失败自动重试 CPU 路径。软件自己选择 CPU 绘制、要求驱动缺失的特性或使用其他图形接口时，仍需单独判断兼容性。当前并未接通视频硬解。
 
 ## 工作原理
 
 ```text
-Chromium / Electron ── ANGLE Vulkan ─┐
-OpenGL 应用 ────────── Mesa Zink ────┤
-                                  ↓
-Linux Vulkan loader → sysvk → libhybris → Android Vulkan 驱动 → Mali
-                  ↘ WSI / AHardwareBuffer → 修补后的 Termux:X11 → Android 显示
+Chromium / Electron → ANGLE Vulkan ─┐
+OpenGL / WebKitGTK → Mesa Zink ─────┤
+原生 Vulkan ────────────────────────┤
+                                   ↓
+Linux Vulkan loader → sysvk → libhybris → Android Vulkan HAL → Mali-G925
+                            ↘ WSI / AHardwareBuffer → Termux:X11 → Android 显示
 ```
 
-核心配置包括绑定 Android **已有**的 binderfs、分开保存主基线与 canary 库、为不同应用选定渲染入口，以及修复 Termux:X11 的 GPU Present 遮挡裁剪。详见 [架构](docs/architecture.md)。
+WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到端零拷贝。当前 X11 协议模式公开真实 BGRA 渲染图像，将其字节用 GPU 复制到私有 RGBA AHardwareBuffer，匹配 Xorg 的 BGRA 字节契约，避免红蓝交换。
+
+新栈将 ICD、libhybris、AHB wrapper、WSI 与私有 bionic override 放在同一个安装前缀中。应用级 WSI 呈现默认上限为 60 FPS；它不是整个 Android 的 GPU 工作上限，也没有实现静止内容去重。详见 [架构](docs/architecture.md)和 [实现说明](docs/implementation.md)。
+
+## 适用环境与验证范围
+
+| 项目 | 本机记录 |
+|---|---|
+| 设备 | Xiaomi Pad 7S Pro，`25053RP5CC` |
+| GPU | Arm Immortalis-G925；实际 Vulkan 名称 `Mali-G925-Immortalis` |
+| Android / HyperOS | Android 16、API 36 / `OS3.0.303.0.WOTCNXM` |
+| Linux | Debian 13 arm64、root chroot、XFCE，关闭 XFWM 合成器 |
+| Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
+| Termux | `0.118.3` |
+| 当前 Termux:X11 APK | `1.03.01-d55f1b7-29.09.26`，含已有 Present 裁剪补丁 |
+| 当前启动默认 | 原生分辨率，`X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60` |
+
+设备版本基线来自 2026-10-01，新增软件验证和用户会话重启反馈来自 2026-10-07。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
+
+| 应用/能力 | 当前状态 |
+|---|---|
+| Vulkan / AHB | 逻辑设备、真实指令提交与读回；AHB 发送/接收、读回和释放通过 |
+| OpenGL / Zink | 实际齿轮窗口、Mali renderer 和正确 RGB 画面通过 |
+| Chromium | ANGLE Vulkan/Mali、WebGL/WebGL2、像素读回与 Android 画面通过 |
+| ChatGPT 桌面应用 | 独立实例 GPU 路径与窗口短测通过；不代表在线服务内容验收 |
+| Trae CN | 独立实例欢迎页与 GPU 短测通过；附精确条件的一次启动容错 |
+| CC Switch | WebKit 实际硬件策略、Mali 与窗口短测通过；使用 SHM 传输 |
+| 候选框/菜单 | 已有 X11 裁剪补丁在作者设备有验证；更换组件后仍需回归 |
+| sRGB、更高 OpenGL 特性、视频硬解 | 尚未覆盖或接通 |
+| 长时间稳定、休眠恢复、续航改善 | 尚未完成新版系统性验收 |
+
+## 构建与部署
+
+桥接构建读取 [sources.lock.json](sources.lock.json)，安装器只写独立前缀，不自动覆盖现有栈：
+
+```sh
+bash scripts/build.sh --prefix /opt/pad7spro-gpu --jobs 4
+bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
+```
+
+依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
+
+Termux:X11 的第二阶段节拍/copy-fence 优化补丁已提供，并生成同证书原生增量候选 APK；**当前设备没有安装该候选 APK**。它不是干净全量 APK 构建，见 [补丁与验证说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
 
 ## 文档
 
-- [复现流程与当前缺口](docs/setup.md)
-- [从固定源码构建](docs/build.md)
-- [配置、启动和停止](docs/configuration.md)
-- [GPU 与显示验证](docs/validation.md)
-- [功耗和稳定性测试](docs/benchmarks.md)
+- [架构与数据路径](docs/architecture.md)
+- [实现机制与流程](docs/implementation.md)
+- [复现与安装顺序](docs/setup.md)
+- [固定依赖构建](docs/build.md)
+- [默认环境、应用与桌面启动](docs/configuration.md)
+- [验证方法](docs/validation.md) / [当前状态](docs/development-status.md)
+- [性能、功耗与稳定性测量](docs/benchmarks.md)
 - [已知问题](docs/known-issues.md)
-- [上游组件与来源](THIRD_PARTY.md)
-- [许可证状态](LICENSE-STATUS.md)
-- [Termux:X11 补丁与构建](patches/termux-x11/README.md)
+- [上游来源](THIRD_PARTY.md) / [许可证](LICENSE-STATUS.md)
 
-`reference/` 是现有安装的参考脚本，依赖已部署的 `/opt/mali-bridge` 和 `/opt/mali-bridge-canary`，不承担安装桥接库的工作。其中桌面参考脚本整理为默认 60 FPS；该默认值只完成语法核验，功耗效果仍需同任务实测。
-
-## 反馈与贡献
-
-报告问题时提供机型、系统/软件版本、使用的脚本版本、复现步骤、实际结果与预期结果。图形问题附渲染器信息、GPU 进程稳定性和遮挡/菜单画面；功耗问题附测量条件和原始采样。日志先移除账号、令牌和个人内容。
-
-新机型或新应用只有在复现与验证记录齐全后才加入支持表。欢迎围绕明确组件提交小范围修改，并保留上游版权及许可证。本草稿发布前仍需落实新增文件的许可证，见 [许可证状态](LICENSE-STATUS.md)。
+报告问题请附设备/软件版本、所选入口、实际 renderer、对应 GPU PID/模块、复现步骤和结果。公开日志前移除账号、令牌和个人内容。不要用单次 FPS、持有 `/dev/mali0` 或“窗口能打开”代替硬件渲染、画面和功耗验证。

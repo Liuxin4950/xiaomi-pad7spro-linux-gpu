@@ -1,35 +1,79 @@
 # 架构与组件
 
-## 渲染与呈现
+## 两条数据路径
 
-Linux 应用在 glibc 用户空间运行；Android 厂商 Vulkan 驱动依赖 bionic。libhybris 负责装载/兼容 Android 用户空间库，sysvk 向 Linux Vulkan loader 暴露 ICD 入口。OpenGL 应用可经 Mesa Zink 转成 Vulkan；Chromium/Electron 当前使用 ANGLE Vulkan。
+Linux 应用运行于 glibc，Android 厂商驱动依赖 bionic。`sysvk` 向 Linux Vulkan loader 提供 ICD 入口，`libhybris` 负责 Android 动态库与 ABI 兼容；驱动使用当前固件已有的 Mali 内核接口。
 
-Android 驱动本身没有直接提供这里需要的标准 Linux X11 呈现环境。WSI 层与 AHardwareBuffer wrapper 配合，向 Termux:X11 交付可呈现的 buffer。Termux:X11 的 GPU Present 快速路径最终与 Android 显示链路协作。
+```mermaid
+flowchart TD
+    A[Chromium / Electron] --> B[ANGLE Vulkan]
+    C[OpenGL / WebKitGTK] --> D[Mesa Zink]
+    E[原生 Vulkan] --> F[Linux Vulkan loader]
+    B --> F
+    D --> F
+    F --> G[sysvk ICD]
+    G --> H[libhybris / 私有 bionic override]
+    H --> I[Android Vulkan HAL / 原厂 Mali 驱动]
+    I --> J[Mali-G925]
+    F --> K[X11 WSI / AHardwareBuffer]
+    K --> L[Termux:X11 Present / GPU copy]
+    L --> M[Android renderer / 显示]
+```
 
-这三层应分别验证：应用是否使用 GPU 渲染、X11 呈现是否正确、Android 是否完成显示。XFCE 面板和窗口边框的绘制不等于 Chromium 内容的渲染。本配置关闭 XFWM 合成器，不能据此推断所有桌面组件都使用 GPU。
+应用渲染和最终呈现需分别验证。WSI 的 AHB/socket/DRI3 专用协议连接 Linux 应用与 Termux:X11；Android 原厂 Vulkan 驱动本身不提供此处的标准 Linux X11 swapchain。
 
-## 当前路径布局
+WebKitGTK 的 GPU 内容合成另有共享内存帧传输步骤。此路径能使用 Mali 渲染，但包含读回/传输成本，不能用 Vulkan/AHB 共享内存的性质推导整条路径零拷贝。
 
-| 路径 | 用途 |
+## 一个前缀包含完整桥接
+
+构建默认前缀为 `/opt/pad7spro-gpu`；作者当前验收前缀为 `/opt/pad7spro-gpu-dev-20261007-r2`。以下 `PREFIX` 代表所选独立前缀：
+
+| 路径 | 职责 |
 |---|---|
-| `/opt/mali-bridge/lib/libsysvk.so` | 主基线 Vulkan ICD |
-| `/opt/mali-bridge/share/vulkan/icd.d/sysvk_icd.json` | ICD 描述 |
-| `/opt/mali-bridge/lib/libahb-wrapper.so` | AHardwareBuffer 包装 |
-| `/opt/mali-bridge/android-override/libc.so` | 桥接专用的修改版 bionic libc |
-| `/opt/mali-bridge-canary/lib` | 当前应用入口使用的 libhybris 候选库 |
-| `/opt/mali-bridge-canary/share/vulkan/implicit_layer.d` | 当前应用入口使用的候选 WSI |
-| `/opt/mali-bridge-canary/bin/gpu-app.sh` | Chromium / ChatGPT / Trae 的统一入口 |
+| `PREFIX/lib/libsysvk.so` | Vulkan ICD 与 Android HAL 初始化 |
+| `PREFIX/lib/libhybris-common.so.1`、`lib/libhybris/linker/q.so` | Android 动态装载/兼容 |
+| `PREFIX/lib/libahb-wrapper.so.1` | 通过 libhybris 解析公开 AHB API |
+| `PREFIX/android-override/libc.so` | 固定来源和哈希的私有 bionic 运行时 |
+| `PREFIX/share/vulkan/icd.d/sysvk_icd.json` | 当前前缀 ICD 描述 |
+| `PREFIX/share/vulkan/implicit_layer.d/` | X11 WSI 库与 manifest |
+| `PREFIX/lib/libwebkit-gpu-policy.so` | 显式 WebKitGTK 4.1 路由的策略适配 |
+| `PREFIX/bin/gpu-run`、`gpu-launcher`、`trae-start` | 通用启动、可选菜单工具和 Trae 启动容错 |
+| `PREFIX/bin/probe-*` | 核心与呈现的定向验证 |
 
-“canary”是历史目录名，目前生产应用入口也依赖它。不能仅复制 canary 就宣称依赖齐全：启动器同时使用主基线的 ICD、AHB wrapper 和 Android override。正式发行时应提供一个明确版本的完整组件清单，再决定是否统一安装前缀。
+库的 RUNPATH 和 manifest 固定到构建时的前缀。不能把已构建目录任意改名后继续使用。入口根据自身真实位置推导前缀，`PAD_GPU_PREFIX` 可显式指定；启动时核对文件、manifest 和组件是否越出所选目录。
 
-## 必要的适配
+`/opt/mali-bridge` 与 canary 是保留的旧基线。新的日常入口不再把两套目录混在同一进程中；旧 `gpu-app.sh` 只是转发到统一入口的兼容脚本。
 
-- **Android binderfs**：绑定 Android 现有 `/dev/binderfs`；在 chroot 中创建新的 binderfs 实例会缺少 Android 服务环境。`binder_logs` 是本机识别既有实例的辅助标志，不能假设所有固件都采用相同目录布局。
-- **Android 文件系统**：当前启动器绑定 `/system`、`/vendor`、`/apex`，并共享设备节点与 X11 socket。取得 root 本身不证明所有节点都可访问，还涉及挂载命名空间与 SELinux 策略。
-- **修改版 bionic libc**：通过 `HYBRIS_LD_LIBRARY_PATH` 优先选择私有 override。不要改写宿主 Android 的 `/apex/.../libc.so`。对应 emutls 源码和构建还需整理。
-- **libhybris 与 WSI 修正**：历史记录包含链接器初始化、DSO 生命周期和 X11 swapchain 空图像检查修正；正式补丁系列需从实际部署源码重建，不能只取旧电脑源码的部分 diff。
-- **Termux:X11 修正**：直接写入 screen pixmap 时应用可见区域裁剪，保留 redirected pixmap 的内容语义；加入真实 vblank 限帧，并关闭非调试模式下的逐帧日志。
+## 默认环境与应用路由
 
-## 依赖说明
+```mermaid
+flowchart TD
+    A[Termux:Widget debian-zink] --> B[desktop-zink.sh]
+    B --> C[绑定已有 Android 资源 / 启动 Termux:X11]
+    C --> D[gpu-run gl env dbus-launch startxfce4]
+    D --> E[XFCE 子进程继承 GPU 环境]
+    E --> F[兼容的普通 OpenGL / Vulkan 软件]
+    E --> G[已迁移的应用图标 / URL helper]
+    G --> H[gpu-run 选择应用后端]
+```
 
-此方案使用用户固件自带的 Android Mali 驱动，不是实现了一个新的 Mali 内核驱动，也不代表厂商驱动已开源。对不同固件、Android 用户空间库、GPU 功能和 Termux:X11 协议版本的兼容性都需要验证。
+`gpu-run` 不是必须手动打开的界面。会话启动时，它设置统一的驱动环境；原有应用图标再按需调用它选择后端。菜单中的 GPU 应用启动器只提供临时程序输入框。
+
+Chromium/Electron 使用 ANGLE Vulkan；普通 GL/Vulkan 主要依靠会话继承。CC Switch 需要额外纠正应用主动禁用 GPU 的策略。纯 CPU 绘制和业务计算不会自动迁移到 GPU。
+
+## 颜色、同步和帧率
+
+当前 Termux:X11 使用 Xorg BGRA 字节契约，而 Mali 能导出的 AHB 是 RGBA。WSI 保留公共 BGRA 图像的真实格式，另分配私有 RGBA AHB，通过同队列 GPU copy 保留 BGRA 字节；现用 X11 再按既有契约显示。把这一步改成普通颜色转换 blit，会重复交换通道。sRGB 表面暂不宣称支持。
+
+每张图像的 producer semaphore、传输指令与 fence 属于同一次同步提交；转换完成后才向 X11 Present。资源重建、线程取消和旧 swapchain 退役需保持图像/事件锁顺序与生命周期。详细修正在 [实现说明](implementation.md)。
+
+`PAD_GPU_MAX_FPS=60` 在每个 WSI swapchain 呈现端以可取消等待限制提交，避免忙等。它不限制所有离屏 GPU 指令，也不比较静止内容。`X11_MAX_FPS=60` 是启动请求；原 APK 主要限制 RandR 报告值，真正显示 tick 门控在尚未部署的第二阶段 X11 补丁中。
+
+## Android 运行依赖
+
+- 绑定 Android **已有**的 `/dev/binderfs`，不能在 chroot 新建一个无 Android 服务的实例。`binder_logs` 只是本机辅助识别条件。
+- 需要正确共享 `/dev`、X11 socket，并绑定 `/system`、`/vendor`、`/apex`；root 身份不代替挂载命名空间和 SELinux 权限检查。
+- 私有 bionic override 通过 `HYBRIS_LD_LIBRARY_PATH` 选择，不修改 Android 系统 libc。
+- 保留 Present 的可见区域裁剪：screen pixmap 排除上层窗口，redirected pixmap 保留完整内容。XFWM 合成器当前关闭。
+
+此项目不是新的 Mali 内核驱动，也不意味着厂商驱动已开源或可再分发。兼容范围取决于固件、Android 库、真实 Vulkan 特性和 Termux:X11 协议版本。

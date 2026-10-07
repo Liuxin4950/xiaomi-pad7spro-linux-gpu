@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GPU 应用启动器
+Comment=通过 Mali 桥接启动 OpenGL、Vulkan 或 Electron 应用
+Exec=/usr/local/bin/gpu-launcher
+Icon=applications-graphics
+Terminal=false
+Categories=Utility;
+StartupNotify=false

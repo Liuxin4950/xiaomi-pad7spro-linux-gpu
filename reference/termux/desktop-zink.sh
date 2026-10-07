@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # desktop-zink.sh — XFCE 桌面的 Mali-zink 变体会话（2026-09-16 新增，实验性）。
 # 与 debian-desktop.sh 的差异：
-#   1) 会话内 GL 走 zink -> Vulkan -> /opt/mali-bridge -> Mali-G925（原来写死 llvmpipe）
+#   1) 会话经 /usr/local/bin/gpu-run 继承当前统一桥接配置（原来写死主基线）
 #   2) 额外挂载 system/vendor/apex 供 hybris 加载 Android Mali 驱动
 # 其余（挂载/看门狗/模式锁/图形栈启动）全部复用 debian-shell.sh。
 # 用法：bash ~/mali-work/desktop-zink.sh     （关闭 XFCE 或跑 debian-stop.sh 收尾）
@@ -20,8 +20,7 @@ wait_socket() {
 }
 
 start_graphics() {
-  # Public reference defaults to 60 FPS for power and responsiveness.
-  local -a xargs=("$X11_DISPLAY" -ac -dpi "${X11_DPI:-120}" -max-fps 60)
+  local -a xargs=("$X11_DISPLAY" -ac -dpi "${X11_DPI:-120}" -max-fps "$X11_MAX_FPS")
   command -v termux-x11 >/dev/null || die 'termux-x11 is not installed'
   [[ "${X11_LEGACY_DRAWING:-0}" != 1 ]] || xargs+=(-legacy-drawing)
 
@@ -49,11 +48,24 @@ if root "chroot '$ROOTFS' /usr/bin/pgrep -x xfce4-session >/dev/null 2>&1"; then
   say 'XFCE is already running'
   exit 0
 fi
+
+# Only a new session adopts these settings; an existing desktop stays intact.
+X11_MAX_FPS=${X11_MAX_FPS:-60}
+[[ "$X11_MAX_FPS" =~ ^[0-9]{1,3}$ ]] && ((10#$X11_MAX_FPS >= 1 && 10#$X11_MAX_FPS <= 240)) \
+  || die 'X11_MAX_FPS must be 1-240'
+X11_MAX_FPS=$((10#$X11_MAX_FPS))
+PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-60}
+[[ "$PAD_GPU_MAX_FPS" =~ ^[0-9]{1,3}$ ]] && ((10#$PAD_GPU_MAX_FPS <= 240)) \
+  || die 'PAD_GPU_MAX_FPS must be 0 (uncapped) or 1-240'
+PAD_GPU_MAX_FPS=$((10#$PAD_GPU_MAX_FPS))
+
 begin_mode desktop
 mount_all
 if root "chroot '$ROOTFS' /usr/bin/pgrep -x xfce4-session >/dev/null 2>&1"; then
   die 'XFCE appeared during startup; refusing to create a duplicate session'
 fi
+root "chroot '$ROOTFS' /usr/bin/test -x /usr/local/bin/gpu-run" \
+  || die 'unified GPU entry /usr/local/bin/gpu-run is missing from the chroot'
 
 # ---- Mali bridge: Android 分区挂载（hybris 需要 /system /vendor /apex）----
 # mount_all 已挂好 /dev；不要每次启动先 umount：若旧挂载仍被其他
@@ -83,18 +95,19 @@ fi
 
 termux-wake-lock 2>/dev/null || true
 start_graphics
-say "render: zink -> Vulkan -> sysvk -> Mali-G925 (bridge) on $X11_DISPLAY"
+say "render: /usr/local/bin/gpu-run -> zink -> Vulkan -> Mali-G925 on $X11_DISPLAY"
+say "requested X11 max FPS=$X11_MAX_FPS; per-swapchain max FPS=$PAD_GPU_MAX_FPS"
 say 'closing this session triggers cleanup'
 
 run_session desktop "
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TMPDIR=/tmp LANG=zh_CN.UTF-8 HOME=/root
 export DISPLAY='$X11_DISPLAY'
 export PULSE_SERVER=tcp:127.0.0.1:4713
-unset LIBGL_ALWAYS_SOFTWARE LP_NUM_THREADS DEBIAN_LLVM_THREADS mesa_glthread
-export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink vblank_mode=0
-export VK_DRIVER_FILES=/opt/mali-bridge/share/vulkan/icd.d/sysvk_icd.json
-export VK_IMPLICIT_LAYER_PATH=/opt/mali-bridge/share/vulkan/implicit_layer.d
-export HYBRIS_LD_LIBRARY_PATH=/opt/mali-bridge/android-override:/apex/com.android.runtime/lib64/bionic:/system/lib64:/vendor/lib64:/vendor/lib64/hw
+unset LIBGL_ALWAYS_SOFTWARE LP_NUM_THREADS DEBIAN_LLVM_THREADS mesa_glthread vblank_mode PAD_GPU_PREFIX
+export PAD_GPU_X11_COLOR_MODE=bgra PAD_GPU_MAX_FPS='$PAD_GPU_MAX_FPS'
+export HYBRIS_VULKANPLATFORM=null
 export XDG_RUNTIME_DIR=/run/user/0
 export GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx SDL_IM_MODULE=fcitx
-exec dbus-launch --exit-with-session startxfce4"
+# gpu-run selects its own prefix, clears stale graphics variables, and passes the
+# same BGRA/WSI contract to every child. Preserve the desktop's Chinese locale.
+exec /usr/local/bin/gpu-run gl /usr/bin/env LANG=zh_CN.UTF-8 dbus-launch --exit-with-session startxfce4"

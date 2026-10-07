@@ -1,0 +1,80 @@
+{
+  "applied": true,
+  "entries": [
+    {
+      "path": "/root/Desktop/ChatGPT.desktop",
+      "before_sha256": "f962c6b3a15cfd04919335ffb8de4394793b1bc8df62c89301fee62d2687930d",
+      "after_sha256": "8fe88e72ac9346fc6fdda18de9dc0d1acc9a0f1988d8e2d772435b1f5282ffb9"
+    },
+    {
+      "path": "/root/Desktop/trae-cn.desktop",
+      "before_sha256": "4745adfd05ffb57ac1cbde66001cd9681246c888fe685fd10a2298449567597e",
+      "after_sha256": "7e0d88ad9697c6ee2951d832fd0a6fef48b5e1fc0c308edaae7f2e5369a5e728"
+    },
+    {
+      "path": "/root/Desktop/Chromium.desktop",
+      "before_sha256": "03eaad65f99a420a306b237183de319adcb1f006d078996218bb46cb414bcca0",
+      "after_sha256": "6670c9a92d54d4385fa04ecd0f1e953598e06e363d698140988af2fc0d175a7b"
+    },
+    {
+      "path": "/root/Desktop/CC Switch.desktop",
+      "before_sha256": "c7e55c6a37501baa04dcd567acdcfe30acc4cac82edafb1ebf647101180ed8eb",
+      "after_sha256": "6d5eb7ed3dff8b8c5f1142210319714382a2d0ea6014c69e8cb48bbb2150bce3"
+    },
+    {
+      "path": "/usr/share/applications/chromium.desktop",
+      "before_sha256": "03eaad65f99a420a306b237183de319adcb1f006d078996218bb46cb414bcca0",
+      "after_sha256": "6670c9a92d54d4385fa04ecd0f1e953598e06e363d698140988af2fc0d175a7b"
+    },
+    {
+      "path": "/usr/share/applications/chatgpt.desktop",
+      "before_sha256": "f962c6b3a15cfd04919335ffb8de4394793b1bc8df62c89301fee62d2687930d",
+      "after_sha256": "8fe88e72ac9346fc6fdda18de9dc0d1acc9a0f1988d8e2d772435b1f5282ffb9"
+    },
+    {
+      "path": "/usr/share/applications/CC Switch.desktop",
+      "before_sha256": "07491504c330f264f5d76c37705522f8c539ba931498e67afce9d2c371f4bf9e",
+      "after_sha256": "0192fb7cae84086b50ab6a8fb8ca476e2781e8c68e52210fe0aaa0bfeab65af8"
+    },
+    {
+      "path": "/usr/share/applications/trae-cn.desktop",
+      "before_sha256": "0fc3264e3256fb4d614a5bd7849d1c8493343e799f74558dac359d49759a29b9",
+      "after_sha256": "8a98f400e16566c6f77383f105a89885f77a3ef4ebc61edc78beba570f65f455"
+    },
+    {
+      "path": "/usr/share/applications/trae-cn-url-handler.desktop",
+      "before_sha256": "77bf008c985dee8665b9d11648aafafc4b21afb6fe46e9489fce42a607b6df29",
+      "after_sha256": "69af27053133b7e1175d9ad829992d761453a96528c847afa44728cb0492b286"
+    },
+    {
+      "path": "/root/.local/share/applications/chatgpt.desktop",
+      "before_sha256": "f962c6b3a15cfd04919335ffb8de4394793b1bc8df62c89301fee62d2687930d",
+      "after_sha256": "8fe88e72ac9346fc6fdda18de9dc0d1acc9a0f1988d8e2d772435b1f5282ffb9"
+    },
+    {
+      "path": "/root/.local/share/applications/cc-switch-handler.desktop",
+      "before_sha256": "3ddb6b6f56a67c38df1459fef7897061180288a6344417dddefc1675ecc399dd",
+      "after_sha256": "93e44bc9432cd3a396755b351895c6136997af9e5aea8e00948dcc61af06bc78"
+    },
+    {
+      "path": "/root/.local/share/xfce4/helpers/custom-WebBrowser-gpu.desktop",
+      "before_sha256": "b0aeca9326ffc49699f1ccadf0bffd4bdb5f47f8e27249408b32f43e6dc6951a",
+      "after_sha256": "151d27a68c6240602a8d90d5d01e332712c6be11ef521294d9773121aaf18ae1"
+    },
+    {
+      "path": "/root/.local/share/xfce4/helpers/chatgpt.desktop",
+      "before_sha256": "9028dc254621f30d198a6a12d56c42d43186cc297975d5fbfb009ec763ae983b",
+      "after_sha256": "0507da44ee025a2dcd0502588544955621eba6afe20c87205612046147691cce"
+    },
+    {
+      "path": "/opt/mali-bridge-canary/bin/gpu-app.sh",
+      "before_sha256": "577331c097a159d248f9e802a957eb4595d10d137e7e515e1f32dc7d590ff729",
+      "after_sha256": "9f47ca56962561b5be355d277ae26913ff67d4aa149829815dfb2af2679a41e4"
+    },
+    {
+      "path": "/proc/1/root/data/data/com.termux/files/home/mali-work/desktop-zink.sh",
+      "before_sha256": "74e43c091a491bb6a032724e7248b7c2819510bb680cc656b0ca82f96069c387",
+      "after_sha256": "108455e4e46674b65e0a16a390dfa41922d154b824f7d61a33b5f96cfa4263c8"
+    }
+  ]
+}

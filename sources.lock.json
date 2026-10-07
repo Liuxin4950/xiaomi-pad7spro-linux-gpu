@@ -8,11 +8,11 @@
       "patches": [
         {
           "path": "patches/libhybris/0001-pad7spro-bridge.patch",
-          "sha256": "a242d37b5728c59e59dfcd26e860b87ca0243e5e37dcd592a9efde0e51b93206"
+          "sha256": "3f7113253e889b1077bcad6d8614ebce881126deaf8f962ebdff50c6858b2721"
         }
       ],
       "verify_files": {
-        "hybris/common/hooks.c": "32462ed114047d0cd2f27195d3b5272c9920ac08378f82838b8b4cc262b08150",
+        "hybris/common/hooks.c": "abb8962a4ce5cad94eb3e8df06703dfe2c516962f0d92a4a23c5824803917556",
         "hybris/common/q/linker_main.cpp": "13c98c90076ed9a99512d62232d202481cf455c41dbc59436a42147f809b86cb",
         "hybris/configure.ac": "d374b147dd20675b260158624687831fc043db35b70c0d7d2fc1dfaf1793fdfb",
         "hybris/vulkan/vulkan.c": "4b4a7a234fc16d1c86978c43889693f9145b7a82e46e58f4935debcabb804d2e"
@@ -25,7 +25,7 @@
       "patches": [
         {
           "path": "patches/wsi/0001-pad7spro-bridge.patch",
-          "sha256": "16631e67e1f8b018a5aec314a009fd61bec5fe97d53f507a3b7381226eb76e75"
+          "sha256": "0436ebe8f8571b86c52cb7a7add62a416da200a1b64bb25ba1bc7b99664d0355"
         }
       ]
     },
@@ -43,5 +43,20 @@
       "sha256": "f7f745a72ae91c4dcb937077232baa4a6feea80453cc68483210cb00245f1875",
       "origin": "Linux-on-droid patched bionic runtime dependency; identical to the existing working device file"
     }
-  ]
+  ],
+  "termux_x11": {
+    "url": "https://github.com/termux/termux-x11.git",
+    "commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+    "patches": [
+      {
+        "path": "patches/termux-x11/termux-x11-gpu-popup-fix.patch",
+        "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e"
+      },
+      {
+        "path": "patches/termux-x11/0002-pacing-and-copy-batching.patch",
+        "sha256": "c518cdc8fd7e53be1a6449cc2541e999e4ca78609dbd6beca55279ba9be0f69a"
+      }
+    ],
+    "build": "Optional Android APK; built separately from the Linux bridge"
+  }
 }

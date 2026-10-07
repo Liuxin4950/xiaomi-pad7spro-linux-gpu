@@ -17,6 +17,7 @@ while (($#)); do
   esac
 done
 [[ "$prefix" =~ ^/opt/[a-zA-Z0-9_.-]+$ ]] || { echo 'prefix must be a dedicated directory directly under /opt' >&2; exit 64; }
+[[ "${prefix##*/}" != . && "${prefix##*/}" != .. ]] || { echo 'prefix must name a dedicated directory' >&2; exit 64; }
 [[ "$jobs" =~ ^[1-9][0-9]*$ ]] || exit 64
 [[ "$(uname -m)" == aarch64 ]] || { echo 'Build inside an arm64 Linux environment' >&2; exit 78; }
 for command in python3 git make cmake autoreconf pkg-config gcc g++ readelf; do
@@ -47,17 +48,8 @@ for item in json.loads((repo/'sources.lock.json').read_text())['git_sources']:
         if hashlib.sha256((target/relative).read_bytes()).hexdigest()!=expected:
             raise RuntimeError('Post-patch source checksum mismatch: '+item['name']+'/'+relative)
     if item['name']=='libhybris':
-        import re
-        hooks=(target/'hybris/common/hooks.c').read_text()
-        forbidden={'malloc','calloc','free','realloc','memalign','valloc','pvalloc',
-                   'strdup','strndup','asprintf','vasprintf','getdelim','getline',
-                   'scandir','malloc_usable_size','posix_memalign'}
-        for table in ('hooks_common','hooks_mm'):
-            body=re.search(r'static struct _hook '+table+r'\[\].*?\{(.*?)\n\};',hooks,re.S)
-            if not body: raise RuntimeError('Missing hook table: '+table)
-            present=set(re.findall(r'HOOK_\w+\(\s*(\w+)',body.group(1)))
-            if present & forbidden:
-                raise RuntimeError('Cross-allocator hooks restored: '+str(sorted(present & forbidden)))
+        subprocess.run([sys.executable,str(repo/'scripts/check-libhybris-hooks.py'),
+                        str(target/'hybris/common/hooks.c')],check=True)
     print(item['name']+': patched source verified',flush=True)
 PY
 make -C "$run/src/android-headers" PREFIX="$prefix" DESTDIR="$stage" install
@@ -70,11 +62,11 @@ NOCONFIGURE=1 ./autogen.sh
 ./configure --build=aarch64-linux-gnu --with-android-headers="$deps/include/android" \
   --with-default-hybris-ld-library-path="$prefix/android-override:/apex/com.android.runtime/lib64/bionic:/system/lib64:/vendor/lib64:/vendor/lib64/hw" \
   --enable-property-cache --enable-experimental --enable-arch=arm64 \
-  --enable-mali-quirks --enable-glvnd --prefix="$prefix" --libdir="$prefix/lib"
+  --enable-mali-quirks --disable-adreno-quirks --enable-glvnd --prefix="$prefix" --libdir="$prefix/lib"
 make -j"$jobs"
 make DESTDIR="$stage" install
 # The glibc Vulkan loader must remain the system loader. Do not ship hybris' loader shim.
-rm -f "$deps/lib"/libvulkan.so*
+python3 "$repo/scripts/prune-stage-vulkan-shim.py" "$stage" "$prefix"
 cmake -S "$repo" -B "$run/native-build" -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$prefix" -DBRIDGE_DEPS_PREFIX="$deps" \
   -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-rpath-link,$deps/lib"

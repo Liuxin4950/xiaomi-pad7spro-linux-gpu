@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-07",
+  "prefix": "/opt/pad7spro-gpu-dev-20261007-r2",
+  "desktop_entries_migrated": 13,
+  "compatibility_entry_updated": true,
+  "termux_script_deployed": true,
+  "widget": "debian-zink -> ~/mali-work/desktop-zink.sh",
+  "fps_default": 60,
+  "apk_updated": false,
+  "applications": {
+    "chromium": "ANGLE Vulkan/Mali; WebGL1/2 and pixel/Android screen verified",
+    "chatgpt": "stable isolated GPU; ANGLE_VULKAN/Mali-G925; no crash in short startup",
+    "trae": "stable isolated GPU and visible welcome page in final short startup; bounded exact Oilpan startup recovery provided",
+    "cc-switch": "actual WebKit hardware policy=1; Mali; correct visible UI; shared-memory transport"
+  },
+  "defaults_preserved": {
+    "xfce_browser": "chatgpt",
+    "http": "chromium.desktop",
+    "https": "chromium.desktop"
+  },
+  "migration_restarted_session": false,
+  "followup": {
+    "user_session_restart_confirmed": true,
+    "android_reboot_claimed": false,
+    "apk_updated": false,
+    "desktop_cleaned": true,
+    "default_gpu_session_environment_verified": true
+  }
+}

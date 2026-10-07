@@ -1,8 +1,161 @@
 diff --git a/hybris/common/hooks.c b/hybris/common/hooks.c
-index eed4007..d0d855c 100644
+index eed4007..2f766fa 100644
 --- a/hybris/common/hooks.c
 +++ b/hybris/common/hooks.c
-@@ -2964,14 +2964,6 @@ static struct _hook hooks_common[] = {
+@@ -1608,8 +1608,86 @@ static FILE* _hybris_hook_freopen64(const char *filename, const char *mode, FILE
+     return freopen64(filename, mode, _get_actual_fp(fp));
+ }
+ 
++/* POSIX scanf's %m modifier allocates with glibc. Preserve normal scanf
++ * conversions, but reject allocation formats before consuming input or
++ * assigning output pointers. Walk conversions, including scansets, so a
++ * literal "m" or "%m" inside a scanset is not treated as a modifier. */
++static int _hybris_bridge_scanf_allocates(const char *fmt)
++{
++    const unsigned char *cursor = (const unsigned char *)fmt;
++    while (*cursor) {
++        if (*cursor++ != '%')
++            continue;
++        if (*cursor == '%') {
++            cursor++;
++            continue;
++        }
++        while (*cursor) {
++            unsigned char ch = *cursor++;
++            if (ch == 'm')
++                return 1;
++            if (strchr("diouxXfFeEgGaAcCsSpn[", ch)) {
++                if (ch == '[') {
++                    if (*cursor == '^')
++                        cursor++;
++                    if (*cursor == ']')
++                        cursor++;
++                    while (*cursor && *cursor != ']')
++                        cursor++;
++                    if (*cursor)
++                        cursor++;
++                }
++                break;
++            }
++            if (!(strchr("*'$IhljztLq", ch) || (ch >= '0' && ch <= '9')))
++                break; /* Invalid conversion; leave diagnosis to libc. */
++        }
++    }
++    return 0;
++}
++
++static int _hybris_bridge_vsscanf(const char *input, const char *fmt, va_list args)
++{
++    if (_hybris_bridge_scanf_allocates(fmt)) {
++        errno = ENOSYS;
++        return EOF;
++    }
++    return vsscanf(input, fmt, args);
++}
++
++static int _hybris_bridge_vscanf(const char *fmt, va_list args)
++{
++    if (_hybris_bridge_scanf_allocates(fmt)) {
++        errno = ENOSYS;
++        return EOF;
++    }
++    return vscanf(fmt, args);
++}
++
++FP_ATTRIB static int _hybris_bridge_sscanf(const char *input, const char *fmt, ...)
++{
++    va_list args;
++    va_start(args, fmt);
++    int result = _hybris_bridge_vsscanf(input, fmt, args);
++    va_end(args);
++    return result;
++}
++
++FP_ATTRIB static int _hybris_bridge_scanf(const char *fmt, ...)
++{
++    va_list args;
++    va_start(args, fmt);
++    int result = _hybris_bridge_vscanf(fmt, args);
++    va_end(args);
++    return result;
++}
++
+ FP_ATTRIB static int _hybris_hook_fscanf(FILE *fp, const char *fmt, ...)
+ {
++    if (_hybris_bridge_scanf_allocates(fmt)) {
++        errno = ENOSYS;
++        return EOF;
++    }
+     int ret = 0;
+ 
+     TRACE_HOOK("fp %p fmt '%s'", fp, fmt);
+@@ -1700,18 +1778,40 @@ static int _hybris_hook_getc(FILE *fp)
+     return getc(_get_actual_fp(fp));
+ }
+ 
+-static ssize_t _hybris_hook_getdelim(char ** lineptr, size_t *n, int delimiter, FILE * fp)
++/* FILE objects are glibc-owned and must continue using the stdio hooks.
++ * Passing them to Bionic's getline/getdelim is unsafe; forwarding those
++ * APIs to glibc instead hands the caller a buffer it cannot safely free.
++ * Fail explicitly until an allocator-aware FILE bridge is implemented. */
++static ssize_t _hybris_bridge_unsupported_getdelim(char **lineptr, size_t *n,
++                                                  int delimiter, FILE *fp)
+ {
+-    TRACE_HOOK("lineptr %p n %p delimiter %d fp %p", lineptr, n, delimiter, fp);
++    (void)lineptr;
++    (void)n;
++    (void)delimiter;
++    (void)fp;
++    errno = ENOSYS;
++    return -1;
++}
+ 
+-    return getdelim(lineptr, n, delimiter, _get_actual_fp(fp));
++static ssize_t _hybris_bridge_unsupported_getline(char **lineptr, size_t *n, FILE *fp)
++{
++    return _hybris_bridge_unsupported_getdelim(lineptr, n, '\n', fp);
+ }
+ 
+-static ssize_t _hybris_hook_getline(char **lineptr, size_t *n, FILE *fp)
++static FILE *_hybris_bridge_unsupported_open_memstream(char **buffer, size_t *size)
+ {
+-    TRACE_HOOK("lineptr %p n %p fp %p", lineptr, n, fp);
++    (void)buffer;
++    (void)size;
++    errno = ENOSYS;
++    return NULL;
++}
+ 
+-    return getline(lineptr, n, _get_actual_fp(fp));
++static FILE *_hybris_bridge_unsupported_open_wmemstream(wchar_t **buffer, size_t *size)
++{
++    (void)buffer;
++    (void)size;
++    errno = ENOSYS;
++    return NULL;
+ }
+ 
+ static int _hybris_hook_putc(int c, FILE *fp)
+@@ -1758,6 +1858,10 @@ static int _hybris_hook_vfprintf(FILE *fp, const char *fmt, va_list arg)
+ 
+ static int _hybris_hook_vfscanf(FILE *fp, const char *fmt, va_list arg)
+ {
++    if (_hybris_bridge_scanf_allocates(fmt)) {
++        errno = ENOSYS;
++        return EOF;
++    }
+     TRACE_HOOK("fp %p fmt '%s'", fp, fmt);
+ 
+     return vfscanf(_get_actual_fp(fp), fmt, arg);
+@@ -2960,18 +3064,14 @@ static struct _hook hooks_properties[] = {
+     HOOK_INDIRECT(__system_property_find_nth),
+ };
+ 
++/* Keep Android allocations in Bionic. libc.so uses its own allocator even
++ * when loaded through libhybris, so a glibc buffer cannot be passed to its
++ * free/realloc. Opaque glibc handles (FILE, DIR, addrinfo and locale) retain
++ * their matching hooked release functions. */
+ static struct _hook hooks_common[] = {
  
      HOOK_DIRECT(getenv),
      HOOK_DIRECT_NO_DEBUG(printf),
@@ -17,7 +170,7 @@ index eed4007..d0d855c 100644
      HOOK_DIRECT(fread),
      HOOK_DIRECT_NO_DEBUG(getxattr),
      HOOK_DIRECT(mprotect),
-@@ -2998,7 +2990,6 @@ static struct _hook hooks_common[] = {
+@@ -2998,7 +3098,6 @@ static struct _hook hooks_common[] = {
      HOOK_DIRECT_NO_DEBUG(strcat),
      HOOK_DIRECT_NO_DEBUG(strcasecmp),
      HOOK_DIRECT_NO_DEBUG(strncasecmp),
@@ -25,7 +178,7 @@ index eed4007..d0d855c 100644
      HOOK_DIRECT_NO_DEBUG(strstr),
      HOOK_DIRECT_NO_DEBUG(strtok),
      HOOK_DIRECT_NO_DEBUG(strtok_r),
-@@ -3006,7 +2997,6 @@ static struct _hook hooks_common[] = {
+@@ -3006,7 +3105,6 @@ static struct _hook hooks_common[] = {
      HOOK_DIRECT_NO_DEBUG(strerror_r),
      HOOK_DIRECT_NO_DEBUG(strnlen),
      HOOK_DIRECT_NO_DEBUG(strncat),
@@ -33,7 +186,7 @@ index eed4007..d0d855c 100644
      HOOK_DIRECT_NO_DEBUG(strncmp),
      HOOK_DIRECT_NO_DEBUG(strncpy),
      HOOK_INDIRECT(strtod),
-@@ -3121,8 +3111,6 @@ static struct _hook hooks_common[] = {
+@@ -3121,8 +3219,6 @@ static struct _hook hooks_common[] = {
      HOOK_DIRECT_NO_DEBUG(popen),
      HOOK_DIRECT_NO_DEBUG(puts),
      HOOK_DIRECT_NO_DEBUG(sprintf),
@@ -42,16 +195,18 @@ index eed4007..d0d855c 100644
      HOOK_DIRECT_NO_DEBUG(snprintf),
      HOOK_DIRECT_NO_DEBUG(vsprintf),
      HOOK_DIRECT_NO_DEBUG(vsnprintf),
-@@ -3147,8 +3135,6 @@ static struct _hook hooks_common[] = {
+@@ -3147,8 +3243,8 @@ static struct _hook hooks_common[] = {
      HOOK_INDIRECT(ftello),
      HOOK_INDIRECT(fwrite),
      HOOK_INDIRECT(getc),
 -    HOOK_INDIRECT(getdelim),
 -    HOOK_INDIRECT(getline),
++    HOOK_TO(getdelim, _hybris_bridge_unsupported_getdelim),
++    HOOK_TO(getline, _hybris_bridge_unsupported_getline),
      HOOK_INDIRECT(putc),
      HOOK_INDIRECT(rewind),
      HOOK_INDIRECT(setbuf),
-@@ -3216,7 +3202,6 @@ static struct _hook hooks_common[] = {
+@@ -3216,16 +3312,15 @@ static struct _hook hooks_common[] = {
      HOOK_DIRECT_NO_DEBUG(seekdir),
      HOOK_DIRECT_NO_DEBUG(telldir),
      HOOK_DIRECT_NO_DEBUG(dirfd),
@@ -59,7 +214,20 @@ index eed4007..d0d855c 100644
      HOOK_INDIRECT(alphasort),
      HOOK_INDIRECT(versionsort),
      /* fcntl.h */
-@@ -3276,8 +3261,6 @@ static struct _hook hooks_mm[] = {
+     HOOK_INDIRECT(open),
+     HOOK_INDIRECT(__get_tls_hooks),
+-    HOOK_DIRECT_NO_DEBUG(sscanf),
+-    HOOK_DIRECT_NO_DEBUG(scanf),
+-    HOOK_DIRECT_NO_DEBUG(vscanf),
+-    HOOK_DIRECT_NO_DEBUG(vsscanf),
++    HOOK_TO(sscanf, _hybris_bridge_sscanf),
++    HOOK_TO(scanf, _hybris_bridge_scanf),
++    HOOK_TO(vscanf, _hybris_bridge_vscanf),
++    HOOK_TO(vsscanf, _hybris_bridge_vsscanf),
+     HOOK_DIRECT_NO_DEBUG(openlog),
+     HOOK_DIRECT_NO_DEBUG(syslog),
+     HOOK_DIRECT_NO_DEBUG(closelog),
+@@ -3276,8 +3371,6 @@ static struct _hook hooks_mm[] = {
      HOOK_DIRECT(clearenv),
      HOOK_DIRECT_NO_DEBUG(dprintf),
      HOOK_DIRECT_NO_DEBUG(mallinfo),
@@ -68,15 +236,37 @@ index eed4007..d0d855c 100644
      HOOK_DIRECT(mprotect),
      HOOK_TO(__gnu_strerror_r, _hybris_hook__gnu_strerror_r),
      HOOK_INDIRECT(pthread_rwlockattr_getkind_np),
-@@ -3366,7 +3349,6 @@ static struct _hook hooks_mm[] = {
+@@ -3287,8 +3380,8 @@ static struct _hook hooks_mm[] = {
+     HOOK_DIRECT_NO_DEBUG(ttyname),
+     HOOK_DIRECT_NO_DEBUG(swprintf),
+     HOOK_DIRECT_NO_DEBUG(fmemopen),
+-    HOOK_DIRECT_NO_DEBUG(open_memstream),
+-    HOOK_DIRECT_NO_DEBUG(open_wmemstream),
++    HOOK_TO(open_memstream, _hybris_bridge_unsupported_open_memstream),
++    HOOK_TO(open_wmemstream, _hybris_bridge_unsupported_open_wmemstream),
+     HOOK_DIRECT_NO_DEBUG(ptsname),
+     HOOK_TO(__hybris_set_errno_internal, _hybris_hook___set_errno),
+     HOOK_DIRECT_NO_DEBUG(getservbyname),
+@@ -3366,8 +3459,6 @@ static struct _hook hooks_mm[] = {
      /* dirent.h */
      HOOK_TO(readdir64, _hybris_hook_readdir),
      HOOK_TO(readdir64_r, _hybris_hook_readdir_r),
 -    HOOK_INDIRECT(scandir),
-     HOOK_TO(scandir64, _hybris_hook_scandir),
+-    HOOK_TO(scandir64, _hybris_hook_scandir),
  };
  
-@@ -3600,7 +3582,10 @@ static void* __hybris_load_linker(const char *path)
+ static struct _hook hooks_n[] = {
+@@ -3379,9 +3470,6 @@ static struct _hook hooks_n[] = {
+     HOOK_DIRECT_NO_DEBUG(fopen64),
+     HOOK_INDIRECT(freopen64),
+     HOOK_INDIRECT(fileno_unlocked),
+-    /* dirent.h */
+-    HOOK_INDIRECT(scandirat),
+-    HOOK_TO(scandirat64, _hybris_hook_scandirat),
+ };
+ 
+ static struct _hook hooks_p[] = {
+@@ -3600,7 +3688,10 @@ static void* __hybris_load_linker(const char *path)
      return handle;
  }
  
@@ -88,7 +278,7 @@ index eed4007..d0d855c 100644
  
  static void __hybris_linker_init()
  {
-@@ -3693,12 +3678,10 @@ static void __hybris_linker_init()
+@@ -3693,12 +3784,10 @@ static void __hybris_linker_init()
          _android_set_application_target_sdk_version(sdk_version);
      }
  

@@ -96,6 +96,20 @@ index 3cfeebe..6080458 100644
          ],
          "disable_environment": {
              "DISABLE_WSI_LAYER": "1"
+diff --git a/layer/private_data.hpp b/layer/private_data.hpp
+index b0b8a66..59ca4b2 100644
+--- a/layer/private_data.hpp
++++ b/layer/private_data.hpp
+@@ -357,6 +357,9 @@ private:
+    EP(ResetCommandBuffer, "", VK_API_VERSION_1_0, true)                                                                \
+    EP(BeginCommandBuffer, "", VK_API_VERSION_1_0, true)                                                                \
+    EP(EndCommandBuffer, "", VK_API_VERSION_1_0, true)                                                                  \
++   EP(CmdPipelineBarrier, "", VK_API_VERSION_1_0, true)                                                               \
++   EP(CmdCopyImage, "", VK_API_VERSION_1_0, true)                                                                      \
++   EP(CmdBlitImage, "", VK_API_VERSION_1_0, true)                                                                      \
+    EP(CreateImage, "", VK_API_VERSION_1_0, true)                                                                       \
+    EP(DestroyImage, "", VK_API_VERSION_1_0, true)                                                                      \
+    EP(GetImageMemoryRequirements, "", VK_API_VERSION_1_0, true)                                                        \
 diff --git a/util/custom_allocator.hpp b/util/custom_allocator.hpp
 index a34164a..64a8247 100644
 --- a/util/custom_allocator.hpp
@@ -108,11 +122,245 @@ index a34164a..64a8247 100644
  
  #include <vulkan/vulkan.h>
  
+diff --git a/wsi/swapchain_base.cpp b/wsi/swapchain_base.cpp
+index aa800d6..f82765f 100644
+--- a/wsi/swapchain_base.cpp
++++ b/wsi/swapchain_base.cpp
+@@ -56,11 +56,7 @@ void swapchain_base::page_flip_thread()
+    uint64_t timeout = UINT64_MAX;
+    constexpr uint64_t SEMAPHORE_TIMEOUT = 250000000; /* 250 ms. */
+ 
+-   /* No mutex is needed for the accesses to m_page_flip_thread_run variable as after the variable is
+-    * initialized it is only ever changed to false. The while loop will make the thread read the
+-    * value repeatedly, and the combination of semaphores and thread joins will force any changes to
+-    * the variable to be visible to this thread.
+-    */
++   /* The destructor can stop this worker while it waits for a semaphore. */
+    while (m_page_flip_thread_run)
+    {
+       pending_present_request submit_info{};
+@@ -638,7 +634,7 @@ VkResult swapchain_base::get_swapchain_status()
+ 
+ VkResult swapchain_base::notify_presentation_engine(const pending_present_request &pending_present)
+ {
+-   const std::lock_guard<std::recursive_mutex> lock(m_image_status_mutex);
++   std::unique_lock<std::recursive_mutex> lock(m_image_status_mutex);
+ 
+    /* If the descendant has started presenting, we should release the image
+     * however we do not want to block inside the main thread so we mark it
+@@ -663,6 +659,9 @@ VkResult swapchain_base::notify_presentation_engine(const pending_present_reques
+    }
+    else
+    {
++      // Platform event handlers acquire their thread lock before image_status.
++      // Do not invert that order in the synchronous MAILBOX path.
++      lock.unlock();
+       call_present(pending_present);
+    }
+ 
+@@ -745,6 +744,14 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
+       TRY(sync_queue_submit(m_device_data, queue, submit_info.present_fence, wait_semaphores));
+    }
+ 
++   if (!m_page_flip_thread_run)
++   {
++      // Backends without a presentation worker must wait for the payload just
++      // submitted above, not only the previous use of this image. X11 has no
++      // producer fence attached to its Present request.
++      TRY_LOG_CALL(image_wait_present(m_swapchain_images[submit_info.pending_present.image_index], UINT64_MAX));
++   }
++
+    TRY(notify_presentation_engine(submit_info.pending_present));
+ 
+    return VK_SUCCESS;
+diff --git a/wsi/swapchain_base.hpp b/wsi/swapchain_base.hpp
+index fe087a4..7903c2f 100644
+--- a/wsi/swapchain_base.hpp
++++ b/wsi/swapchain_base.hpp
+@@ -31,6 +31,7 @@
+ #pragma once
+ 
+ #include <pthread.h>
++#include <atomic>
+ #include <semaphore.h>
+ #include <vulkan/vulkan.h>
+ #include <thread>
+@@ -318,7 +319,7 @@ protected:
+    /**
+     * @brief Whether the page flip thread has to continue running or terminate.
+     */
+-   bool m_page_flip_thread_run;
++   std::atomic<bool> m_page_flip_thread_run;
+ 
+    /**
+     * @brief A semaphore to be signalled once a page flip event occurs.
+@@ -623,7 +624,7 @@ private:
+     * appropriate error code and it is returned to the user through the next
+     * acquire_next_image call.
+     */
+-   VkResult m_error_state;
++   std::atomic<VkResult> m_error_state;
+ 
+    /**
+     * @brief Wait for a buffer to become free.
+diff --git a/wsi/synchronization.cpp b/wsi/synchronization.cpp
+index b4b5d25..5b2d855 100644
+--- a/wsi/synchronization.cpp
++++ b/wsi/synchronization.cpp
+@@ -94,7 +94,8 @@ VkResult fence_sync::wait_payload(uint64_t timeout)
+    return res;
+ }
+ 
+-VkResult fence_sync::set_payload(VkQueue queue, const queue_submit_semaphores &semaphores, const void *submission_pnext)
++VkResult fence_sync::set_payload(VkQueue queue, const queue_submit_semaphores &semaphores,
++                                 const void *submission_pnext, VkCommandBuffer command_buffer)
+ {
+    VkResult result = dev->disp.ResetFences(dev->device, 1, &fence);
+    if (result != VK_SUCCESS)
+@@ -103,7 +104,7 @@ VkResult fence_sync::set_payload(VkQueue queue, const queue_submit_semaphores &s
+    }
+    has_payload = false;
+ 
+-   result = sync_queue_submit(*dev, queue, fence, semaphores, submission_pnext);
++   result = sync_queue_submit(*dev, queue, fence, semaphores, submission_pnext, command_buffer);
+    if (result == VK_SUCCESS)
+    {
+       has_payload = true;
+@@ -170,13 +171,14 @@ std::optional<util::fd_owner> sync_fd_fence_sync::export_sync_fd()
+ }
+ 
+ VkResult sync_queue_submit(const layer::device_private_data &device, VkQueue queue, VkFence fence,
+-                           const queue_submit_semaphores &semaphores, const void *submission_pnext)
++                           const queue_submit_semaphores &semaphores, const void *submission_pnext, VkCommandBuffer command_buffer)
+ {
+    /* When the semaphore that comes in is signalled, we know that all work is done. So, we do not
+     * want to block any future Vulkan queue work on it. So, we pass in BOTTOM_OF_PIPE bit as the
+     * wait flag.
+     */
+-   VkPipelineStageFlags pipeline_stage_flag = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
++   VkPipelineStageFlags pipeline_stage_flag = command_buffer != VK_NULL_HANDLE ?
++      VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    VkPipelineStageFlags *pipeline_stage_flag_data = &pipeline_stage_flag;
+ 
+    util::vector<VkPipelineStageFlags> pipeline_stage_flags_vector{ util::allocator(
+@@ -189,7 +191,7 @@ VkResult sync_queue_submit(const layer::device_private_data &device, VkQueue que
+          return VK_ERROR_OUT_OF_HOST_MEMORY;
+       }
+       std::fill(pipeline_stage_flags_vector.begin(), pipeline_stage_flags_vector.end(),
+-                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
++                pipeline_stage_flag);
+       pipeline_stage_flag_data = pipeline_stage_flags_vector.data();
+    }
+ 
+@@ -198,8 +200,8 @@ VkResult sync_queue_submit(const layer::device_private_data &device, VkQueue que
+                                 semaphores.wait_semaphores_count,
+                                 semaphores.wait_semaphores,
+                                 pipeline_stage_flag_data,
+-                                0,
+-                                nullptr,
++                                command_buffer != VK_NULL_HANDLE ? 1u : 0u,
++                                command_buffer != VK_NULL_HANDLE ? &command_buffer : nullptr,
+                                 semaphores.signal_semaphores_count,
+                                 semaphores.signal_semaphores };
+ 
+diff --git a/wsi/synchronization.hpp b/wsi/synchronization.hpp
+index 51f2018..b95518e 100644
+--- a/wsi/synchronization.hpp
++++ b/wsi/synchronization.hpp
+@@ -97,11 +97,12 @@ public:
+     * @param     queue  The Vulkan queue that may be used to submit synchronization commands.
+     * @param     semaphores The wait and signal semaphores.
+     * @param     submission_pnext   Chain of pointers to attach to the payload submission.
++    * @param     command_buffer Optional transfer commands covered by the same fence.
+     *
+     * @return VK_SUCCESS on success or other error code on failing to set the payload.
+     */
+    VkResult set_payload(VkQueue queue, const queue_submit_semaphores &semaphores,
+-                        const void *submission_pnext = nullptr);
++                        const void *submission_pnext = nullptr, VkCommandBuffer command_buffer = VK_NULL_HANDLE);
+ 
+ protected:
+    /**
+@@ -185,7 +186,7 @@ private:
+ };
+ 
+ /**
+- * @brief Submit an empty queue operation for synchronization.
++ * @brief Submit synchronization, optionally with a transfer command buffer.
+  *
+  * @param device     The device private data for the fence.
+  * @param queue      The Vulkan queue that may be used to submit synchronization commands.
+@@ -193,9 +194,10 @@ private:
+  *                   of a fence to be signalled.
+  * @param semaphores The wait and signal semaphores.
+  * @param submission_pnext Chain of pointers to attach to the payload submission.
++ * @param command_buffer Optional transfer commands covered by the same fence.
+  *
+  * @return VK_SUCCESS on success, an appropiate error code otherwise.
+  */
+ VkResult sync_queue_submit(const layer::device_private_data &device, VkQueue queue, VkFence fence,
+-                           const queue_submit_semaphores &semaphores, const void *submission_pnext = nullptr);
++                           const queue_submit_semaphores &semaphores, const void *submission_pnext = nullptr, VkCommandBuffer command_buffer = VK_NULL_HANDLE);
+ } /* namespace wsi */
 diff --git a/wsi/x11/surface_properties.cpp b/wsi/x11/surface_properties.cpp
-index b27ea1d..00c3d6c 100644
+index b27ea1d..a7255fe 100644
 --- a/wsi/x11/surface_properties.cpp
 +++ b/wsi/x11/surface_properties.cpp
-@@ -284,8 +284,8 @@ CreateXlibSurfaceKHR(VkInstance instance, const VkXlibSurfaceCreateInfoKHR *pCre
+@@ -120,18 +120,51 @@ VkResult surface_properties::get_surface_capabilities(VkPhysicalDevice physical_
+    return VK_SUCCESS;
+ }
+ 
+-std::vector<VkFormat> support_formats{ VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM };
++bool uses_xorg_bgra_transport()
++{
++   // This process uses one transport contract for its whole lifetime.
++   static const bool legacy = [] {
++      const char *mode = std::getenv("PAD_GPU_X11_COLOR_MODE");
++      return mode != nullptr && std::strcmp(mode, "bgra") == 0;
++   }();
++   return legacy;
++}
++
++bool supports_bgra_conversion(const layer::instance_private_data &instance, VkPhysicalDevice physical_device)
++{
++   uint32_t family_count = 0;
++   instance.disp.GetPhysicalDeviceQueueFamilyProperties2KHR(physical_device, &family_count, nullptr);
++   if (family_count != 1)
++      return false;
++   VkQueueFamilyProperties2 family{ VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2, nullptr, {} };
++   instance.disp.GetPhysicalDeviceQueueFamilyProperties2KHR(physical_device, &family_count, &family);
++   if (!(family.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT))
++      return false;
++   VkFormatProperties2 source{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, nullptr, {} };
++   VkFormatProperties2 destination{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, nullptr, {} };
++   instance.disp.GetPhysicalDeviceFormatProperties2KHR(physical_device, VK_FORMAT_B8G8R8A8_UNORM, &source);
++   instance.disp.GetPhysicalDeviceFormatProperties2KHR(physical_device, VK_FORMAT_R8G8B8A8_UNORM, &destination);
++   return (source.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT) &&
++          (destination.formatProperties.linearTilingFeatures & VK_FORMAT_FEATURE_BLIT_DST_BIT);
++}
+ 
+ VkResult surface_properties::get_surface_formats(VkPhysicalDevice physical_device, uint32_t *surface_format_count,
+                                                  VkSurfaceFormatKHR *surface_formats,
+                                                  VkSurfaceFormat2KHR *extended_surface_formats)
+ {
++   // RGBA is exported directly. BGRA uses a real optimal BGRA rendering image
++   // and an explicit conversion to the separate RGBA AHB presentation image.
++   std::vector<VkFormat> support_formats;
++   if (!uses_xorg_bgra_transport())
++      support_formats.push_back(VK_FORMAT_R8G8B8A8_UNORM);
++   if (supports_bgra_conversion(layer::instance_private_data::get(physical_device), physical_device))
++      support_formats.push_back(VK_FORMAT_B8G8R8A8_UNORM);
+    std::vector<surface_format_properties> formats;
+    for (auto &format : support_formats)
+    {
+       if (format != VK_FORMAT_UNDEFINED)
+       {
+-         formats.insert(formats.begin(), (surface_format_properties){ format });
++         formats.push_back((surface_format_properties){ format });
+       }
+    }
+    return surface_properties_formats_helper(formats.begin(), formats.end(), surface_format_count, surface_formats,
+@@ -284,8 +317,8 @@ CreateXlibSurfaceKHR(VkInstance instance, const VkXlibSurfaceCreateInfoKHR *pCre
  {
     const VkXcbSurfaceCreateInfoKHR CreateInfo = {
        .sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
@@ -122,11 +370,43 @@ index b27ea1d..00c3d6c 100644
        .connection = XGetXCBConnection(pCreateInfo->dpy),
        .window = static_cast<xcb_window_t>(pCreateInfo->window),
     };
+diff --git a/wsi/x11/surface_properties.hpp b/wsi/x11/surface_properties.hpp
+index 9720a34..2c60035 100644
+--- a/wsi/x11/surface_properties.hpp
++++ b/wsi/x11/surface_properties.hpp
+@@ -34,6 +34,10 @@ namespace x11
+ 
+ class surface;
+ 
++// BGRA conversion currently targets the bridge's single graphics queue family.
++bool uses_xorg_bgra_transport();
++bool supports_bgra_conversion(const layer::instance_private_data &instance, VkPhysicalDevice physical_device);
++
+ class surface_properties : public wsi::surface_properties
+ {
+ public:
 diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
-index 89a6c2f..6396a8d 100644
+index 89a6c2f..87a68b1 100644
 --- a/wsi/x11/swapchain.cpp
 +++ b/wsi/x11/swapchain.cpp
-@@ -53,6 +53,8 @@
+@@ -29,6 +29,7 @@
+  */
+ 
+ #include <cassert>
++#include <cerrno>
+ #include <chrono>
+ #include <condition_variable>
+ #include <cstdint>
+@@ -38,6 +39,8 @@
+ 
+ #include <dlfcn.h>
+ #include <fcntl.h>
++#include <poll.h>
++#include <sys/eventfd.h>
+ #include <sys/socket.h>
+ #include <unistd.h>
+ #include <util/timed_semaphore.hpp>
+@@ -53,6 +56,8 @@
  #include "swapchain.hpp"
  #include "util/log.hpp"
  #include "wsi/swapchain_base.hpp"
@@ -135,16 +415,491 @@ index 89a6c2f..6396a8d 100644
  
  namespace wsi
  {
-@@ -359,6 +361,8 @@ void swapchain::present_event_thread()
+@@ -69,6 +74,12 @@ struct x11_image_data
+ {
+    /* Device memory backing the image. */
+    VkDeviceMemory memory{};
++   // Present-only RGBA resources exist only for the BGRA compatibility path.
++   VkImage presentation_image{};
++   VkDeviceMemory presentation_memory{};
++   VkCommandPool conversion_pool{};
++   VkCommandBuffer conversion_command{};
++   bool presentation_initialized{ false };
+    VkSubresourceLayout layout;
+ 
+    fence_sync present_fence;
+@@ -91,52 +102,54 @@ swapchain::swapchain(layer::device_private_data &dev_data, const VkAllocationCal
+    , m_thread_status_lock()
+    , m_thread_status_cond()
+ {
++   if (const char *limit = std::getenv("PAD_GPU_MAX_FPS"))
++   {
++      char *end = nullptr;
++      const unsigned long value = std::strtoul(limit, &end, 10);
++      if (end != limit && *end == '\0' && value <= 240)
++         m_max_present_fps = static_cast<uint32_t>(value);
++   }
+ }
+ 
+ swapchain::~swapchain()
+ {
+-   auto thread_status_lock = std::unique_lock<std::mutex>(m_thread_status_lock);
+-
+-   if (m_present_event_thread_run)
+    {
++      const std::lock_guard<std::mutex> lock(m_thread_status_lock);
+       m_present_event_thread_run = false;
++      // X11 owns its own AHB reference. Stop waiting for Present events during
++      // destruction; teardown still waits for our Vulkan work before freeing it.
++      set_error_state(VK_ERROR_OUT_OF_DATE_KHR);
+       m_thread_status_cond.notify_all();
+-      thread_status_lock.unlock();
+-
+-      if (m_present_event_thread.joinable())
++      if (m_event_thread_wakeup_fd >= 0)
+       {
+-         m_present_event_thread.join();
++         const uint64_t wakeup = 1;
++         (void)write(m_event_thread_wakeup_fd, &wakeup, sizeof(wakeup));
+       }
+-
+-      thread_status_lock.lock();
+    }
+ 
+-   xcb_unregister_for_special_event(m_connection, m_special_event);
++   // A thread that already exited is still joinable.
++   if (m_present_event_thread.joinable())
++      m_present_event_thread.join();
++   if (m_special_event != nullptr)
++      xcb_unregister_for_special_event(m_connection, m_special_event);
++   if (m_event_thread_wakeup_fd >= 0)
++      close(m_event_thread_wakeup_fd);
+ 
+-   thread_status_lock.unlock();
+-
+-   /* Call the base's teardown */
+    teardown();
+ }
+ 
+-static uint32_t get_memory_type(VkPhysicalDeviceMemoryProperties2 memory_props, uint32_t req,
+-                                VkMemoryPropertyFlagBits req_prop)
++static uint32_t get_memory_type(const VkPhysicalDeviceMemoryProperties2 &memory_props,
++                                VkMemoryPropertyFlagBits req_prop, uint32_t memory_type_bits = UINT32_MAX)
+ {
+-   size_t mem_type_idx = 0;
+-   for (; mem_type_idx < 8 * sizeof(req); ++mem_type_idx)
+-   {
+-      if (req & (1u << mem_type_idx) && req_prop & (1u << mem_type_idx))
+-      {
+-         return mem_type_idx;
+-      }
+-
+-      if (req & (1u << mem_type_idx))
+-      {
+-         return mem_type_idx;
+-      }
+-   }
+-
+-   return -1;
++   const auto &properties = memory_props.memoryProperties;
++   for (uint32_t i = 0; i < properties.memoryTypeCount; ++i)
++      if ((memory_type_bits & (1u << i)) && (properties.memoryTypes[i].propertyFlags & req_prop) == req_prop)
++         return i;
++   // For AHB export the driver chooses the actual type from the image usage.
++   for (uint32_t i = 0; i < properties.memoryTypeCount; ++i)
++      if (memory_type_bits & (1u << i))
++         return i;
++   return UINT32_MAX;
+ }
+ 
+ xcb_pixmap_t swapchain::create_pixmap(swapchain_image &image)
+@@ -171,138 +184,156 @@ xcb_pixmap_t swapchain::create_pixmap(swapchain_image &image)
+    return true;
+ }
+ 
+-VkResult swapchain::allocate_and_bind_swapchain_image(VkImageCreateInfo image_create, swapchain_image &image)
++VkResult swapchain::allocate_image_memory(VkImage image, bool export_ahb, VkDeviceMemory &memory)
+ {
+-   VkResult res = VK_SUCCESS;
+-   VkExternalMemoryHandleTypeFlags handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+-   const std::lock_guard<std::recursive_mutex> lock(m_image_status_mutex);
+-
+-   m_image_create_info = image_create;
+-   m_image_create_info.tiling = VK_IMAGE_TILING_LINEAR;
+-   m_image_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+-
+-   VkExternalMemoryImageCreateInfo external_memory_image_create_info = {};
+-   external_memory_image_create_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+-   external_memory_image_create_info.pNext = m_image_create_info.pNext;
+-   external_memory_image_create_info.handleTypes = handleType;
+-   m_image_create_info.pNext = &external_memory_image_create_info;
+-
+-   res = m_device_data.disp.CreateImage(m_device, &m_image_create_info, get_allocation_callbacks(), &image.image);
+-   if (res != VK_SUCCESS)
+-   {
+-      return res;
+-   }
+-
+-   /* Find a memory type */
+-   size_t mem_type_idx = get_memory_type(m_memory_props, 0xFFFFFFFF, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+-   if (mem_type_idx < 0)
+-   {
+-      WSI_LOG_ERROR("required memory type not found");
++   VkMemoryRequirements requirements{};
++   if (!export_ahb)
++      m_device_data.disp.GetImageMemoryRequirements(m_device, image, &requirements);
++   const uint32_t memory_type = get_memory_type(m_memory_props, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
++                                               export_ahb ? UINT32_MAX : requirements.memoryTypeBits);
++   if (memory_type == UINT32_MAX)
+       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+-   }
+-
+-   VkMemoryDedicatedAllocateInfo memory_dedicated_allocate_info = {};
+-   memory_dedicated_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+-   memory_dedicated_allocate_info.image = image.image;
+-
+-   VkExportMemoryAllocateInfo export_memory_allocate_info = {};
+-   export_memory_allocate_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+-   export_memory_allocate_info.pNext = &memory_dedicated_allocate_info;
+-   export_memory_allocate_info.handleTypes = handleType;
+-
+-   VkMemoryAllocateInfo memory_allocate_info = {};
+-   memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+-   memory_allocate_info.pNext = &export_memory_allocate_info;
+-   memory_allocate_info.allocationSize = 0;
+-   memory_allocate_info.memoryTypeIndex = mem_type_idx;
++   VkMemoryDedicatedAllocateInfo dedicated{ VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, nullptr,
++                                            image, VK_NULL_HANDLE };
++   VkExportMemoryAllocateInfo export_info{ VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO, &dedicated,
++      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID };
++   VkMemoryAllocateInfo info{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, export_ahb ? &export_info : nullptr,
++                             export_ahb ? 0 : requirements.size, memory_type };
++   VkResult result = m_device_data.disp.AllocateMemory(m_device, &info, get_allocation_callbacks(), &memory);
++   if (result == VK_SUCCESS)
++      result = m_device_data.disp.BindImageMemory(m_device, image, memory, 0);
++   return result;
++}
+ 
+-   /* Create image_data */
+-   x11_image_data *data = nullptr;
+-   data = m_allocator.create<x11_image_data>(1);
++VkResult swapchain::allocate_and_bind_swapchain_image(VkImageCreateInfo image_create, swapchain_image &image)
++{
++   const std::lock_guard<std::recursive_mutex> lock(m_image_status_mutex);
++   (void)image_create;
++   // The already exposed rendering handle never changes during deferred binding.
++   auto data = m_allocator.create<x11_image_data>(1);
+    if (data == nullptr)
+    {
+-      m_device_data.disp.DestroyImage(m_device, image.image, get_allocation_callbacks());
++      release_image_resources(image, false);
++      set_error_state(VK_ERROR_OUT_OF_HOST_MEMORY);
+       return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+-   image.data = reinterpret_cast<void *>(data);
+-   image.status = wsi::swapchain_image::FREE;
+-
+-   res = m_device_data.disp.AllocateMemory(m_device, &memory_allocate_info, get_allocation_callbacks(), &data->memory);
+-   if (res != VK_SUCCESS)
+-   {
+-      WSI_LOG_ERROR("vkAllocateMemory failed:%d", res);
+-      destroy_image(image);
+-      return res;
+-   }
+-
+-   res = m_device_data.disp.BindImageMemory(m_device, image.image, data->memory, 0);
+-   assert(VK_SUCCESS == res);
+-   if (res != VK_SUCCESS)
++   image.data = data;
++   const bool convert_bgra = m_image_create_info.format == VK_FORMAT_B8G8R8A8_UNORM;
++   auto fail = [&](VkResult result) {
++      // A deferred handle may already be visible to the application. Keep it
++      // valid until teardown, and retire this chain rather than rebind memory.
++      release_image_resources(image, false);
++      set_error_state(result);
++      return result;
++   };
++   VkResult result = allocate_image_memory(image.image, !convert_bgra, data->memory);
++   if (result != VK_SUCCESS)
++      return fail(result);
++
++   if (convert_bgra)
+    {
+-      WSI_LOG_ERROR("vkBindImageMemory failed:%d", res);
+-      destroy_image(image);
+-      return res;
++      VkImageCreateInfo presentation_info = m_image_create_info;
++      presentation_info.pNext = &m_external_image_create_info;
++      presentation_info.flags &= ~VK_IMAGE_CREATE_ALIAS_BIT;
++      presentation_info.format = VK_FORMAT_R8G8B8A8_UNORM;
++      presentation_info.tiling = VK_IMAGE_TILING_LINEAR;
++      presentation_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
++      presentation_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
++      presentation_info.queueFamilyIndexCount = 0;
++      presentation_info.pQueueFamilyIndices = nullptr;
++      result = m_device_data.disp.CreateImage(m_device, &presentation_info, get_allocation_callbacks(),
++                                            &data->presentation_image);
++      if (result != VK_SUCCESS)
++         return fail(result);
++      result = allocate_image_memory(data->presentation_image, true, data->presentation_memory);
++      if (result != VK_SUCCESS)
++         return fail(result);
++      // BGRA support is advertised only for a single graphics queue family.
++      VkCommandPoolCreateInfo pool{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, nullptr,
++                                    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, 0 };
++      result = m_device_data.disp.CreateCommandPool(m_device, &pool, get_allocation_callbacks(), &data->conversion_pool);
++      if (result != VK_SUCCESS)
++         return fail(result);
++      VkCommandBufferAllocateInfo command{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, nullptr,
++         data->conversion_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1 };
++      result = m_device_data.disp.AllocateCommandBuffers(m_device, &command, &data->conversion_command);
++      if (result != VK_SUCCESS)
++         return fail(result);
++      result = m_device_data.SetDeviceLoaderData(m_device, data->conversion_command);
++      if (result != VK_SUCCESS)
++         return fail(result);
+    }
+ 
+-   /* Initialize presentation fence. */
+    auto present_fence = fence_sync::create(m_device_data);
+    if (!present_fence.has_value())
+-   {
+-      destroy_image(image);
+-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+-   }
+-   data->present_fence = std::move(present_fence.value());
+-
+-   VkImageSubresource subres = {};
+-   subres.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+-   m_device_data.disp.GetImageSubresourceLayout(m_device, image.image, &subres, &data->layout);
+-
+-   VkMemoryGetAndroidHardwareBufferInfoANDROID get_ahb_info;
+-   get_ahb_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
+-   get_ahb_info.pNext = nullptr;
+-   get_ahb_info.memory = data->memory;
+-
+-   res = m_device_data.disp.GetMemoryAndroidHardwareBufferANDROID(m_device, &get_ahb_info, &data->ahb);
+-   if (res != VK_SUCCESS)
+-   {
+-      destroy_image(image);
+-      return res;
+-   }
+-
++      return fail(VK_ERROR_OUT_OF_HOST_MEMORY);
++   data->present_fence = std::move(*present_fence);
++   VkImageSubresource subresource{};
++   subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
++   m_device_data.disp.GetImageSubresourceLayout(m_device,
++      convert_bgra ? data->presentation_image : image.image, &subresource, &data->layout);
++   VkMemoryGetAndroidHardwareBufferInfoANDROID ahb_info{
++      VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID, nullptr,
++      convert_bgra ? data->presentation_memory : data->memory };
++   result = m_device_data.disp.GetMemoryAndroidHardwareBufferANDROID(m_device, &ahb_info, &data->ahb);
++   if (result != VK_SUCCESS)
++      return fail(result);
+    if (!create_pixmap(image))
+-   {
+-      destroy_image(image);
+-      return VK_ERROR_INITIALIZATION_FAILED;
+-   }
+-
++      return fail(VK_ERROR_INITIALIZATION_FAILED);
++   image.status = wsi::swapchain_image::FREE;
+    return VK_SUCCESS;
+ }
+ 
+ VkResult swapchain::create_swapchain_image(VkImageCreateInfo image_create_info, swapchain_image &image)
+ {
++   const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
++   const bool convert_bgra = image_create_info.format == VK_FORMAT_B8G8R8A8_UNORM;
++   if ((uses_xorg_bgra_transport() && !convert_bgra) ||
++       (image_create_info.format != VK_FORMAT_R8G8B8A8_UNORM && !convert_bgra) ||
++       (convert_bgra && !supports_bgra_conversion(m_device_data.instance_data, m_device_data.physical_device)))
++   {
++      WSI_LOG_ERROR("unsupported X11 bridge image format %d", image_create_info.format);
++      return VK_ERROR_FORMAT_NOT_SUPPORTED;
++   }
+    m_image_create_info = image_create_info;
+-   return m_device_data.disp.CreateImage(m_device, &m_image_create_info, get_allocation_callbacks(), &image.image);
++   m_image_create_info.tiling = convert_bgra ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
++   if (convert_bgra)
++   {
++      m_image_create_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
++      m_image_create_info.flags |= VK_IMAGE_CREATE_ALIAS_BIT;
++   }
++   // The description is also used for deferred allocation and aliased handles.
++   // Both the description and its extension chain must outlive this call.
++   m_external_image_create_info.pNext = nullptr;
++   m_image_create_info.pNext = convert_bgra ? nullptr : &m_external_image_create_info;
++   const VkResult result = m_device_data.disp.CreateImage(
++      m_device, &m_image_create_info, get_allocation_callbacks(), &image.image);
++   if (result == VK_SUCCESS)
++      image.status = swapchain_image::UNALLOCATED;
++   return result;
+ }
+ 
+ void swapchain::present_event_thread()
+ {
+    auto thread_status_lock = std::unique_lock<std::mutex>(m_thread_status_lock);
+-   m_present_event_thread_run = true;
+-
+    while (m_present_event_thread_run)
+    {
+       auto assume_forward_progress = false;
+ 
+-      for (auto &image : m_swapchain_images)
+       {
+-         if (image.status == swapchain_image::INVALID)
+-            continue;
+-
+-         auto data = reinterpret_cast<x11_image_data *>(image.data);
+-         if (data->pending_completions.size() != 0)
++         const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
++         for (auto &image : m_swapchain_images)
           {
+-            assume_forward_progress = true;
+-            break;
++            if (image.status == swapchain_image::INVALID || image.status == swapchain_image::UNALLOCATED ||
++                image.data == nullptr)
++               continue;
++
++            auto data = reinterpret_cast<x11_image_data *>(image.data);
++            if (data->pending_completions.size() != 0)
++            {
++               assume_forward_progress = true;
++               break;
++            }
+          }
+       }
+ 
+@@ -319,14 +350,43 @@ void swapchain::present_event_thread()
+ 
+       thread_status_lock.unlock();
+ 
+-      auto event = xcb_wait_for_special_event(m_connection, m_special_event);
+-      if (event == nullptr)
++      auto event = xcb_poll_for_special_event(m_connection, m_special_event);
++      while (event == nullptr)
++      {
++         pollfd descriptors[] = {
++            { xcb_get_file_descriptor(m_connection), POLLIN, 0 },
++            { m_event_thread_wakeup_fd, POLLIN, 0 },
++         };
++         // Other XCB readers can move events into the special queue. Recheck
++         // periodically even if they have already drained the connection FD.
++         int result;
++         do
++            result = poll(descriptors, 2, 100);
++         while (result < 0 && errno == EINTR);
++         if (result < 0 || (descriptors[0].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
++             xcb_connection_has_error(m_connection))
++         {
++            thread_status_lock.lock();
++            set_error_state(VK_ERROR_SURFACE_LOST_KHR);
++            m_present_event_thread_run = false;
++            break;
++         }
++         if (descriptors[1].revents != 0)
++         {
++            thread_status_lock.lock();
++            break;
++         }
++         event = xcb_poll_for_special_event(m_connection, m_special_event);
++      }
++      if (!thread_status_lock.owns_lock())
++         thread_status_lock.lock();
++      if (!m_present_event_thread_run)
+       {
+-         set_error_state(VK_ERROR_SURFACE_LOST_KHR);
++         free(event);
+          break;
+       }
+-
+-      thread_status_lock.lock();
++      if (event == nullptr)
++         continue;
+ 
+       auto pe = reinterpret_cast<xcb_present_generic_event_t *>(event);
+       switch (pe->evtype)
+@@ -357,8 +417,12 @@ void swapchain::present_event_thread()
+          auto complete = reinterpret_cast<xcb_present_complete_notify_event_t *>(event);
+          if (complete->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP)
+          {
++            const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
              for (auto &image : m_swapchain_images)
              {
-+               if (image.status == swapchain_image::INVALID || image.data == nullptr)
++               if (image.status == swapchain_image::INVALID || image.status == swapchain_image::UNALLOCATED ||
++                   image.data == nullptr)
 +                  continue;
                 auto data = reinterpret_cast<x11_image_data *>(image.data);
                 auto iter = std::find_if(data->pending_completions.begin(), data->pending_completions.end(),
                                          [complete](auto &pending_completion) -> bool {
-@@ -432,6 +436,9 @@ bool swapchain::free_image_found()
+@@ -385,8 +449,17 @@ void swapchain::present_event_thread()
+ 
+ void swapchain::present_image(const pending_present_request &pending_present)
+ {
+-   auto image_data = reinterpret_cast<x11_image_data *>(m_swapchain_images[pending_present.image_index].data);
+    auto thread_status_lock = std::unique_lock<std::mutex>(m_thread_status_lock);
++   auto current_image_data = [&]() -> x11_image_data * {
++      const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
++      auto &image = m_swapchain_images[pending_present.image_index];
++      return image.status != swapchain_image::INVALID ? reinterpret_cast<x11_image_data *>(image.data) : nullptr;
++   };
++   auto image_data = current_image_data();
++   if (image_data == nullptr)
++      return set_present_id(pending_present.present_id);
++   if (!m_present_event_thread_run)
++      return unpresent_image(pending_present.image_index);
+ 
+    while (image_data->pending_completions.size() == X11_SWAPCHAIN_MAX_PENDING_COMPLETIONS)
+    {
+@@ -396,6 +469,27 @@ void swapchain::present_image(const pending_present_request &pending_present)
+          return unpresent_image(pending_present.image_index);
+       }
+       m_thread_status_cond.wait(thread_status_lock);
++      // Idle may precede Complete, so deprecate can retire a FREE image while
++      // this wait releases the thread lock. Never retain its data across wait.
++      image_data = current_image_data();
++      if (image_data == nullptr)
++         return set_present_id(pending_present.present_id);
++   }
++
++   if (m_max_present_fps)
++   {
++      // Sleep without holding the image lock or spinning; cancellation and
++      // X11 completion events remain serviceable during the rate-limit wait.
++      m_thread_status_cond.wait_until(thread_status_lock, m_next_present,
++                                      [&] { return !m_present_event_thread_run; });
++      image_data = current_image_data();
++      if (image_data == nullptr)
++         return set_present_id(pending_present.present_id);
++      if (!m_present_event_thread_run)
++         return unpresent_image(pending_present.image_index);
++      // No catch-up burst after a delayed frame or suspend/resume.
++      m_next_present = std::chrono::steady_clock::now() +
++         std::chrono::nanoseconds(UINT64_C(1000000000) / m_max_present_fps);
+    }
+ 
+    m_send_sbc++;
+@@ -419,6 +513,9 @@ void swapchain::present_image(const pending_present_request &pending_present)
+             return;
+          }
+          m_thread_status_cond.wait(thread_status_lock);
++         image_data = current_image_data();
++         if (image_data == nullptr)
++            return set_present_id(pending_present.present_id);
+       }
+       m_target_msc = m_last_present_msc + 1;
+    }
+@@ -426,12 +523,17 @@ void swapchain::present_image(const pending_present_request &pending_present)
+ 
+ bool swapchain::free_image_found()
+ {
++   // Called with the thread lock held: all shared paths use thread -> image.
++   const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
+    while (m_free_buffer_pool.size() > 0)
+    {
+       auto pixmap = m_free_buffer_pool.pop_front();
        assert(pixmap.has_value());
        for (int i = 0; i < m_swapchain_images.size(); i++)
        {
@@ -154,3 +909,212 @@ index 89a6c2f..6396a8d 100644
           auto data = reinterpret_cast<x11_image_data *>(m_swapchain_images[i].data);
           if (data->pixmap == pixmap.value())
           {
+@@ -490,19 +592,35 @@ VkResult swapchain::get_free_buffer(uint64_t *timeout)
+ 
+ void swapchain::destroy_image(wsi::swapchain_image &image)
+ {
+-   std::unique_lock<std::recursive_mutex> image_status_lock(m_image_status_mutex);
+-   if (image.status != wsi::swapchain_image::INVALID)
+-   {
+-      if (image.image != VK_NULL_HANDLE)
+-      {
+-         m_device_data.disp.DestroyImage(m_device, image.image, get_allocation_callbacks());
+-         image.image = VK_NULL_HANDLE;
+-      }
++   // deprecate() can run while the old chain still handles Present events.
++   const std::lock_guard<std::mutex> thread_status_lock(m_thread_status_lock);
++   const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
++   release_image_resources(image);
++   m_thread_status_cond.notify_all();
++}
+ 
+-      image.status = wsi::swapchain_image::INVALID;
+-   }
++void swapchain::release_image_resources(wsi::swapchain_image &image, bool destroy_render_image)
++{
++   // The caller holds image_status. Allocations still marked UNALLOCATED are
++   // invisible to the event thread and can unwind without taking thread_status.
+ 
+-   image_status_lock.unlock();
++   auto data = reinterpret_cast<x11_image_data *>(image.data);
++   if (data != nullptr)
++   {
++      (void)data->present_fence.wait_payload(UINT64_MAX);
++      if (data->conversion_pool != VK_NULL_HANDLE)
++         m_device_data.disp.DestroyCommandPool(m_device, data->conversion_pool, get_allocation_callbacks());
++      if (data->presentation_image != VK_NULL_HANDLE)
++         m_device_data.disp.DestroyImage(m_device, data->presentation_image, get_allocation_callbacks());
++      if (data->presentation_memory != VK_NULL_HANDLE)
++         m_device_data.disp.FreeMemory(m_device, data->presentation_memory, get_allocation_callbacks());
++   }
++   if (destroy_render_image && image.image != VK_NULL_HANDLE)
++   {
++      m_device_data.disp.DestroyImage(m_device, image.image, get_allocation_callbacks());
++      image.image = VK_NULL_HANDLE;
++   }
++   image.status = destroy_render_image ? wsi::swapchain_image::INVALID : wsi::swapchain_image::UNALLOCATED;
+ 
+    if (image.data != nullptr)
+    {
+@@ -526,10 +644,77 @@ void swapchain::destroy_image(wsi::swapchain_image &image)
+    }
+ }
+ 
++VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &data)
++{
++   VkResult result = data.present_fence.wait_payload(UINT64_MAX);
++   if (result != VK_SUCCESS)
++      return result;
++   result = m_device_data.disp.ResetCommandBuffer(data.conversion_command, 0);
++   if (result != VK_SUCCESS)
++      return result;
++   VkCommandBufferBeginInfo begin{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, nullptr,
++                                   VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr };
++   result = m_device_data.disp.BeginCommandBuffer(data.conversion_command, &begin);
++   if (result != VK_SUCCESS)
++      return result;
++   const VkImageSubresourceRange range{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
++   VkImageMemoryBarrier before[] = {
++      { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
++        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
++        VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image.image, range },
++      { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
++        data.presentation_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED,
++        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
++        data.presentation_initialized ? VK_QUEUE_FAMILY_FOREIGN_EXT : VK_QUEUE_FAMILY_IGNORED,
++        data.presentation_initialized ? 0u : VK_QUEUE_FAMILY_IGNORED, data.presentation_image, range },
++   };
++   m_device_data.disp.CmdPipelineBarrier(data.conversion_command, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
++      VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, before);
++   VkImageBlit blit{};
++   blit.srcSubresource = blit.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
++   blit.srcOffsets[1] = blit.dstOffsets[1] = {
++      static_cast<int32_t>(m_image_create_info.extent.width), static_cast<int32_t>(m_image_create_info.extent.height), 1 };
++   if (uses_xorg_bgra_transport())
++   {
++      // The existing Termux:X11 protocol consumes Xorg BGRA byte order even
++      // when gralloc supplies an RGBA AHB. Preserve the public BGRA image's
++      // bytes; a color-converting blit would be swizzled again by its renderer.
++      VkImageCopy copy{};
++      copy.srcSubresource = copy.dstSubresource = blit.srcSubresource;
++      copy.extent = m_image_create_info.extent;
++      m_device_data.disp.CmdCopyImage(data.conversion_command, image.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
++         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
++   }
++   else
++      m_device_data.disp.CmdBlitImage(data.conversion_command, image.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
++         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
++   VkImageMemoryBarrier after[] = {
++      { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_READ_BIT, 0,
++        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
++        VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image.image, range },
++      { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
++        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
++        0, VK_QUEUE_FAMILY_FOREIGN_EXT, data.presentation_image, range },
++   };
++   m_device_data.disp.CmdPipelineBarrier(data.conversion_command, VK_PIPELINE_STAGE_TRANSFER_BIT,
++      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 2, after);
++   return m_device_data.disp.EndCommandBuffer(data.conversion_command);
++}
++
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+                                               const queue_submit_semaphores &semaphores, const void *submission_pnext)
+ {
+    auto data = reinterpret_cast<x11_image_data *>(image.data);
++   if (data->conversion_command != VK_NULL_HANDLE)
++   {
++      VkResult result = record_conversion(image, *data);
++      if (result != VK_SUCCESS)
++         return result;
++      result = data->present_fence.set_payload(queue, semaphores, submission_pnext, data->conversion_command);
++      if (result == VK_SUCCESS)
++         data->presentation_initialized = true;
++      return result;
++   }
+    return data->present_fence.set_payload(queue, semaphores, submission_pnext);
+ }
+ 
+@@ -570,16 +755,26 @@ VkResult swapchain::init_platform(VkDevice device, const VkSwapchainCreateInfoKH
+                             XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY | XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
+                                XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY);
+ 
++   if (m_special_event == nullptr)
++      return VK_ERROR_INITIALIZATION_FAILED;
++   m_event_thread_wakeup_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
++   if (m_event_thread_wakeup_fd < 0)
++      return VK_ERROR_INITIALIZATION_FAILED;
++
++   const std::lock_guard<std::mutex> lock(m_thread_status_lock);
++   m_present_event_thread_run = true;
+    try
+    {
+       m_present_event_thread = std::thread(&swapchain::present_event_thread, this);
+    }
+    catch (const std::system_error &)
+    {
++      m_present_event_thread_run = false;
+       return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    catch (const std::bad_alloc &)
+    {
++      m_present_event_thread_run = false;
+       return VK_ERROR_INITIALIZATION_FAILED;
+    }
+ 
+diff --git a/wsi/x11/swapchain.hpp b/wsi/x11/swapchain.hpp
+index 3bed48d..8387313 100644
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -33,6 +33,7 @@
+ #include "surface.hpp"
+ #include <android/hardware_buffer.h>
+ #include <condition_variable>
++#include <chrono>
+ #include <cstdint>
+ #include <vulkan/vk_icd.h>
+ #include <vulkan/vulkan.h>
+@@ -47,6 +48,8 @@ namespace wsi
+ namespace x11
+ {
+ 
++struct x11_image_data;
++
+ using pfnAHardwareBuffer_release = void (*)(AHardwareBuffer *);
+ using pfnAHardwareBuffer_sendHandleToUnixSocket = int (*)(AHardwareBuffer *, int);
+ 
+@@ -162,21 +165,30 @@ private:
+    uint64_t m_send_sbc;
+    uint64_t m_target_msc;
+    uint64_t m_last_present_msc;
++   uint32_t m_max_present_fps{ 0 };
++   std::chrono::steady_clock::time_point m_next_present{};
+ 
+-   xcb_special_event_t *m_special_event;
+-   VkPhysicalDeviceMemoryProperties2 m_memory_props;
++   xcb_special_event_t *m_special_event{ nullptr };
++   VkPhysicalDeviceMemoryProperties2 m_memory_props{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2, nullptr, {} };
++   VkExternalMemoryImageCreateInfo m_external_image_create_info{
++      VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO, nullptr,
++      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID };
+ 
+    xcb_pixmap_t create_pixmap(swapchain_image &image);
++   void release_image_resources(swapchain_image &image, bool destroy_render_image = true);
++   VkResult allocate_image_memory(VkImage image, bool export_ahb, VkDeviceMemory &memory);
++   VkResult record_conversion(swapchain_image &image, x11_image_data &data);
+ 
+    void present_event_thread();
+-   bool m_present_event_thread_run;
++   bool m_present_event_thread_run{ false };
++   int m_event_thread_wakeup_fd{ -1 };
+    std::thread m_present_event_thread;
+    std::mutex m_thread_status_lock;
+    std::condition_variable m_thread_status_cond;
+    util::ring_buffer<xcb_pixmap_t, 6> m_free_buffer_pool;
+ 
+-   pfnAHardwareBuffer_release HardwareBuffer_release;
+-   pfnAHardwareBuffer_sendHandleToUnixSocket HardwareBuffer_sendHandleToUnixSocket;
++   pfnAHardwareBuffer_release HardwareBuffer_release{ nullptr };
++   pfnAHardwareBuffer_sendHandleToUnixSocket HardwareBuffer_sendHandleToUnixSocket{ nullptr };
+ };
+ 
+ } /* namespace x11 */

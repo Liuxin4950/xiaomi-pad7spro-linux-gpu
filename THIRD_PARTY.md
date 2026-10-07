@@ -1,21 +1,22 @@
 # 上游组件与来源
 
-当前构建版本以 [sources.lock.json](sources.lock.json) 为准。构建使用本项目 MIT 的 sysvk/AHB 源码，旧来源项只保留历史线索。固定上游 libc 下载的 SHA-256 与设备工作版本一致；完整 Android 源码重建尚未完成。
+更新日期：2026-10-07。当前构建基线、补丁及下载哈希以 [sources.lock.json](sources.lock.json) 为准。本次公开的是源码开发更新，不是已经完成全部验收的 `v0.1.0` 二进制发行。
 
-此表区分“打包/文档提供的来源线索”和“已确定的实际源码基线”。缺少精确 revision 的组件仍需在发布前对齐，不能直接将当前上游 HEAD 当作已安装版本。
+Linux 桥接组件已锁定完整上游提交，并保存本仓库使用的完整补丁。sysvk/AHB 使用本项目按公开接口重新编写的 MIT 实现。修改版 bionic 仍通过固定 URL 与 SHA-256 获取；这不等于已经完成其对应源码重建。
 
-| 组件 | 来源证据/链接 | 当前许可证证据 | 待补齐 |
+| 组件 | 当前源码或运行依赖 | 许可证证据与边界 | 仍需补齐 |
 |---|---|---|---|
-| Termux:X11 | [termux/termux-x11](https://github.com/termux/termux-x11)，基线 `d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f` | 固定提交的 LICENSE 为 GNU GPL v3；依赖子模块各自保留许可证 | 干净重建与对应源码发布 |
-| Vulkan WSI layer | Android bridge PKGBUILD 指向 [xMeM/vulkan-wsi-layer](https://github.com/xMeM/vulkan-wsi-layer) | 本地 LICENSE 明示 MIT，Arm 版权 | 实际 fork/revision、完整改动 |
-| libhybris | Android bridge PKGBUILD 指向 [Linux-on-droid/libhybris](https://github.com/Linux-on-droid/libhybris) | 包声明 LGPL-2.1；源码包含 Apache-2.0、BSD、MIT 等多种文件级许可 | 精确基线和逐文件版权/许可，不可只用包声明覆盖全部文件 |
-| sysvk | PKGBUILD 指向 [xMeM/sysvk](https://github.com/xMeM/sysvk) | 包声明 `unknown`；本地 sysvk.c 未见版权/许可证头 | 明确授权与当前文件来源 |
-| AHB wrapper | Android bridge 的 AHB 包声明 [kde-yyds/vulkan-android-bridge](https://github.com/kde-yyds/vulkan-android-bridge) | 包声明 GPL2；本地改造的 ahb-wrapper.c 未见版权/许可证头 | 对齐具体文件来源、原始许可和改造记录 |
-| Android Vulkan Bridge 配方 | [kde-yyds/android-vulkan-bridge](https://github.com/kde-yyds/android-vulkan-bridge) | 本地顶层未见 LICENSE；各包各有声明 | 分清配方许可与被构建组件许可 |
-| 修改版 bionic libc | 既有说明链接 [vendor_lindroid 的预编译 libc](https://github.com/Linux-on-droid/vendor_lindroid/blob/lindroid-22.1/prebuilt/arm64/libc.so) | 此链接只是预编译来源线索，不能替代对应源码许可审计 | 当前文件哈希/来源、源码 revision、emutls 构建步骤 |
+| Termux:X11 | [termux/termux-x11](https://github.com/termux/termux-x11)，基线 `d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f`；两个补丁已锁定 | 固定提交的 LICENSE 为 GNU GPL v3；依赖子模块各自保留许可证 | 干净全量 APK 重建、对应源码与工具链发行记录；现有候选只是原生增量重打包 |
+| Vulkan WSI layer | [xMeM/vulkan-wsi-layer](https://github.com/xMeM/vulkan-wsi-layer)，`d5624d42d8b2debbd910ad25662a05c751eb38b7`；完整补丁位于 `patches/wsi/` | 固定源码 LICENSE 为 MIT，保留 Arm 版权与通知 | 正式二进制发行时随附实际使用版本的许可证与构建记录 |
+| libhybris | [Linux-on-droid/libhybris](https://github.com/Linux-on-droid/libhybris)，`29e0fa6da0166261f6b9437582fe2d56bab8530c`；完整补丁位于 `patches/libhybris/` | 固定源码含 LGPL-2.1、Apache-2.0、BSD、MIT 等文件级许可；许可证文本已收录于 `patches/libhybris/licenses/` | 按发行内容继续核对文件级版权、通知及对应源码，不能用单一包声明覆盖全部文件 |
+| Android headers | [Linux-on-droid/android-headers-30](https://github.com/Linux-on-droid/android-headers-30)，`a6261c5cce8e945868b68318e867e382dea4bffd` | 使用固定源码，保留各头文件的原有许可 | 随实际发行内容整理许可证与通知 |
+| sysvk | 本项目 [src/sysvk.c](src/sysvk.c)，按公开 Android Vulkan HAL 接口编写；由本仓库 CMake 构建 | 文件 SPDX 与顶层 LICENSE 为 MIT | 随正式发行记录本仓库提交和对应产物哈希 |
+| AHB wrapper | 本项目 [src/ahb-wrapper.c](src/ahb-wrapper.c)、[src/ahb-api.h](src/ahb-api.h)，通过 libhybris 解析公开 AHardwareBuffer 接口 | 文件 SPDX 与顶层 LICENSE 为 MIT | 随正式发行记录本仓库提交和对应产物哈希 |
+| AOSP Vulkan HAL 头文件 | [vendor/aosp/hardware/hwvulkan.h](vendor/aosp/hardware/hwvulkan.h) | 保留 AOSP 版权头与 [Apache-2.0 许可证](vendor/aosp/LICENSE.Apache2) | 正式发行继续保留该通知 |
+| 修改版 bionic libc | [固定 vendor_lindroid 文件](https://github.com/Linux-on-droid/vendor_lindroid/blob/eadbb70f13209133d96a5355464388db8c6578de/prebuilt/arm64/libc.so)；SHA-256 在锁文件中，已与设备工作文件核对 | 上游预编译运行时依赖；固定文件与哈希不能替代对应源码、修改内容和许可核对 | 对应 bionic 源码 revision、emutls 修改、完整重建步骤及二进制再分发范围 |
 | Mesa / ANGLE / Vulkan loader | Debian 包与目标应用携带的组件 | 各自上游及发行包许可 | 记录实际版本与构建来源；不随意重发整个应用包 |
 | Android Mali Vulkan 驱动 | 用户自己的 Android 固件 `/vendor` 等路径 | 厂商组件，未确定再分发授权 | 作为设备运行依赖，不打包为项目源码 |
 
-`android-vulkan-bridge` 还提供 Mesa Vulkan wrapper 配方，但当前日常入口使用 **sysvk ICD**。这些属于来源/参考资料，不能混写成所有组件都同时安装或需要。
+历史研究参考过 [xMeM/sysvk](https://github.com/xMeM/sysvk) 和 [kde-yyds/android-vulkan-bridge](https://github.com/kde-yyds/android-vulkan-bridge) 的包配方。旧说明中的 sysvk `unknown`、AHB 包 `GPL2` 等描述属于这些历史来源，不能作为本仓库重写实现的许可说明，也不能反过来用本仓库 MIT 声明覆盖旧实现或配方。
 
-本表于 2026-10-01 根据本机源码、PKGBUILD 和设备记录整理。Termux:X11 的固定提交及许可证另经上游页面核对；其余来源线索不构成与实际二进制完全一致的证明。
+当前入口使用本项目 **sysvk ICD**，不是把参考配方涉及的所有 wrapper 都加入运行链。软件实际版本、窗口验证及尚未完成的功耗和兼容性工作见 [当前状态](docs/development-status.md)；来源可追溯、许可整理和功能验收是不同事项。

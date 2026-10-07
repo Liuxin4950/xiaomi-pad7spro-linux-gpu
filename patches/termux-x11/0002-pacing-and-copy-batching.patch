@@ -1,0 +1,284 @@
+diff --git a/lorie/src/main/cpp/lorie/InitOutput.c b/lorie/src/main/cpp/lorie/InitOutput.c
+index c5fa7fa..be68b25 100644
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -23,6 +23,7 @@
+ #include <dri3.h>
+ #include <sys/stat.h>
+ #include <dlfcn.h>
++#include <time.h>
+ #include "fb.h"
+ #include "inputstr.h"
+ #include "mipointer.h"
+@@ -39,6 +40,7 @@
+ #include "drm_fourcc.h"
+ 
+ #include "lorie.h"
++#include "frame-pacing.h"
+ 
+ #define DRM_FORMAT_MOD_LINEAR 0
+ 
+@@ -80,7 +82,8 @@ typedef struct {
+     Bool dri3;
+     Bool gpuPresentDisabled;
+ 
+-    uint64_t vblank_interval;
++    LorieFramePacer framePacer;
++    uint64_t frameTicks, throttledFrameTicks;
+     struct xorg_list vblank_queue;
+     uint64_t current_msc;
+ 
+@@ -101,6 +104,9 @@ static lorieScreenInfo lorieScreen = {
+ static char *xstartup = NULL;
+ static char **xstartupArgv = NULL;
+ static uint32_t maxFramerate = 0;
++static pthread_mutex_t frameTickLock = PTHREAD_MUTEX_INITIALIZER;
++static uint64_t latestFrameTimeNanos;
++static Bool frameWorkQueued;
+ 
+ // Owned by the activity process, handed to us over the connection socket. Points at a placeholder until
+ // the first connection so callers don't need a NULL check.
+@@ -521,6 +527,19 @@ static Bool lorieRedraw(__unused ClientPtr pClient, __unused void *closure) {
+     int status, nonEmpty;
+     LoriePixmapPriv* priv;
+     PixmapPtr root = pScreenPtr && pScreenPtr->root ? pScreenPtr->GetWindowPixmap(pScreenPtr->root) : NULL;
++    uint64_t frameTimeNanos;
++    pthread_mutex_lock(&frameTickLock);
++    frameTimeNanos = latestFrameTimeNanos;
++    frameWorkQueued = FALSE;
++    pthread_mutex_unlock(&frameTickLock);
++
++    /* Input and GPU-copy completion use separate work items and are never
++     * delayed here. Only the display clock and redraw permission are capped. */
++    pvfb->frameTicks++;
++    if (!lorieFramePacerAccept(&pvfb->framePacer, frameTimeNanos, maxFramerate)) {
++        pvfb->throttledFrameTicks++;
++        return TRUE;
++    }
+ 
+     pvfb->current_msc++;
+     loriePerformVblanks();
+@@ -575,8 +594,13 @@ static CARD32 lorieFramecounter(unused OsTimerPtr timer, unused CARD32 time, unu
+                                    : "%d frames in 5.0 seconds = %.1f FPS",
+             pvfb->state->renderedFrames, ((float) pvfb->state->renderedFrames) / 5,
+             (unsigned long long) gpuCopyOffloads, (unsigned long long) gpuCopyAttempts);
++    if (pvfb->frameTicks)
++        log(INFO, "pacing: %llu frame ticks, %llu throttled in 5.0 seconds, max-fps=%u",
++            (unsigned long long) pvfb->frameTicks,
++            (unsigned long long) pvfb->throttledFrameTicks, maxFramerate);
+     pvfb->state->renderedFrames = 0;
+     gpuCopyAttempts = gpuCopyOffloads = 0;
++    pvfb->frameTicks = pvfb->throttledFrameTicks = 0;
+     return 5000;
+ }
+ 
+@@ -746,14 +770,55 @@ static void lorieWorkingQueueCallback(int fd, int __unused ready, void __unused
+     eventfd_read(fd, &dummy);
+ }
+ 
+-void lorieChoreographerFrameCallback(__unused long t, AChoreographer* d) {
+-    AChoreographer_postFrameCallback(d, (AChoreographer_frameCallback) lorieChoreographerFrameCallback, d);
++typedef void (*LoriePostFrameCallback64)(AChoreographer *, void (*)(int64_t, void *), void *);
++static LoriePostFrameCallback64 postFrameCallback64;
++
++static void lorieQueueFrame(uint64_t frameTimeNanos) {
+     if (pScreenPtr) {
+-        QueueWorkProc(lorieRedraw, NULL, NULL);
+-        lorieWakeServer();
++        /* Keep one pending tick and the newest timestamp. A stalled X server
++         * must not replay an accumulated queue of old display deadlines. */
++        pthread_mutex_lock(&frameTickLock);
++        latestFrameTimeNanos = frameTimeNanos;
++        if (frameWorkQueued) {
++            pthread_mutex_unlock(&frameTickLock);
++            return;
++        }
++        frameWorkQueued = TRUE;
++        pthread_mutex_unlock(&frameTickLock);
++        if (QueueWorkProc(lorieRedraw, NULL, NULL))
++            lorieWakeServer();
++        else {
++            pthread_mutex_lock(&frameTickLock);
++            frameWorkQueued = FALSE;
++            pthread_mutex_unlock(&frameTickLock);
++        }
+     }
+ }
+ 
++static void lorieChoreographerFrameCallback64(int64_t t, void *data) {
++    AChoreographer *d = data;
++    postFrameCallback64(d, lorieChoreographerFrameCallback64, d);
++    lorieQueueFrame((uint64_t) t);
++}
++
++static void lorieChoreographerFrameCallback(__unused long t, void *data) {
++    AChoreographer *d = data;
++    struct timespec now;
++    AChoreographer_postFrameCallback(d, lorieChoreographerFrameCallback, d);
++    /* API 24-28 expose a long timestamp, which wraps on 32-bit ABIs. */
++    if (clock_gettime(CLOCK_MONOTONIC, &now) == 0)
++        lorieQueueFrame((uint64_t) now.tv_sec * UINT64_C(1000000000) + now.tv_nsec);
++}
++
++void lorieStartChoreographer(AChoreographer *d) {
++    /* Resolve once rather than importing an API 29 symbol on API 24 devices. */
++    postFrameCallback64 = (LoriePostFrameCallback64) dlsym(RTLD_DEFAULT, "AChoreographer_postFrameCallback64");
++    if (postFrameCallback64)
++        postFrameCallback64(d, lorieChoreographerFrameCallback64, d);
++    else
++        AChoreographer_postFrameCallback(d, lorieChoreographerFrameCallback, d);
++}
++
+ static Bool lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
+     static int eventFd = -1;
+     pScreenPtr = pScreen;
+@@ -768,8 +833,6 @@ static Bool lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **ar
+     pScreen->blackPixel = 0;
+     pScreen->whitePixel = 1;
+ 
+-    pvfb->vblank_interval = 1000000 / pvfb->root.framerate;
+-
+     if (FALSE
+           || !miSetVisualTypesAndMasks(24, ((1 << TrueColor) | (1 << DirectColor)), 8, TrueColor, 0xFF0000, 0x00FF00, 0x0000FF)
+           || !miSetPixmapDepths()
+@@ -823,7 +886,6 @@ void lorieConfigureNotify(int width, int height, int framerate, size_t name_size
+ 
+         log(VERBOSE, "New reported framerate is %d", framerate);
+         pvfb->root.framerate = framerate;
+-        pvfb->vblank_interval = 1000000 / pvfb->root.framerate;
+     }
+ }
+ 
+@@ -1063,12 +1125,19 @@ Bool loriePresentFlip(__unused RRCrtcPtr crtc, __unused uint64_t event_id, __unu
+ 
+ void loriePresentAfterFlip(__unused RRCrtcPtr crtc, uint64_t event_id, uint64_t ust, uint64_t target_msc, __unused PixmapPtr pixmap) {
+     // X server was patched to call this function right after finishing all present_flip shenanigans
+-    // Since we do not invoke DRM API or anything similar we do not need to implement this as callback
+-    // For some reason calling present_event_notify in BlockHandler or as QueueWorkProc/eventfd callback
+-    // adds some delay which may be easily avoided this way.
++    // With a cap, the display clock owns completion timing; uncapped keeps the legacy behavior.
+     static BoxRec box = { 0, 0, 1, 1 }; // lorieRedraw only checks if it is empty or not.
+     RegionReset(DamageRegion(pvfb->damage), &box);
+-    pvfb->current_msc = min(pvfb->current_msc + 1, target_msc);
++    /* A flip must not advance MSC independently of the capped display clock.
++     * Complete on a future paced tick, including asynchronous flips, so a
++     * fast client cannot create an unbounded loop of immediate completions. */
++    if (maxFramerate) {
++        uint64_t completion_msc = max(target_msc, pvfb->current_msc + 1);
++        if (loriePresentQueueVblank(crtc, event_id, completion_msc) == Success)
++            return;
++        log(WARN, "Unable to queue paced flip completion; completing at current MSC");
++    } else
++        pvfb->current_msc = min(pvfb->current_msc + 1, target_msc);
+     present_event_notify(event_id, ust, pvfb->current_msc);
+ }
+ 
+diff --git a/lorie/src/main/cpp/lorie/cmdentrypoint.cpp b/lorie/src/main/cpp/lorie/cmdentrypoint.cpp
+index bde6821..34aa13e 100644
+--- a/lorie/src/main/cpp/lorie/cmdentrypoint.cpp
++++ b/lorie/src/main/cpp/lorie/cmdentrypoint.cpp
+@@ -211,7 +211,7 @@ static jboolean start(JNIEnv *env, jobject self, jobjectArray args) {
+ 
+     AChoreographer *choreographer = AChoreographer_getInstance();
+     // Trigger it first time
+-    AChoreographer_postFrameCallback(choreographer, (AChoreographer_frameCallback) lorieChoreographerFrameCallback, choreographer);
++    lorieStartChoreographer(choreographer);
+ 
+     xorg_list_init(&registeredBuffers);
+     pthread_create(&t, nullptr, +[](void* cookie) -> void* {
+diff --git a/lorie/src/main/cpp/lorie/frame-pacing.h b/lorie/src/main/cpp/lorie/frame-pacing.h
+new file mode 100644
+index 0000000..3597fc7
+--- /dev/null
++++ b/lorie/src/main/cpp/lorie/frame-pacing.h
+@@ -0,0 +1,44 @@
++#pragma once
++
++#include <stdbool.h>
++#include <stdint.h>
++
++/* Owned by the X server thread. The callback timestamp uses CLOCK_MONOTONIC. */
++typedef struct {
++    uint64_t nextFrameNanos;
++    uint64_t lastFrameNanos;
++    uint32_t rate;
++    bool initialized;
++} LorieFramePacer;
++
++static inline bool
++lorieFramePacerAccept(LorieFramePacer *pacer, uint64_t frameTimeNanos, uint32_t rate)
++{
++    uint64_t interval;
++
++    if (!rate) {
++        pacer->initialized = false;
++        return true;
++    }
++
++    /* Round down by less than one ns so an exact 120 Hz source is not reduced
++     * to 40 Hz by rounding a 60 Hz deadline up past every second callback. */
++    interval = UINT64_C(1000000000) / rate;
++    if (!interval)
++        interval = 1;
++
++    if (!pacer->initialized || pacer->rate != rate || frameTimeNanos < pacer->lastFrameNanos) {
++        pacer->initialized = true;
++        pacer->rate = rate;
++        pacer->nextFrameNanos = frameTimeNanos;
++    }
++    pacer->lastFrameNanos = frameTimeNanos;
++
++    if (frameTimeNanos < pacer->nextFrameNanos)
++        return false;
++
++    /* Keep phase across uneven callbacks, and skip missed deadlines after a
++     * stall instead of dispatching a burst of catch-up frames. */
++    pacer->nextFrameNanos += ((frameTimeNanos - pacer->nextFrameNanos) / interval + 1) * interval;
++    return true;
++}
+diff --git a/lorie/src/main/cpp/lorie/lorie.h b/lorie/src/main/cpp/lorie/lorie.h
+index 17052a4..243b3d1 100644
+--- a/lorie/src/main/cpp/lorie/lorie.h
++++ b/lorie/src/main/cpp/lorie/lorie.h
+@@ -35,7 +35,7 @@ void lorieSetStylusEnabled(Bool enabled);
+ void lorieSyncLockKeysState(uint8_t state);
+ void lorieWakeServer(void);
+ void lorieRecheckGpuCopies(void);
+-void lorieChoreographerFrameCallback(__unused long t, AChoreographer* d);
++void lorieStartChoreographer(AChoreographer* d);
+ void lorieActivityConnected(void);
+ void lorieSendSharedServerState(int memfd);
+ void lorieRegisterBuffer(LorieBuffer* buffer);
+diff --git a/lorie/src/main/cpp/lorie/renderer.cpp b/lorie/src/main/cpp/lorie/renderer.cpp
+index 88baec8..7eb3d9b 100644
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -889,11 +889,6 @@ void Renderer::redrawLocked(bool* waitingForBuffers) {
+     const LorieBuffer_Desc *desc = nullptr;
+     EGLSync fence;
+ 
+-    // Early returns below skip the applyPendingGpuCopiesLocked() call further down, which would
+-    // stall copies queued for windows unrelated to root while root itself isn't ready yet.
+-    if (state->gpuCopyQueue.readIndex != state->gpuCopyQueue.writeIndex)
+-        applyPendingGpuCopies();
+-
+     // The buffer will not be released until this function ends, but main thread can modify buffer list
+     pthread_spin_lock(&bufferLock);
+     LorieBuffer *buffer = LorieBufferList_findById(&buffers, state->rootWindowTextureID);
+@@ -904,6 +899,8 @@ void Renderer::redrawLocked(bool* waitingForBuffers) {
+         *waitingForBuffers = true;
+     pthread_spin_unlock(&bufferLock);
+     if (!buffer) {
++        // Root is not ready, but copies for other windows must still complete.
++        applyPendingGpuCopies();
+         log("Buffer %llu not found", state->rootWindowTextureID);
+         return;
+     }
+@@ -921,6 +918,7 @@ void Renderer::redrawLocked(bool* waitingForBuffers) {
+         // retrying this same mismatch instead of waiting for the buffer of the requested size.
+         state->drawRequested = FALSE;
+         *waitingForBuffers = true;
++        applyPendingGpuCopies();
+         return;
+     }
+ 
