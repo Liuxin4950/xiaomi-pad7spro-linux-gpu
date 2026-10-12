@@ -161,5 +161,90 @@
     "chatgpt_runtime_skia_name_sampled_this_check": false,
     "physical_scanout_fps_sampled_this_check": false
   },
-  "launcher_startup_fix": "Environment cleanup no longer requires /dev/fd during early chroot startup."
+  "launcher_startup_fix": "Environment cleanup no longer requires /dev/fd during early chroot startup.",
+  "menu_permission_repair": {
+    "verified_at_utc": "2026-10-12T14:07:02.309552+00:00",
+    "cause": "Final launcher synchronization copied a non-executable source mode onto installed gpu-run; Garcon hid dependent entries.",
+    "installed_mode_before": "0664",
+    "installed_mode_after": "0755",
+    "source_git_mode_after": "100755",
+    "apps_deleted": false,
+    "menus_deliberately_hidden": false,
+    "desktop_categories_changed": false,
+    "runner_route_unchanged": true,
+    "panel_only_restarted": true,
+    "existing_applications_closed": false,
+    "garcon_visible_categories": [
+      {
+        "category": "互联网",
+        "visible_items": [
+          {
+            "name": "Chromium",
+            "desktop_id": "chromium.desktop",
+            "exec": "/usr/local/bin/gpu-run chromium %U"
+          }
+        ]
+      },
+      {
+        "category": "办公",
+        "visible_items": [
+          {
+            "name": "LibreOffice",
+            "desktop_id": "libreoffice-startcenter.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice %F"
+          },
+          {
+            "name": "LibreOffice Calc",
+            "desktop_id": "libreoffice-calc.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice --calc %U"
+          },
+          {
+            "name": "LibreOffice Draw",
+            "desktop_id": "libreoffice-draw.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice --draw %U"
+          },
+          {
+            "name": "LibreOffice Impress",
+            "desktop_id": "libreoffice-impress.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice --impress %U"
+          },
+          {
+            "name": "LibreOffice Writer",
+            "desktop_id": "libreoffice-writer.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice --writer %U"
+          }
+        ]
+      },
+      {
+        "category": "图形",
+        "visible_items": [
+          {
+            "name": "LibreOffice Draw",
+            "desktop_id": "libreoffice-draw.desktop",
+            "exec": "/usr/local/bin/gpu-run auto /usr/bin/libreoffice --draw %U"
+          }
+        ]
+      },
+      {
+        "category": "开发",
+        "visible_items": [
+          {
+            "name": "CC Switch",
+            "desktop_id": "CC Switch.desktop",
+            "exec": "/usr/local/bin/gpu-run cc-switch"
+          },
+          {
+            "name": "ChatGPT",
+            "desktop_id": "chatgpt.desktop",
+            "exec": "/usr/local/bin/gpu-run chatgpt %U"
+          },
+          {
+            "name": "Trae CN",
+            "desktop_id": "trae-cn.desktop",
+            "exec": "/usr/local/bin/gpu-run trae %F"
+          }
+        ]
+      }
+    ]
+  }
 }

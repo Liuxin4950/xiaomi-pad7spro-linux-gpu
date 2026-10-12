@@ -34,7 +34,7 @@ gpu-run doctor
 gpu-run info GPU_PID
 ```
 
-查当前实际进程，不抄历史 PID。doctor / 命令行参数只证明前置配置；renderer、Skia 后端和已显示窗口才是运行证据。源码修改不自动更新安装前缀；manifest / 入口 / 文档需同步。RUNPATH 固定，不能随意重命名前缀。
+查当前实际进程，不抄历史 PID。doctor / 命令行参数只证明前置配置；renderer、Skia 后端和已显示窗口才是运行证据。源码修改不自动更新安装前缀；manifest / 入口 / 文档需同步。 更新启动器时必须保留可执行权限（安装目标 gpu-run 为 0755），并执行 `test -x /usr/local/bin/gpu-run` 和真实菜单可见性核对；文件内容哈希、desktop-file-validate 和 stub 检查不能代替这项检查。RUNPATH 固定，不能随意重命名前缀。
 
 现在已安装 gpu-direct APK（详细版本/哈希在 CURRENT-STATE），新 X server 已映射其原生代码，当前 ChatGPT 已完整重开并加载新参数与 WSI/Mali。最终核对快照见 entrypoints 证据；快照 PID 不能照抄用于以后的诊断。以后升级仍需区分文件更新与已运行进程；再次点已有单实例只复用它。正常停止桌面会结束 chroot 应用，先保存工作，不直接全局 pkill。
 

@@ -5,6 +5,7 @@
 - 默认入口：`/usr/local/bin/gpu-run`、`gpu-launcher` → `/opt/pad7spro-gpu-observe-20261012/bin/`。版本读该前缀 `release.json`，文件校验读 `install-manifest.json`。目录名 observe 是构建时确定的路径，不表示正在逐帧诊断，不能改名破坏 RUNPATH。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
 - 原生分辨率；默认 `X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60`、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝或静止内容去重的承诺。
+- 入口同步后的权限回归已修复：gpu-run 为 0755，真实开发菜单恢复 CC Switch / ChatGPT / Trae，互联网恢复 Chromium。源码也记录可执行位，后续同步必须检查 `test -x`；仅哈希一致不够。
 - 图标、菜单、URL、XFCE 浏览器 helper、CLI `chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch`、旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 会话入口。旧普通桌面默认 llvmpipe 的分支已撤掉；命令行/TUI 与 MySQL 不属于图形渲染任务。
 - 当前 APK：`1.03.01-d55f1b7-gpu-direct-12.10.26`；SHA-256 `c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`；同证书，上游 d55f1b7 + popup/原生批处理/输入接口修正。新 X server 已重开并映射该 APK 的原生代码，启动请求为 60 fps。最终核对没有重新测量屏幕扫描帧率。
