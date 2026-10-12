@@ -4,6 +4,8 @@
 
 **状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
 
+2026-10-12 完成了[隔离 r3 效率审查](docs/r3-efficiency-audit.md)：减少 WSI 指令重录与空闲唤醒，实测发现系统异常上传循环；整体帧时间/功耗收益尚未达标，默认仍保留 r2。
+
 ## 日常使用
 
 1. 在 Android 的 Termux:Widget 中点 `debian-zink`，它调用 `~/mali-work/desktop-zink.sh`。

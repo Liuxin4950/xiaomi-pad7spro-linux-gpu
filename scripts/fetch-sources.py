@@ -3,8 +3,10 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
+import tempfile
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,11 +36,19 @@ def main():
         if not created and git(checkout, "status", "--porcelain").strip():
             raise RuntimeError("Source cache has local changes; use another --directory: " + str(checkout))
         git(checkout, "checkout", "--detach", item["commit"])
-        for entry in item.get("patches", []):
-            patch = ROOT / entry["path"]
-            if hashlib.sha256(patch.read_bytes()).hexdigest() != entry["sha256"]:
-                raise RuntimeError("Patch checksum mismatch: " + str(patch))
-            git(checkout, "apply", "--check", str(patch.resolve()))
+        # Validate dependent patches in order without changing the source cache.
+        with tempfile.TemporaryDirectory(prefix="gpu-patch-check-") as temporary:
+            environment = dict(os.environ, GIT_INDEX_FILE=str(Path(temporary) / "index"))
+            def index_git(*arguments):
+                subprocess.run(["git", "-C", str(checkout), *arguments],
+                               env=environment, check=True)
+            index_git("read-tree", item["commit"])
+            for entry in item.get("patches", []):
+                patch = ROOT / entry["path"]
+                if hashlib.sha256(patch.read_bytes()).hexdigest() != entry["sha256"]:
+                    raise RuntimeError("Patch checksum mismatch: " + str(patch))
+                index_git("apply", "--cached", "--check", str(patch.resolve()))
+                index_git("apply", "--cached", str(patch.resolve()))
         print(item["name"] + ": " + item["commit"] + " verified", flush=True)
     for item in lock["artifacts"]:
         path = destination / item["name"]

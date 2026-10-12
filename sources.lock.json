@@ -26,6 +26,10 @@
         {
           "path": "patches/wsi/0001-pad7spro-bridge.patch",
           "sha256": "0436ebe8f8571b86c52cb7a7add62a416da200a1b64bb25ba1bc7b99664d0355"
+        },
+        {
+          "path": "patches/wsi/0002-r3-efficiency.patch",
+          "sha256": "6da3711c1086e581dbb115a2d8c0e39099244bd6f36d9e40a024606741158e30"
         }
       ]
     },

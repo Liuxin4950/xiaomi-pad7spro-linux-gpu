@@ -1,0 +1,334 @@
+diff --git a/util/timed_semaphore.cpp b/util/timed_semaphore.cpp
+index 48da4a6..47b2654 100644
+--- a/util/timed_semaphore.cpp
++++ b/util/timed_semaphore.cpp
+@@ -97,44 +97,43 @@ VkResult timed_semaphore::wait(uint64_t timeout)
+    res = pthread_mutex_lock(&m_mutex);
+    assert(res == 0); /* only fails with programming error (EINVAL) */
+ 
+-   if (m_count == 0)
++   // Compute the deadline once: a spurious wake must neither consume a token
++   // nor restart a finite timeout. Infinite waits are explicitly cancellable
++   // by posting a token at the owning worker's teardown.
++   struct timespec end{};
++   if (timeout != 0 && timeout != UINT64_MAX)
+    {
+-      switch (timeout)
++      res = clock_gettime(CLOCK_MONOTONIC, &end);
++      assert(res == 0);
++      end.tv_sec += static_cast<time_t>(timeout / UINT64_C(1000000000));
++      end.tv_nsec += static_cast<long>(timeout % UINT64_C(1000000000));
++      if (end.tv_nsec >= 1000000000)
++      {
++         ++end.tv_sec;
++         end.tv_nsec -= 1000000000;
++      }
++   }
++   while (m_count == 0)
++   {
++      if (timeout == 0)
+       {
+-      case 0:
+          retval = VK_NOT_READY;
+          break;
+-      case UINT64_MAX:
++      }
++      if (timeout == UINT64_MAX)
+          res = pthread_cond_wait(&m_cond, &m_mutex);
+-         assert(res == 0); /* only fails with programming error (EINVAL) */
+-
+-         break;
+-      default:
+-         struct timespec diff = { /* narrowing casts */
+-                                  static_cast<time_t>(timeout / (1000 * 1000 * 1000)),
+-                                  static_cast<long>(timeout % (1000 * 1000 * 1000))
+-         };
+-
+-         struct timespec now = {};
+-         res = clock_gettime(CLOCK_MONOTONIC, &now);
+-         assert(res == 0); /* only fails with programming error (EINVAL, EFAULT, EPERM) */
+-
+-         /* add diff to now, handling overflow */
+-         struct timespec end = { now.tv_sec + diff.tv_sec, now.tv_nsec + diff.tv_nsec };
+-
+-         if (end.tv_nsec >= 1000 * 1000 * 1000)
+-         {
+-            end.tv_nsec -= 1000 * 1000 * 1000;
+-            end.tv_sec++;
+-         }
+-
++      else
+          res = pthread_cond_timedwait(&m_cond, &m_mutex, &end);
+-         /* only fails with programming error, other than timeout */
+-         assert(res == 0 || res == ETIMEDOUT);
+-         if (res != 0)
+-         {
+-            retval = VK_TIMEOUT;
+-         }
++      if (res == ETIMEDOUT)
++      {
++         retval = VK_TIMEOUT;
++         break;
++      }
++      assert(res == 0);
++      if (res != 0)
++      {
++         retval = VK_ERROR_INITIALIZATION_FAILED;
++         break;
+       }
+    }
+    if (retval == VK_SUCCESS)
+diff --git a/wsi/swapchain_base.cpp b/wsi/swapchain_base.cpp
+index f82765f..4110b46 100644
+--- a/wsi/swapchain_base.cpp
++++ b/wsi/swapchain_base.cpp
+@@ -54,7 +54,7 @@ void swapchain_base::page_flip_thread()
+    auto &sc_images = m_swapchain_images;
+    VkResult vk_res = VK_SUCCESS;
+    uint64_t timeout = UINT64_MAX;
+-   constexpr uint64_t SEMAPHORE_TIMEOUT = 250000000; /* 250 ms. */
++   constexpr uint64_t SEMAPHORE_TIMEOUT = UINT64_MAX; /* Explicitly woken during teardown. */
+ 
+    /* The destructor can stop this worker while it waits for a semaphore. */
+    while (m_page_flip_thread_run)
+@@ -73,7 +73,13 @@ void swapchain_base::page_flip_thread()
+             /* Image is not ready yet. */
+             continue;
+          }
+-         assert(vk_res == VK_SUCCESS);
++         if (!m_page_flip_thread_run)
++            break;
++         if (vk_res != VK_SUCCESS)
++         {
++            set_error_state(vk_res);
++            break;
++         }
+ 
+          /* For continuous mode there will be only one image in the swapchain.
+           * This image will always be used, and there is no pending state in this case. */
+@@ -89,6 +95,14 @@ void swapchain_base::page_flip_thread()
+             continue;
+          }
+ 
++         if (!m_page_flip_thread_run)
++            break;
++         if (vk_res != VK_SUCCESS)
++         {
++            set_error_state(vk_res);
++            break;
++         }
++
+          /* We want to present the oldest queued for present image from our present queue,
+           * which we can find at the sc->pending_buffer_pool.head index. */
+          std::unique_lock<std::recursive_mutex> image_status_lock(m_image_status_mutex);
+@@ -436,6 +450,7 @@ void swapchain_base::teardown()
+    {
+       /* Tell flip thread to end. */
+       m_page_flip_thread_run = false;
++      m_page_flip_semaphore.post();
+ 
+       if (m_page_flip_thread.joinable())
+       {
+diff --git a/wsi/x11/diagnostics.hpp b/wsi/x11/diagnostics.hpp
+new file mode 100644
+index 0000000..2ba0553
+--- /dev/null
++++ b/wsi/x11/diagnostics.hpp
+@@ -0,0 +1,59 @@
++// SPDX-License-Identifier: MIT
++#pragma once
++#include <algorithm>
++#include <array>
++#include <chrono>
++#include <cstdint>
++#include <cstdio>
++#include <memory>
++
++namespace wsi { namespace x11 {
++// Opt-in bounded host timestamps. No per-frame logging or heap allocation.
++// Each metric has one writer; report only after the workers have joined.
++struct diagnostic_metric
++{
++   std::array<uint64_t, 1024> samples{};
++   uint64_t count{0}, total{0}, maximum{0};
++   void add(uint64_t ns)
++   {
++      samples[count++ % samples.size()] = ns;
++      total += ns;
++      maximum = std::max(maximum, ns);
++   }
++   void report(uint32_t window, const char *name) const
++   {
++      if (!count) return;
++      auto sorted = samples;
++      const size_t n = std::min<uint64_t>(count, samples.size());
++      std::sort(sorted.begin(), sorted.begin() + n);
++      std::fprintf(stderr, "PAD_WSI metric=%s window=%u count=%llu samples=%zu mean_us=%.3f max_us=%.3f p50_us=%.3f p95_us=%.3f p99_us=%.3f\n",
++         name, window, static_cast<unsigned long long>(count), n,
++         static_cast<double>(total) / count / 1000., maximum / 1000.,
++         sorted[(n-1)*50/100] / 1000., sorted[(n-1)*95/100] / 1000., sorted[(n-1)*99/100] / 1000.);
++   }
++};
++struct diagnostics
++{
++   diagnostic_metric host_payload, gpu_ready_wait, present_interval;
++   uint64_t recordings{0}, copies{0}, last_present{0};
++   static uint64_t now()
++   {
++      return std::chrono::duration_cast<std::chrono::nanoseconds>(
++         std::chrono::steady_clock::now().time_since_epoch()).count();
++   }
++   void present()
++   {
++      const auto current = now();
++      if (last_present) present_interval.add(current - last_present);
++      last_present = current;
++   }
++   void report(uint32_t window, bool reuse) const
++   {
++      std::fprintf(stderr, "PAD_WSI window=%u reuse=%u recordings=%llu copies=%llu\n", window, reuse,
++         static_cast<unsigned long long>(recordings), static_cast<unsigned long long>(copies));
++      host_payload.report(window, "host_payload");
++      gpu_ready_wait.report(window, "gpu_ready_wait");
++      present_interval.report(window, "x11_submit_interval");
++   }
++};
++} }
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 87a68b1..9d4008b 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -80,6 +80,7 @@ struct x11_image_data
+    VkCommandPool conversion_pool{};
+    VkCommandBuffer conversion_command{};
+    bool presentation_initialized{ false };
++   bool conversion_reusable{ false };
+    VkSubresourceLayout layout;
+ 
+    fence_sync present_fence;
+@@ -102,6 +103,11 @@ swapchain::swapchain(layer::device_private_data &dev_data, const VkAllocationCal
+    , m_thread_status_lock()
+    , m_thread_status_cond()
+ {
++   const char *reuse = std::getenv("PAD_GPU_WSI_REUSE_COMMANDS");
++   m_reuse_conversion = !reuse || std::strcmp(reuse, "0") != 0;
++   const char *trace = std::getenv("PAD_GPU_WSI_TRACE");
++   if (trace && std::strcmp(trace, "1") == 0)
++      m_diagnostics.reset(new (std::nothrow) diagnostics);
+    if (const char *limit = std::getenv("PAD_GPU_MAX_FPS"))
+    {
+       char *end = nullptr;
+@@ -136,6 +142,8 @@ swapchain::~swapchain()
+       close(m_event_thread_wakeup_fd);
+ 
+    teardown();
++   if (m_diagnostics)
++      m_diagnostics->report(m_window, m_reuse_conversion);
+ }
+ 
+ static uint32_t get_memory_type(const VkPhysicalDeviceMemoryProperties2 &memory_props,
+@@ -492,6 +500,8 @@ void swapchain::present_image(const pending_present_request &pending_present)
+          std::chrono::nanoseconds(UINT64_C(1000000000) / m_max_present_fps);
+    }
+ 
++   if (m_diagnostics)
++      m_diagnostics->present();
+    m_send_sbc++;
+    uint32_t serial = (uint32_t)m_send_sbc;
+    uint32_t options = XCB_PRESENT_OPTION_NONE;
+@@ -649,11 +659,15 @@ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &da
+    VkResult result = data.present_fence.wait_payload(UINT64_MAX);
+    if (result != VK_SUCCESS)
+       return result;
++   // Only reuse after the previous producer/copy fence and X11 Idle/acquire
++   // rules have made this image safe. Never remove either lifetime boundary.
++   if (m_reuse_conversion && data.conversion_reusable)
++      return VK_SUCCESS;
+    result = m_device_data.disp.ResetCommandBuffer(data.conversion_command, 0);
+    if (result != VK_SUCCESS)
+       return result;
+    VkCommandBufferBeginInfo begin{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, nullptr,
+-                                   VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr };
++                                   m_reuse_conversion ? 0u : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, nullptr };
+    result = m_device_data.disp.BeginCommandBuffer(data.conversion_command, &begin);
+    if (result != VK_SUCCESS)
+       return result;
+@@ -698,30 +712,52 @@ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &da
+    };
+    m_device_data.disp.CmdPipelineBarrier(data.conversion_command, VK_PIPELINE_STAGE_TRANSFER_BIT,
+       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 2, after);
+-   return m_device_data.disp.EndCommandBuffer(data.conversion_command);
++   result = m_device_data.disp.EndCommandBuffer(data.conversion_command);
++   if (result == VK_SUCCESS)
++   {
++      // First submission acquires an UNDEFINED image; subsequent submissions
++      // use GENERAL plus FOREIGN ownership. Cache only the latter command.
++      data.conversion_reusable = data.presentation_initialized;
++      if (m_diagnostics)
++         ++m_diagnostics->recordings;
++   }
++   return result;
+ }
+ 
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+                                               const queue_submit_semaphores &semaphores, const void *submission_pnext)
+ {
+    auto data = reinterpret_cast<x11_image_data *>(image.data);
++   const auto started = m_diagnostics ? diagnostics::now() : 0;
++   VkResult result;
+    if (data->conversion_command != VK_NULL_HANDLE)
+    {
+-      VkResult result = record_conversion(image, *data);
++      result = record_conversion(image, *data);
+       if (result != VK_SUCCESS)
+          return result;
+       result = data->present_fence.set_payload(queue, semaphores, submission_pnext, data->conversion_command);
+       if (result == VK_SUCCESS)
++      {
+          data->presentation_initialized = true;
+-      return result;
++         if (m_diagnostics)
++            ++m_diagnostics->copies;
++      }
+    }
+-   return data->present_fence.set_payload(queue, semaphores, submission_pnext);
++   else
++      result = data->present_fence.set_payload(queue, semaphores, submission_pnext);
++   if (m_diagnostics)
++      m_diagnostics->host_payload.add(diagnostics::now() - started);
++   return result;
+ }
+ 
+ VkResult swapchain::image_wait_present(swapchain_image &image, uint64_t timeout)
+ {
+    auto data = reinterpret_cast<x11_image_data *>(image.data);
+-   return data->present_fence.wait_payload(timeout);
++   const auto started = m_diagnostics ? diagnostics::now() : 0;
++   const auto result = data->present_fence.wait_payload(timeout);
++   if (m_diagnostics)
++      m_diagnostics->gpu_ready_wait.add(diagnostics::now() - started);
++   return result;
+ }
+ 
+ VkResult swapchain::bind_swapchain_image(VkDevice &device, const VkBindImageMemoryInfo *bind_image_mem_info,
+diff --git a/wsi/x11/swapchain.hpp b/wsi/x11/swapchain.hpp
+index 8387313..37d2e7e 100644
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -31,6 +31,7 @@
+ #pragma once
+ 
+ #include "surface.hpp"
++#include "diagnostics.hpp"
+ #include <android/hardware_buffer.h>
+ #include <condition_variable>
+ #include <chrono>
+@@ -165,6 +166,8 @@ private:
+    uint64_t m_send_sbc;
+    uint64_t m_target_msc;
+    uint64_t m_last_present_msc;
++   bool m_reuse_conversion{ true };
++   std::unique_ptr<diagnostics> m_diagnostics;
+    uint32_t m_max_present_fps{ 0 };
+    std::chrono::steady_clock::time_point m_next_present{};
+ 

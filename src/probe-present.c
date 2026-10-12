@@ -8,19 +8,46 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <signal.h>
+
+static volatile sig_atomic_t stop_requested;
+static void request_stop(int signal_number)
+{
+    (void)signal_number;
+    stop_requested = 1;
+}
 
 static unsigned number(const char *text)
 {
     char *end;
     unsigned long n = strtoul(text, &end, 10);
-    if (!*text || *end || !n || n > 10000) return 0;
+    if (!*text || *end || !n || n > 100000) return 0;
     return (unsigned)n;
+}
+
+static uint64_t now_ns(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * UINT64_C(1000000000) + ts.tv_nsec;
+}
+
+static void pause_ms(unsigned ms)
+{
+    struct timespec pause = {.tv_sec = ms / 1000, .tv_nsec = (ms % 1000) * 1000000L};
+    while (nanosleep(&pause, &pause) && errno == EINTR && !stop_requested) {}
 }
 
 int main(int argc, char **argv)
 {
     unsigned cycles = 20, frames = 3;
-    int replace = 0, bgra = 0, solid_red = 0;
+    unsigned width = 256, height = 192, delay_ms = 20, idle_ms = 0;
+    const char *timings_path = NULL;
+    FILE *timings = NULL;
+    int replace = 0, bgra = 0, solid_red = 0, resize = 0;
     VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--cycles") && i + 1 < argc) cycles = number(argv[++i]);
@@ -29,9 +56,34 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--replace")) replace = 1;
         else if (!strcmp(argv[i], "--bgra")) bgra = 1;
         else if (!strcmp(argv[i], "--solid-red")) solid_red = 1;
-        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red]\n", argv[0]); return 64; }
+        else if (!strcmp(argv[i], "--resize")) resize = 1;
+        else if (!strcmp(argv[i], "--width") && i + 1 < argc) width = number(argv[++i]);
+        else if (!strcmp(argv[i], "--height") && i + 1 < argc) height = number(argv[++i]);
+        else if (!strcmp(argv[i], "--delay-ms") && i + 1 < argc) {
+            const char *value = argv[++i];
+            delay_ms = !strcmp(value, "0") ? 0 : number(value);
+            if (!delay_ms && strcmp(value, "0")) return 64;
+        }
+        else if (!strcmp(argv[i], "--idle-ms") && i + 1 < argc) {
+            const char *value = argv[++i];
+            idle_ms = !strcmp(value, "0") ? 0 : number(value);
+            if (!idle_ms && strcmp(value, "0")) return 64;
+        }
+        else if (!strcmp(argv[i], "--timings") && i + 1 < argc) timings_path = argv[++i];
+        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV]\n", argv[0]); return 64; }
     }
-    if (!cycles || !frames) return 64;
+    if (!cycles || !frames || !width || !height || width > 10000 || height > 10000 || delay_ms > 10000 ||
+        (resize && (width < 32 || height < 32))) return 64;
+    signal(SIGINT, request_stop);
+    signal(SIGTERM, request_stop);
+    if (timings_path) {
+        int fd = open(timings_path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        if (fd < 0 || !(timings = fdopen(fd, "w"))) {
+            if (fd >= 0) close(fd);
+            perror("timings"); return 73;
+        }
+        fputs("cycle,frame,start_ns,acquire_us,queue_present_us,host_frame_us\n", timings);
+    }
     int exit_status = 1;
     VkResult status = VK_SUCCESS;
     VkInstance instance = VK_NULL_HANDLE;
@@ -54,7 +106,7 @@ int main(int argc, char **argv)
     window = xcb_generate_id(connection);
     uint32_t values[] = {screen->black_pixel, XCB_EVENT_MASK_STRUCTURE_NOTIFY};
     xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root,
-                      24, 120, 256, 192, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+                      24, 120, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
                       XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, values);
     const char title[] = "GPU bridge validation";
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME,
@@ -123,7 +175,23 @@ int main(int argc, char **argv)
     CHECK(vkCreateSemaphore(device, &semaphore_create, NULL, &acquired));
     VkFenceCreateInfo fence_create = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     CHECK(vkCreateFence(device, &fence_create, NULL, &fence));
-    for (unsigned cycle = 0; cycle < cycles; ++cycle) {
+    for (unsigned cycle = 0; cycle < cycles && !stop_requested; ++cycle) {
+        if (resize) {
+            uint32_t size[] = {width - ((cycle & 1) ? 16 : 0), height - ((cycle & 1) ? 16 : 0)};
+            xcb_generic_error_t *error = xcb_request_check(connection,
+                xcb_configure_window_checked(connection, window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, size));
+            if (error) { free(error); goto done; }
+            int resized = 0;
+            for (unsigned attempt = 0; attempt < 50 && !stop_requested; ++attempt) {
+                xcb_get_geometry_reply_t *geometry = xcb_get_geometry_reply(connection,
+                    xcb_get_geometry(connection, window), NULL);
+                if (geometry) resized = geometry->width == size[0] && geometry->height == size[1];
+                free(geometry);
+                if (resized) break;
+                pause_ms(10);
+            }
+            if (!resized) { fprintf(stderr, "test window resize was not applied\n"); goto done; }
+        }
         VkSurfaceCapabilitiesKHR caps;
         CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &caps));
         CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &count, NULL));
@@ -138,7 +206,7 @@ int main(int argc, char **argv)
             }
         if (!format_found && bgra) { fprintf(stderr, "requested BGRA surface format unavailable\n"); goto done; }
         VkExtent2D extent = caps.currentExtent;
-        if (extent.width == UINT32_MAX) extent = (VkExtent2D){256, 192};
+        if (extent.width == UINT32_MAX) extent = (VkExtent2D){width, height};
         if (!(caps.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) goto done;
         VkSwapchainCreateInfoKHR create = {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = surface, .minImageCount = caps.minImageCount, .imageFormat = format.format,
@@ -163,10 +231,13 @@ int main(int argc, char **argv)
         CHECK(vkGetSwapchainImagesKHR(device, swapchain, &image_count, images));
         for (unsigned i = 0; i < image_count; ++i)
             CHECK(vkCreateSemaphore(device, &semaphore_create, NULL, &rendered[i]));
-        for (unsigned frame = 0; frame < frames; ++frame) {
+        unsigned completed_frames = 0;
+        for (unsigned frame = 0; frame < frames && !stop_requested; ++frame) {
+            const uint64_t started = now_ns();
             uint32_t index;
             status = vkAcquireNextImageKHR(device, swapchain, UINT64_C(5000000000), acquired, VK_NULL_HANDLE, &index);
             if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) goto done;
+            const uint64_t acquired_at = now_ns();
             CHECK(vkResetCommandBuffer(command, 0));
             VkCommandBufferBeginInfo begin = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
             CHECK(vkBeginCommandBuffer(command, &begin));
@@ -197,14 +268,20 @@ int main(int argc, char **argv)
             VkPresentInfoKHR present = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1, .pWaitSemaphores = &rendered[index],
                 .swapchainCount = 1, .pSwapchains = &swapchain, .pImageIndices = &index};
+            const uint64_t present_started = now_ns();
             status = vkQueuePresentKHR(queue, &present);
             if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) goto done;
+            const uint64_t presented_at = now_ns();
             CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
             CHECK(vkResetFences(device, 1, &fence));
             /* Bounded low load; this tool is for correctness, not peak FPS. */
-            struct timespec pause = {.tv_nsec = 20000000};
-            nanosleep(&pause, NULL);
+            if (timings) fprintf(timings, "%u,%u,%llu,%.3f,%.3f,%.3f\n", cycle, frame,
+                (unsigned long long)started, (acquired_at - started) / 1000.,
+                (presented_at - present_started) / 1000., (now_ns() - started) / 1000.);
+            ++completed_frames;
+            pause_ms(delay_ms);
         }
+        pause_ms(idle_ms);
         CHECK(vkDeviceWaitIdle(device));
         if (replace && cycle + 1 < cycles) {
             old_swapchain = swapchain;
@@ -219,11 +296,11 @@ int main(int argc, char **argv)
             free(rendered); rendered = NULL;
             free(images); images = NULL;
         }
-        printf("cycle=%u/%u frames=%u mode=%s images=%u format=%u replace=%d\n", cycle + 1, cycles, frames,
-               mode == VK_PRESENT_MODE_FIFO_KHR ? "fifo" : "mailbox", image_count, format.format, replace);
+        printf("cycle=%u/%u frames=%u mode=%s images=%u format=%u replace=%d extent=%ux%u\n", cycle + 1, cycles, completed_frames,
+               mode == VK_PRESENT_MODE_FIFO_KHR ? "fifo" : "mailbox", image_count, format.format, replace, extent.width, extent.height);
         fflush(stdout);
     }
-    puts("VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK");
+    puts(stop_requested ? "VULKAN_PRESENT_STOPPED_CLEANLY" : "VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK");
     exit_status = 0;
 done:
     if (exit_status) fprintf(stderr, "Presentation regression failed: %d\n", status);
@@ -244,5 +321,6 @@ done:
     if (instance) vkDestroyInstance(instance, NULL);
     if (window) { xcb_destroy_window(connection, window); xcb_flush(connection); }
     if (connection) xcb_disconnect(connection);
+    if (timings) fclose(timings);
     return exit_status;
 }

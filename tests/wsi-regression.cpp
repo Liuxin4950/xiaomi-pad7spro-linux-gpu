@@ -26,6 +26,11 @@ std::set<VkImage> live_images;
 unsigned image_creates, image_destroys, allocations, frees;
 unsigned pools_created, pools_destroyed, blits_recorded, conversion_submits;
 std::map<VkImage, VkFormat> image_formats;
+std::map<VkCommandBuffer, VkCommandBufferUsageFlags> command_flags;
+std::map<VkCommandBuffer, VkImageLayout> command_initial_layout;
+std::map<VkCommandBuffer, VkImage> command_destination;
+std::set<VkCommandBuffer> submitted_commands;
+std::set<VkImage> initialized_presentation_images;
 bool fail_command_allocation;
 void *instance_key = reinterpret_cast<void *>(0x1234);
 VkInstance instance_handle = reinterpret_cast<VkInstance>(&instance_key);
@@ -115,13 +120,29 @@ VKAPI_ATTR VkResult VKAPI_CALL allocate_commands(VkDevice, const VkCommandBuffer
 { if (fail_command_allocation) return VK_ERROR_OUT_OF_HOST_MEMORY;
   *command = handle<VkCommandBuffer>(); return VK_SUCCESS; }
 VKAPI_ATTR VkResult VKAPI_CALL reset_command(VkCommandBuffer, VkCommandBufferResetFlags) { return VK_SUCCESS; }
-VKAPI_ATTR VkResult VKAPI_CALL begin_command(VkCommandBuffer, const VkCommandBufferBeginInfo *) { return VK_SUCCESS; }
+VKAPI_ATTR VkResult VKAPI_CALL begin_command(VkCommandBuffer command, const VkCommandBufferBeginInfo *info)
+{
+   command_flags[command] = info->flags;
+   submitted_commands.erase(command);
+   return VK_SUCCESS;
+}
 VKAPI_ATTR VkResult VKAPI_CALL end_command(VkCommandBuffer) { return VK_SUCCESS; }
-VKAPI_ATTR void VKAPI_CALL pipeline_barrier(VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags,
+VKAPI_ATTR void VKAPI_CALL pipeline_barrier(VkCommandBuffer command, VkPipelineStageFlags, VkPipelineStageFlags,
    VkDependencyFlags, uint32_t, const VkMemoryBarrier *, uint32_t, const VkBufferMemoryBarrier *,
    uint32_t count, const VkImageMemoryBarrier *barriers)
-{ require(count == 2 && image_formats[barriers[0].image] == VK_FORMAT_B8G8R8A8_UNORM &&
-          image_formats[barriers[1].image] == VK_FORMAT_R8G8B8A8_UNORM, "conversion barriers target wrong images"); }
+{
+   require(count == 2 && image_formats[barriers[0].image] == VK_FORMAT_B8G8R8A8_UNORM &&
+           image_formats[barriers[1].image] == VK_FORMAT_R8G8B8A8_UNORM, "conversion barriers target wrong images");
+   if (barriers[0].oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+      command_initial_layout[command] = barriers[1].oldLayout;
+      command_destination[command] = barriers[1].image;
+      require((barriers[1].oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+               barriers[1].srcQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED) ||
+              (barriers[1].oldLayout == VK_IMAGE_LAYOUT_GENERAL &&
+               barriers[1].srcQueueFamilyIndex == VK_QUEUE_FAMILY_FOREIGN_EXT &&
+               barriers[1].dstQueueFamilyIndex == 0), "cached command lost AHB ownership acquisition");
+   }
+}
 VKAPI_ATTR void VKAPI_CALL blit_image(VkCommandBuffer, VkImage source, VkImageLayout source_layout,
    VkImage destination, VkImageLayout destination_layout, uint32_t count, const VkImageBlit *, VkFilter filter)
 { require(image_formats[source] == VK_FORMAT_B8G8R8A8_UNORM && image_formats[destination] == VK_FORMAT_R8G8B8A8_UNORM &&
@@ -149,6 +170,14 @@ VKAPI_ATTR VkResult VKAPI_CALL queue_submit(VkQueue, uint32_t count, const VkSub
    if (info->commandBufferCount)
    {
       require(info->commandBufferCount == 1 && info->pCommandBuffers, "conversion command not submitted");
+      const auto command = info->pCommandBuffers[0];
+      require(!submitted_commands.count(command) || !(command_flags[command] & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
+              "one-time command was submitted again without recording");
+      const auto image = command_destination[command];
+      require(command_initial_layout[command] == (initialized_presentation_images.count(image) ?
+              VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED), "cached command used the wrong initial AHB layout");
+      submitted_commands.insert(command);
+      initialized_presentation_images.insert(image);
       for (uint32_t i = 0; i < info->waitSemaphoreCount; ++i)
          require(info->pWaitDstStageMask[i] == VK_PIPELINE_STAGE_TRANSFER_BIT, "blit did not wait for client rendering");
       ++conversion_submits;
@@ -280,6 +309,30 @@ int main()
       xcb_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
       require(xcb_fd >= 0, "mock XCB fd");
       fixture f;
+      // A spurious condition notification must not consume a semaphore token.
+      {
+         util::timed_semaphore semaphore;
+         require(semaphore.init(0) == VK_SUCCESS, "semaphore init");
+         auto waiter = std::async(std::launch::async, [&] { return semaphore.wait(UINT64_MAX); });
+         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+         pthread_mutex_lock(&semaphore.m_mutex);
+         pthread_cond_broadcast(&semaphore.m_cond);
+         pthread_mutex_unlock(&semaphore.m_mutex);
+         require(waiter.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout,
+                 "spurious wake consumed a token");
+         semaphore.post();
+         require(waiter.get() == VK_SUCCESS && semaphore.wait(0) == VK_NOT_READY,
+                 "semaphore token accounting changed");
+      }
+      // Shutdown must wake an idle FIFO worker, without a periodic timeout.
+      {
+         auto chain = f.create(false, VK_PRESENT_MODE_FIFO_KHR);
+         std::this_thread::sleep_for(std::chrono::milliseconds(20));
+         auto started = std::chrono::steady_clock::now();
+         chain.reset();
+         require(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(100),
+                 "idle FIFO shutdown did not explicitly wake the worker");
+      }
       // The advertised format must agree with every image actually created.
       uint32_t format_count = 0;
       require(f.surface.get_properties().get_surface_formats(physical_handle, &format_count, nullptr, nullptr) == VK_SUCCESS &&
@@ -291,8 +344,10 @@ int main()
               "surface format declaration mismatch");
       require(formats[0].format == VK_FORMAT_R8G8B8A8_UNORM, "RGBA direct path is not preferred");
       {
+         const unsigned before_images = image_creates, before_allocations = allocations;
          auto chain = f.create(false);
-         require(image_creates == 4 && allocations == 4, "eager allocation replaced an image");
+         require(image_creates == before_images + 4 && allocations == before_allocations + 4,
+                 "eager allocation replaced an image");
       }
       require(live_images.empty() && image_creates == image_destroys && allocations == frees, "eager image leak");
       {
@@ -444,8 +499,12 @@ int main()
          const unsigned before_blits = blits_recorded, before_submits = conversion_submits;
          require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "BGRA present failed");
          require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "BGRA repeat present failed");
-         require(blits_recorded == before_blits + 2 && conversion_submits == before_submits + 2,
-                 "BGRA conversion was not part of the fenced submission");
+         for (unsigned i = 0; i < 8; ++i)
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "BGRA cached present failed");
+         const char *reuse = std::getenv("PAD_GPU_WSI_REUSE_COMMANDS");
+         const unsigned expected_recordings = reuse && !strcmp(reuse, "0") ? 10 : 2;
+         require(blits_recorded == before_blits + expected_recordings && conversion_submits == before_submits + 10,
+                 "BGRA caching changed copy submissions or re-recorded steady commands");
       }
       {
          auto chain = f.create(true, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);

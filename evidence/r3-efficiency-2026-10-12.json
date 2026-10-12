@@ -1,0 +1,889 @@
+{
+  "date": "2026-10-12",
+  "branch": "codex/r3-wsi-efficiency",
+  "base_commit": "cfba540",
+  "default_prefix": "/opt/pad7spro-gpu-dev-20261007-r2",
+  "candidate_prefix": "/opt/pad7spro-gpu-dev-20261012-r3",
+  "promoted": false,
+  "environment": {
+    "kernel": "6.6.77-android15-8",
+    "execution": "Debian arm64 root chroot",
+    "x11_size": [
+      3200,
+      2054
+    ],
+    "x11_requested_fps": 60,
+    "application_fps_cap": 60,
+    "xfwm_compositing": false,
+    "application_cpu_set": "0-9",
+    "x11_key_thread_cpu_set": "5-7",
+    "display_server_unchanged": true
+  },
+  "system_baseline": {
+    "perfetto_duration_s": 10.004226,
+    "daemon_cpu_s": 10.668,
+    "daemon_upload_thread_cpu_s": 8.682079,
+    "daemon_gc_thread_cpu_s": 1.815005,
+    "analytics_cpu_s": 2.766,
+    "logd_cpu_s": 2.601,
+    "daemon_exception_rate": {
+      "pid": 6911,
+      "exception": "String.contains on null in ExceptionUploader",
+      "events": 133,
+      "window_s": 1.14,
+      "events_per_second": 115.78947368421053
+    },
+    "system_services_modified": false,
+    "target_frametimeline_available": false,
+    "perfetto_error_stats": []
+  },
+  "benchmarks": {
+    "small-fifo": {
+      "raw_runs": [
+        {
+          "variant": "r2",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.267969953001739,
+          "cpu_s": 0.706404,
+          "voluntary_switches": 4328,
+          "involuntary_switches": 570,
+          "host_frame_interval_ms": {
+            "p50": 17.136563,
+            "p95": 44.941875,
+            "p99": 72.925443
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.7274738070009334,
+          "cpu_s": 0.7566609999999998,
+          "voluntary_switches": 4363,
+          "involuntary_switches": 454,
+          "host_frame_interval_ms": {
+            "p50": 16.820078,
+            "p95": 31.070338,
+            "p99": 48.327552
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.322307374000957,
+          "cpu_s": 0.7439840000000002,
+          "voluntary_switches": 4250,
+          "involuntary_switches": 493,
+          "host_frame_interval_ms": {
+            "p50": 16.70362,
+            "p95": 24.101016,
+            "p99": 35.032448
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.418825395001477,
+          "cpu_s": 0.7835410000000003,
+          "voluntary_switches": 4208,
+          "involuntary_switches": 590,
+          "host_frame_interval_ms": {
+            "p50": 16.695234,
+            "p95": 26.760469,
+            "p99": 43.714063
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.895044197000971,
+          "cpu_s": 0.7546009999999999,
+          "voluntary_switches": 4239,
+          "involuntary_switches": 591,
+          "host_frame_interval_ms": {
+            "p50": 16.889713,
+            "p95": 38.361771,
+            "p99": 53.425078
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.897483546999865,
+          "cpu_s": 0.7660580000000001,
+          "voluntary_switches": 4247,
+          "involuntary_switches": 550,
+          "host_frame_interval_ms": {
+            "p50": 19.470235,
+            "p95": 48.416537,
+            "p99": 56.488489
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.939405421999254,
+          "cpu_s": 0.7744650000000002,
+          "voluntary_switches": 4236,
+          "involuntary_switches": 596,
+          "host_frame_interval_ms": {
+            "p50": 19.359844,
+            "p95": 43.999063,
+            "p99": 52.986693
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.685337635000906,
+          "cpu_s": 0.7940139999999998,
+          "voluntary_switches": 4239,
+          "involuntary_switches": 567,
+          "host_frame_interval_ms": {
+            "p50": 19.813568,
+            "p95": 43.843256,
+            "p99": 51.504219
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.793560786998569,
+          "cpu_s": 0.7961020000000008,
+          "voluntary_switches": 4191,
+          "involuntary_switches": 590,
+          "host_frame_interval_ms": {
+            "p50": 19.766485,
+            "p95": 44.545833,
+            "p99": 53.946875
+          }
+        }
+      ],
+      "median_by_variant": {
+        "r2": {
+          "cpu_s": 0.7660580000000001,
+          "wall_s": 6.897483546999865,
+          "host_frame_interval_ms": {
+            "p50": 19.359844,
+            "p95": 44.941875,
+            "p99": 56.488489
+          }
+        },
+        "r3-record": {
+          "cpu_s": 0.7566609999999998,
+          "wall_s": 5.895044197000971,
+          "host_frame_interval_ms": {
+            "p50": 16.889713,
+            "p95": 38.361771,
+            "p99": 51.504219
+          }
+        },
+        "r3-reuse": {
+          "cpu_s": 0.7835410000000003,
+          "wall_s": 5.418825395001477,
+          "host_frame_interval_ms": {
+            "p50": 16.70362,
+            "p95": 26.760469,
+            "p99": 43.714063
+          }
+        }
+      }
+    },
+    "native-fifo": {
+      "raw_runs": [
+        {
+          "variant": "r2",
+          "run": 0,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.530290448001324,
+          "cpu_s": 0.81331,
+          "voluntary_switches": 4169,
+          "involuntary_switches": 702,
+          "host_frame_interval_ms": {
+            "p50": 19.652813,
+            "p95": 27.254062,
+            "p99": 31.197474
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 0,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 6.335731463001139,
+          "cpu_s": 0.8261600000000001,
+          "voluntary_switches": 4197,
+          "involuntary_switches": 571,
+          "host_frame_interval_ms": {
+            "p50": 20.623411,
+            "p95": 27.249427,
+            "p99": 31.473958
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 0,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.322247660002176,
+          "cpu_s": 0.867262,
+          "voluntary_switches": 4354,
+          "involuntary_switches": 532,
+          "host_frame_interval_ms": {
+            "p50": 16.751693,
+            "p95": 23.227265,
+            "p99": 28.41961
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 1,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.322021983000013,
+          "cpu_s": 0.8816480000000002,
+          "voluntary_switches": 4397,
+          "involuntary_switches": 545,
+          "host_frame_interval_ms": {
+            "p50": 16.58724,
+            "p95": 21.95026,
+            "p99": 29.201198
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 1,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.3237547960015945,
+          "cpu_s": 0.893748,
+          "voluntary_switches": 4390,
+          "involuntary_switches": 491,
+          "host_frame_interval_ms": {
+            "p50": 16.782448,
+            "p95": 22.414219,
+            "p99": 29.92711
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 1,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.6273707069995,
+          "cpu_s": 0.8640640000000004,
+          "voluntary_switches": 4369,
+          "involuntary_switches": 580,
+          "host_frame_interval_ms": {
+            "p50": 16.667344,
+            "p95": 21.921615,
+            "p99": 28.497656
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 2,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.529545524997957,
+          "cpu_s": 0.864268,
+          "voluntary_switches": 4351,
+          "involuntary_switches": 472,
+          "host_frame_interval_ms": {
+            "p50": 16.730547,
+            "p95": 23.296015,
+            "p99": 29.754479
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 2,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.276212192002276,
+          "cpu_s": 0.8767010000000011,
+          "voluntary_switches": 4378,
+          "involuntary_switches": 511,
+          "host_frame_interval_ms": {
+            "p50": 16.611485,
+            "p95": 22.659427,
+            "p99": 28.556953
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 2,
+          "width": 3200,
+          "height": 2054,
+          "mode": "fifo",
+          "frames": 300,
+          "wall_s": 5.2830833890002395,
+          "cpu_s": 0.8955509999999993,
+          "voluntary_switches": 4375,
+          "involuntary_switches": 518,
+          "host_frame_interval_ms": {
+            "p50": 16.689453,
+            "p95": 22.551485,
+            "p99": 28.753619
+          }
+        }
+      ],
+      "median_by_variant": {
+        "r2": {
+          "cpu_s": 0.8640640000000004,
+          "wall_s": 5.6273707069995,
+          "host_frame_interval_ms": {
+            "p50": 16.730547,
+            "p95": 23.296015,
+            "p99": 29.754479
+          }
+        },
+        "r3-record": {
+          "cpu_s": 0.8767010000000011,
+          "wall_s": 5.3237547960015945,
+          "host_frame_interval_ms": {
+            "p50": 16.782448,
+            "p95": 22.659427,
+            "p99": 29.92711
+          }
+        },
+        "r3-reuse": {
+          "cpu_s": 0.8816480000000002,
+          "wall_s": 5.322021983000013,
+          "host_frame_interval_ms": {
+            "p50": 16.689453,
+            "p95": 22.551485,
+            "p99": 28.753619
+          }
+        }
+      }
+    },
+    "small-mailbox": {
+      "raw_runs": [
+        {
+          "variant": "r2",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.3579140410001855,
+          "cpu_s": 0.7293689999999999,
+          "voluntary_switches": 3400,
+          "involuntary_switches": 461,
+          "host_frame_interval_ms": {
+            "p50": 16.817214,
+            "p95": 17.891146,
+            "p99": 20.137787
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.367257008998422,
+          "cpu_s": 0.6961519999999998,
+          "voluntary_switches": 3310,
+          "involuntary_switches": 413,
+          "host_frame_interval_ms": {
+            "p50": 16.815469,
+            "p95": 17.742786,
+            "p99": 18.721719
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.271905629000685,
+          "cpu_s": 0.6706479999999998,
+          "voluntary_switches": 3306,
+          "involuntary_switches": 396,
+          "host_frame_interval_ms": {
+            "p50": 16.790755,
+            "p95": 17.834219,
+            "p99": 19.494323
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.3056162020002375,
+          "cpu_s": 0.5403340000000003,
+          "voluntary_switches": 3533,
+          "involuntary_switches": 416,
+          "host_frame_interval_ms": {
+            "p50": 16.788385,
+            "p95": 18.064661,
+            "p99": 19.505442
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.701351488001819,
+          "cpu_s": 0.42617499999999975,
+          "voluntary_switches": 3531,
+          "involuntary_switches": 681,
+          "host_frame_interval_ms": {
+            "p50": 16.775547,
+            "p95": 17.485234,
+            "p99": 20.03474
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.249383858001238,
+          "cpu_s": 0.45645800000000003,
+          "voluntary_switches": 3435,
+          "involuntary_switches": 342,
+          "host_frame_interval_ms": {
+            "p50": 16.790026,
+            "p95": 17.504114,
+            "p99": 19.262682
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.248877269001241,
+          "cpu_s": 0.48018899999999975,
+          "voluntary_switches": 3599,
+          "involuntary_switches": 455,
+          "host_frame_interval_ms": {
+            "p50": 16.779453,
+            "p95": 17.099036,
+            "p99": 17.757448
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.247236593000707,
+          "cpu_s": 0.5135320000000001,
+          "voluntary_switches": 3597,
+          "involuntary_switches": 479,
+          "host_frame_interval_ms": {
+            "p50": 16.787735,
+            "p95": 17.197943,
+            "p99": 17.459922
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 300,
+          "wall_s": 5.303938232998917,
+          "cpu_s": 0.513817,
+          "voluntary_switches": 3508,
+          "involuntary_switches": 386,
+          "host_frame_interval_ms": {
+            "p50": 16.779062,
+            "p95": 17.336042,
+            "p99": 17.985338
+          }
+        }
+      ],
+      "median_by_variant": {
+        "r2": {
+          "cpu_s": 0.48018899999999975,
+          "wall_s": 5.249383858001238,
+          "host_frame_interval_ms": {
+            "p50": 16.790026,
+            "p95": 17.504114,
+            "p99": 19.262682
+          }
+        },
+        "r3-record": {
+          "cpu_s": 0.5135320000000001,
+          "wall_s": 5.367257008998422,
+          "host_frame_interval_ms": {
+            "p50": 16.787735,
+            "p95": 17.485234,
+            "p99": 18.721719
+          }
+        },
+        "r3-reuse": {
+          "cpu_s": 0.5403340000000003,
+          "wall_s": 5.303938232998917,
+          "host_frame_interval_ms": {
+            "p50": 16.788385,
+            "p95": 17.834219,
+            "p99": 19.494323
+          }
+        }
+      }
+    },
+    "untraced-mailbox": {
+      "raw_runs": [
+        {
+          "variant": "r2",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.483008914001402,
+          "cpu_s": 1.092674,
+          "voluntary_switches": 6969,
+          "involuntary_switches": 1063,
+          "host_frame_interval_ms": {
+            "p50": 16.784687,
+            "p95": 17.930651,
+            "p99": 19.946927
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.347551961000136,
+          "cpu_s": 0.9192300000000001,
+          "voluntary_switches": 7041,
+          "involuntary_switches": 760,
+          "host_frame_interval_ms": {
+            "p50": 16.785,
+            "p95": 17.863073,
+            "p99": 19.297657
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 0,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.45016839299933,
+          "cpu_s": 0.6948979999999998,
+          "voluntary_switches": 7034,
+          "involuntary_switches": 1126,
+          "host_frame_interval_ms": {
+            "p50": 16.778516,
+            "p95": 18.065886,
+            "p99": 19.638229
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.60777459199744,
+          "cpu_s": 0.8258340000000004,
+          "voluntary_switches": 7282,
+          "involuntary_switches": 1256,
+          "host_frame_interval_ms": {
+            "p50": 16.785859,
+            "p95": 18.497708,
+            "p99": 21.496016
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.821449748000305,
+          "cpu_s": 0.9548100000000006,
+          "voluntary_switches": 7455,
+          "involuntary_switches": 1354,
+          "host_frame_interval_ms": {
+            "p50": 16.784974,
+            "p95": 18.266224,
+            "p99": 20.229843
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 1,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.60888797699954,
+          "cpu_s": 0.884055,
+          "voluntary_switches": 7457,
+          "involuntary_switches": 1253,
+          "host_frame_interval_ms": {
+            "p50": 16.783281,
+            "p95": 18.257213,
+            "p99": 19.766901
+          }
+        },
+        {
+          "variant": "r2",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.444634591000067,
+          "cpu_s": 1.1366160000000005,
+          "voluntary_switches": 7003,
+          "involuntary_switches": 884,
+          "host_frame_interval_ms": {
+            "p50": 16.792161,
+            "p95": 18.086615,
+            "p99": 19.207969
+          }
+        },
+        {
+          "variant": "r3-record",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.32068248199721,
+          "cpu_s": 0.9843160000000006,
+          "voluntary_switches": 6680,
+          "involuntary_switches": 776,
+          "host_frame_interval_ms": {
+            "p50": 16.784114,
+            "p95": 17.739479,
+            "p99": 19.621693
+          }
+        },
+        {
+          "variant": "r3-reuse",
+          "run": 2,
+          "width": 640,
+          "height": 480,
+          "mode": "mailbox",
+          "frames": 600,
+          "r3_wsi_trace": false,
+          "wall_s": 10.424749590998545,
+          "cpu_s": 1.0045739999999999,
+          "voluntary_switches": 6412,
+          "involuntary_switches": 908,
+          "host_frame_interval_ms": {
+            "p50": 16.794271,
+            "p95": 18.082709,
+            "p99": 19.88698
+          }
+        }
+      ],
+      "median_by_variant": {
+        "r2": {
+          "cpu_s": 1.092674,
+          "wall_s": 10.483008914001402,
+          "host_frame_interval_ms": {
+            "p50": 16.784687,
+            "p95": 18.086615,
+            "p99": 19.766901
+          }
+        },
+        "r3-record": {
+          "cpu_s": 0.9548100000000006,
+          "wall_s": 10.347551961000136,
+          "host_frame_interval_ms": {
+            "p50": 16.784974,
+            "p95": 17.863073,
+            "p99": 19.621693
+          }
+        },
+        "r3-reuse": {
+          "cpu_s": 0.8258340000000004,
+          "wall_s": 10.45016839299933,
+          "host_frame_interval_ms": {
+            "p50": 16.785859,
+            "p95": 18.082709,
+            "p99": 19.88698
+          }
+        }
+      }
+    }
+  },
+  "validation": {
+    "vulkan_submit_readback": true,
+    "ahb_roundtrip_release_readback": true,
+    "launcher_tests_passed": 27,
+    "wsi_mock_reuse_enabled": true,
+    "wsi_mock_reuse_disabled": true,
+    "live_oldswapchain_cycles_per_mode": 50,
+    "concurrent_swapchain_cycles_per_window": 50,
+    "concurrent_windows": 2,
+    "chromium": {
+      "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis)",
+      "vendor": "Google Inc. (ARM)",
+      "version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+      "pixel": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "error": 0,
+      "webgl2": true
+    },
+    "zink_real_window_fps": 59.027,
+    "soak_20min": {
+      "duration_s": 1200.539950811999,
+      "exit_code": 0,
+      "samples": 240,
+      "status": "passed",
+      "frames": 52196,
+      "host_frame_interval_ms": {
+        "p50": 22.434428,
+        "p95": 26.215495,
+        "p99": 28.359532,
+        "max": 409.70474
+      },
+      "rss_kb_after_10s": {
+        "first": 47944,
+        "last": 27720,
+        "min": 27720,
+        "max": 47944
+      },
+      "thread_counts_after_10s": [
+        4
+      ],
+      "battery_temp_raw": {
+        "first": 329,
+        "last": 347,
+        "min": 329,
+        "max": 363
+      },
+      "graceful_stop": true,
+      "notes": "640x480 BGRA MAILBOX, 20 ms client delay, daily session with varying foreground/occlusion. Not a controlled r2/r3 energy or daily workflow comparison.",
+      "host_intervals_over_50ms": 8,
+      "host_intervals_over_100ms": 4
+    },
+    "chromium_navigation": {
+      "navigations": 50,
+      "gpu_pid_before": [
+        27358
+      ],
+      "gpu_pid_after": [
+        27358
+      ],
+      "gpu_recreated": false
+    },
+    "live_resize_cycles_per_mode": 50
+  },
+  "limits": [
+    "Active system workloads and recurring daemon exception loop are uncontrolled.",
+    "Initial traced comparisons include brief overlap with development/validation activity.",
+    "Untraced comparison ran with a fixed synthetic soak in the background; its first run overlapped short concurrency validation.",
+    "Host frame timestamps are not Android scanout, GPU copy duration, input latency or power measurements.",
+    "No daily-workload acceptance or default switch."
+  ],
+  "artifacts": {
+    "patches/wsi/0002-r3-efficiency.patch": {
+      "sha256": "6da3711c1086e581dbb115a2d8c0e39099244bd6f36d9e40a024606741158e30"
+    },
+    "sources.lock.json": {
+      "sha256": "05e2159147cc30c44dce5800b0a7aff05fc677e107ffc170632457797b2544fe"
+    },
+    "build/r3-baseline.perfetto-trace": {
+      "sha256": "5cae015290ef7a95d18ffa057dd1d60ad5f472345df0881701bd5b99c2ff4939",
+      "committed": false
+    },
+    "build/r3-soak-20261012/frames.csv": {
+      "sha256": "2bed9d1ac29d51dc63a40a8885748851c449572950f0620f5823b0768b892391",
+      "committed": false
+    },
+    "build/r3-soak-20261012/counters.csv": {
+      "sha256": "ac885c49662a23feea182915dd8a6e8737b2e0ca3f24ed3583b13d4930be5476",
+      "committed": false
+    }
+  }
+}
