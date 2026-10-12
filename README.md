@@ -4,7 +4,7 @@
 
 **状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
 
-2026-10-12 已将 [r3.2 GPU 桥接](docs/r3.2-gpu-replacement.md)切换为默认，替换 r2：保留命令复用和空闲休眠，修复缓冲释放与限帧截止时间漂移，并统一 Trae 入口。已验证 Mali 硬件渲染；整机续航和 Android 显示尾延迟仍需验证。原始 [r3 审查](docs/r3-efficiency-audit.md)保留作为历史证据。
+2026-10-12 已将 [r3.3 原生 GPU 渲染](docs/r3.3-native-rendering.md)设为默认，替换 r2：二维 Skia 直接使用 Vulkan/Mali，保留 WSI 命令复用、空闲休眠及固定节奏限帧，并部署 Termux:X11 前端 GPU 批处理与输入法接口修正。Chromium / Trae 已实机核对；[r3.2 记录](docs/r3.2-gpu-replacement.md)保留。
 
 ## 日常使用
 

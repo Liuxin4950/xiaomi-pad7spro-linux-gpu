@@ -70,7 +70,7 @@
       },
       {
         "path": "patches/termux-x11/0003-ime-cursor-cancellation.patch",
-        "sha256": "c76175bb93a2e0873a470da4e0c30890a82bf4740f865b85f5699e6b85a59436"
+        "sha256": "25e46955ba0ad40585421721ed367de8dcbf4060f2f327672ba1c6c7ffc1db99"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

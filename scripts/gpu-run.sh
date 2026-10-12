@@ -81,8 +81,8 @@ check_angle_arguments() {
       esac
     else
       case "$argument" in
-        --use-angle=vulkan|--use-gl=angle) ;;
-        --use-angle=*|--use-gl=*|--disable-gpu|--disable-gpu-compositing|--disable-gpu-rasterization)
+        --use-angle=vulkan|--use-gl=angle|--use-vulkan=native) ;;
+        --use-angle=*|--use-gl=*|--use-vulkan=*|--disable-gpu|--disable-gpu-compositing|--disable-gpu-rasterization)
           fail "argument conflicts with the ANGLE Vulkan route: $argument"; return ;;
       esac
     fi
@@ -296,6 +296,29 @@ main() {
       [[ $EUID != 0 ]] || arguments+=(--no-sandbox)
       arguments+=(--disable-gpu-sandbox --use-gl=angle --use-angle=vulkan \
         --enable-gpu --enable-gpu-rasterization --disable-software-rasterizer --ozone-platform=x11)
+      case "${PAD_GPU_SKIA_BACKEND:-native}" in
+        native)
+          # Direct Vulkan for 2D raster/compositing; WebGL uses ANGLE Vulkan.
+          local feature_list=Vulkan argument feature_options=1
+          local -a remaining=()
+          for argument in "$@"; do
+            if ((feature_options == 0)); then remaining+=("$argument"); continue; fi
+            case "$argument" in
+              --) feature_options=0; remaining+=("$argument") ;;
+              --enable-features=*) feature_list+=,${argument#*=} ;;
+              --disable-features=*)
+                if [[ ,${argument#*=}, == *,Vulkan,* ]]; then
+                  fail 'Vulkan disabled while native Skia is selected; use PAD_GPU_SKIA_BACKEND=angle'; return
+                fi
+                remaining+=("$argument") ;;
+              *) remaining+=("$argument") ;;
+            esac
+          done
+          set -- "${remaining[@]}"
+          arguments+=(--enable-features="$feature_list" --use-vulkan=native) ;;
+        angle) ;;
+        *) fail 'PAD_GPU_SKIA_BACKEND must be native or angle'; return ;;
+      esac
     fi
     log "hardware environment; prefix=$prefix executable=$binary angle=$angle"
     log "ICD=$VK_DRIVER_FILES WSI=$VK_IMPLICIT_LAYER_PATH"

@@ -250,6 +250,18 @@ class LauncherTests(unittest.TestCase):
         result = self.run_launcher('--software', 'auto', self.prefix / 'bin/chromium', '--enable-gpu')
         self.assertEqual(result.returncode, 78)
 
+    def test_native_skia_merges_features_and_keeps_hardware_fallback(self):
+        data = self.data(self.run_launcher('auto', self.prefix / 'bin/chromium', '--enable-features=ExampleFeature'))
+        self.assertIn('--use-vulkan=native', data['argv'])
+        self.assertNotIn(chr(92), data['argv'])
+        self.assertIn('--enable-features=Vulkan,ExampleFeature', data['argv'])
+        self.assertEqual(sum(a.startswith('--enable-features=') for a in data['argv']), 1)
+        data = self.data(self.run_launcher('auto', self.prefix / 'bin/chromium', env={'PAD_GPU_SKIA_BACKEND': 'angle'}))
+        self.assertNotIn('--use-vulkan=native', data['argv'])
+        self.assertIn('--use-angle=vulkan', data['argv'])
+        for argument in ('--use-vulkan=swiftshader', '--disable-features=Vulkan'):
+            self.assertEqual(self.run_launcher('auto', self.prefix / 'bin/chromium', argument).returncode, 78)
+
     def test_target_exit_status_is_preserved(self):
         result = self.run_launcher('auto', self.prefix / 'bin/app', env={'TEST_EXIT': '23'})
         self.assertEqual(result.returncode, 23)
