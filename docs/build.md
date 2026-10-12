@@ -1,6 +1,8 @@
 # 从固定源码构建
 
-更新：2026-10-07。构建入口为 `scripts/build.sh`，安装入口为 `scripts/install.sh`。作者设备已部署完整前缀 `/opt/pad7spro-gpu-dev-20261007-r2`，并完成核心探针、真实呈现及应用短验收；构建成功仍不等同于所有应用或长期功耗达标。
+当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
+
+更新：2026-10-12。构建入口为 `scripts/build.sh`，安装入口为 `scripts/install.sh`。作者设备已部署完整前缀 `/opt/pad7spro-gpu-observe-20261012`，并完成核心探针、真实呈现及应用短验收；构建成功仍不等同于所有应用或长期功耗达标。
 
 ## 环境与依赖
 
@@ -67,8 +69,8 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 - libhybris、WSI 和 Android headers 按固定上游源码构建，保留其许可证并应用项目补丁。
 - 修改版 bionic 是固定上游二进制运行依赖，当前流程没有从 Android 整体源码重建它；不能声称全部依赖均在本仓库从源码生成。
 - Android 原厂 Mali 驱动仍由用户固件提供，不包含在项目发布源码中。
-- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前设备没有升级候选 `0002`。
+- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前前端已加载 `0002` 的批处理；旧 X server 的 tick 限制等待正常桌面重启。
 
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
 
-2026-10-12 输入法修正包另外采用 Java/资源构建并保留已安装 APK 的四个原生库：锁定 d55f1b7 的源码 + popup 补丁 + `0003-ime-cursor-cancellation.patch`，使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36、buildTools 37.0.0 和 ARM aapt2/aidl；关闭新版 DSL 与 companion 生成，不启用 externalNativeBuild，将原 APK 的 `lib/*/libXlorie.so` 作为 jniLibs 输入，构建 `:lorie-app:assembleStandaloneDebug`。保持 minSdk 24、targetSdk 34、包名和 versionCode 15，用相同上游测试证书签名。原 APK 与修正包 native 内容及证书逐项比较后才安装；原 APK 保留在私有 build 目录。原生节拍候选 0002 仍未安装，不能据新 Java 包声称其已生效。
+2026-10-12 输入法修正包另外采用 Java/资源构建并保留已安装 APK 的四个原生库：锁定 d55f1b7 的源码 + popup 补丁 + `0003-ime-cursor-cancellation.patch`，使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36、buildTools 37.0.0 和 ARM aapt2/aidl；关闭新版 DSL 与 companion 生成，不启用 externalNativeBuild，将原 APK 的 `lib/*/libXlorie.so` 作为 jniLibs 输入，构建 `:lorie-app:assembleStandaloneDebug`。保持 minSdk 24、targetSdk 34、包名和 versionCode 15，用相同上游测试证书签名。原 APK 与修正包 native 内容及证书逐项比较后才安装；原 APK 保留在私有 build 目录。后来安装的 gpu-direct 包已保留 0002 的原生库，并拒绝不可用的光标几何请求。前端已生效；旧 server 的原生节拍要重开桌面才生效。完整状态以 CURRENT-STATE 为准。

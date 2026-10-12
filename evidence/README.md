@@ -12,7 +12,7 @@
 
 2026-10-01 的准备记录主要是文件核对、补丁应用和语法检查。2026-10-07 已完成独立构建安装及真实应用窗口验证；用户随后重启当前会话并反馈可用。部分 JSON 保存的是当日较早阶段的状态，例如尚未重启会话或尚未完成 WebKit 适配；解读时结合 [当前状态](../docs/development-status.md)，不要把阶段性快照当作永久结论，也不要把用户反馈扩展成未记录的长时测试。
 
-原始本机运行日志、Android 截图和短时采样位于 `build/runtime-20261007*`，不随源码仓库发布。显示端候选 APK 的原生编译、增量重打包和校验范围见 [Termux:X11 补丁说明](../patches/termux-x11/README.md)。该候选未安装，不是干净全量 APK 构建；当前会话重启不能代替其升级验收。
+原始本机运行日志、Android 截图和短时采样位于 `build/runtime-20261007*`，不随源码仓库发布。显示端候选 APK 的原生编译、增量重打包和校验范围见 [Termux:X11 补丁说明](../patches/termux-x11/README.md)。早期候选日期为 2026-10-07；2026-10-12 已部署含其原生批处理的 gpu-direct 包，老 X server 仍需正常重开。当前状态见 ../docs/CURRENT-STATE.md。
 
 仍未完成干净 rootfs 安装复现、修改版 bionic 完整源码重建、同条件长时功耗/续航对照及视频硬解验证。短时不同实际帧率的 CPU 样本不能用于计算功耗节省比例。当前文档更新没有额外运行构建、测试或功耗采样。
 
@@ -20,4 +20,6 @@
 
 ## 2026-10-12 r3 候选效率审查
 
-[r3-efficiency-2026-10-12.json](r3-efficiency-2026-10-12.json)保存系统异常循环、探索性 host 帧间隔/CPU 对照、定向验证和持续测试结果。默认仍为 r2；这些数据不代表整机功耗、屏幕 scanout 或真实输入延迟。[完整审查](../docs/r3-efficiency-audit.md)。
+[r3-efficiency-2026-10-12.json](r3-efficiency-2026-10-12.json)保存系统异常循环、探索性 host 帧间隔/CPU 对照、定向验证和持续测试结果。这是早期 r3 审查，当前默认已为 r3.3；这些数据不代表整机功耗、屏幕 scanout 或真实输入延迟。[完整审查](../docs/r3-efficiency-audit.md)。
+
+最新：`r3.3-native-rendering-2026-10-12.json` 记录二维原生 Vulkan 和输入接口核对；`entrypoints-2026-10-12.json` 记录全部入口迁移。旧 evidence 数值不修改。

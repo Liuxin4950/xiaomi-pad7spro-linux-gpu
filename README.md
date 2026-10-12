@@ -6,6 +6,8 @@
 
 2026-10-12 已将 [r3.3 原生 GPU 渲染](docs/r3.3-native-rendering.md)设为默认，替换 r2：二维 Skia 直接使用 Vulkan/Mali，保留 WSI 命令复用、空闲休眠及固定节奏限帧，并部署 Termux:X11 前端 GPU 批处理与输入法接口修正。Chromium / Trae 已实机核对；[r3.2 记录](docs/r3.2-gpu-replacement.md)保留。
 
+当前唯一配置与后续 AI 接手入口：[CURRENT-STATE](docs/CURRENT-STATE.md)、[AGENTS.md](AGENTS.md)。
+
 ## 日常使用
 
 1. 在 Android 的 Termux:Widget 中点 `debian-zink`，它调用 `~/mali-work/desktop-zink.sh`。

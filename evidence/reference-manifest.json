@@ -4,10 +4,10 @@
   "files": {
     "reference/termux/desktop-zink.sh": {
       "bytes": 5691,
-      "sha256": "108455e4e46674b65e0a16a390dfa41922d154b824f7d61a33b5f96cfa4263c8",
-      "source": "device configuration updated and deployed 2026-10-07",
+      "sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518",
+      "source": "current device entry deployed 2026-10-12",
       "changes": [
-        "Deployed to Android Termux script; future sessions use unified gpu-run environment and default 60 FPS."
+        "All normal desktop paths select the current unified GPU release."
       ]
     },
     "reference/termux/debian-shell.sh": {
@@ -35,7 +35,23 @@
       "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e",
       "source": "device snapshot captured 2026-10-01",
       "changes": []
+    },
+    "reference/termux/debian-desktop.sh": {
+      "bytes": 230,
+      "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+      "source": "current device entry deployed 2026-10-12",
+      "changes": [
+        "All normal desktop paths select the current unified GPU release."
+      ]
+    },
+    "reference/termux/debian-zink-widget.sh": {
+      "bytes": 234,
+      "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+      "source": "current device entry deployed 2026-10-12",
+      "changes": [
+        "All normal desktop paths select the current unified GPU release."
+      ]
     }
   },
-  "updated_on": "2026-10-07"
+  "updated_on": "2026-10-12"
 }

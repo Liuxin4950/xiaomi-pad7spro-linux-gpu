@@ -1,6 +1,8 @@
 # 复现与设备接入流程
 
-更新：2026-10-07。固定源码构建、完整前缀安装和作者设备的日常入口迁移已实现；用户已从 Termux Widget 重启并确认桌面启动成功。本流程以已有 root chroot/XFCE 环境为起点，不是从 Android 原厂状态开始的全自动安装器。
+当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
+
+更新：2026-10-12。固定源码构建、完整前缀安装和作者设备的日常入口迁移已实现；用户已从 Termux Widget 重启并确认桌面启动成功。本流程以已有 root chroot/XFCE 环境为起点，不是从 Android 原厂状态开始的全自动安装器。
 
 ## 前置环境
 
@@ -58,7 +60,7 @@ ln -sfn "$bridge_prefix/bin/gpu-launcher" /usr/local/bin/gpu-launcher
 /usr/local/bin/gpu-run info
 ```
 
-当前作者设备这两个链接指向 `/opt/pad7spro-gpu-dev-20261007-r2`。前缀由入口自身推导，不在各应用图标中分别写库路径。切换链接影响以后启动的进程，已有进程继续使用已加载组件。
+当前作者设备这两个链接当前指向 `/opt/pad7spro-gpu-observe-20261012`。前缀由入口自身推导，不在各应用图标中分别写库路径。切换链接影响以后启动的进程，已有进程继续使用已加载组件。
 
 普通软件可继承新桌面的 GPU 环境直接启动；Chromium/Electron、WebKitGTK/Tauri 的入口选择见 [配置说明](configuration.md)。自定义 `.desktop` 时，已知应用的 `Exec` 可分别调用 `/usr/local/bin/gpu-run chromium %U`、`chatgpt %U`、`trae %F`、`cc-switch`，保留原图标和 URL/文件占位符。
 
@@ -79,7 +81,7 @@ python3 scripts/activate-desktop.py --apply
 
 ## 显示端与回退
 
-当前继续使用已安装的、含既有 Present 裁剪/限帧改动的 Termux:X11 APK。本轮没有升级 APK；`0002` 显示端补丁只是候选。核心桥接安装、应用入口迁移和显示端 APK 部署是独立步骤，不能用候选源码推断设备已启用新显示端功能。
+当前已安装 gpu-direct APK：可见裁剪、前端 GPU 批处理和输入接口修正已部署；已运行的旧 X server 要正常重开桌面才加载原生 tick 门控。桥接、入口、已安装 APK 和已运行进程分别核对，不把更新文件当成热更新。
 
 回退时将系统链接指回保留的、已核对的完整前缀，并在保存工作后正常重新建立会话。不要覆盖运行中库、强行替换活跃 mount namespace，或用全局进程清理代替应用回退。安装器目前不提供自动升级/卸载；`debian-stop.sh` 停止的是整个 chroot，不是桥接卸载器。
 

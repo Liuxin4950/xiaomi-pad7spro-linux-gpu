@@ -1,10 +1,12 @@
 # 配置、启动和停止
 
-更新：2026-10-07。本文描述当前作者设备的已部署入口；构建、安装和首次接入步骤见 [复现流程](setup.md)。
+当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
+
+更新：2026-10-12。本文描述当前作者设备的已部署入口；构建、安装和首次接入步骤见 [复现流程](setup.md)。
 
 ## 当前路径与日常启动
 
-当前完整桥接安装在 `/opt/pad7spro-gpu-dev-20261007-r2`。`/usr/local/bin/gpu-run`、`/usr/local/bin/gpu-launcher` 分别链接到该目录的 `bin/gpu-run`、`bin/gpu-launcher`。ICD、libhybris、AHB、WSI、修改版 bionic 和应用适配组件都取自同一前缀；旧主基线/canary 不再是默认运行依赖。
+当前完整桥接安装在 `/opt/pad7spro-gpu-observe-20261012`。`/usr/local/bin/gpu-run`、`/usr/local/bin/gpu-launcher` 分别链接到该目录的 `bin/gpu-run`、`bin/gpu-launcher`。ICD、libhybris、AHB、WSI、修改版 bionic 和应用适配组件都取自同一前缀；旧主基线/canary 不再是默认运行依赖。
 
 | 入口 | 所在环境 | 作用 |
 |---|---|---|
@@ -24,7 +26,7 @@ bash ~/mali-work/desktop-zink.sh
 
 桌面会话通过 `gpu-run gl /usr/bin/env LANG=zh_CN.UTF-8 dbus-launch --exit-with-session startxfce4` 继承统一 GPU 环境。普通 Mesa/OpenGL、Vulkan 程序可从桌面或终端正常启动，不必全部经过输入框；需要框架专用参数或策略的应用使用对应入口。
 
-当前桌面保留 Chromium、ChatGPT、Trae CN、CC Switch 四个正常应用图标，以及 MySQL 启动图标。四个应用图标与已迁移的系统菜单/URL 入口使用 `/usr/local/bin/gpu-run`；GPU 输入框没有保留在桌面。MySQL 入口调用 `/root/.local/libexec/liutech/start-mysql.sh`，与 GPU 桥接独立。
+当前桌面保留 Chromium、ChatGPT、Trae CN、CC Switch、Office 与 MySQL 图标。GPU 应用和 Office 图标与已迁移的系统菜单/URL 入口使用 `/usr/local/bin/gpu-run`；GPU 输入框没有保留在桌面。MySQL 入口调用 `/root/.local/libexec/liutech/start-mysql.sh`，与 GPU 桥接独立。
 
 在已经运行的 Debian 桌面中，也可执行：
 
@@ -41,7 +43,7 @@ gpu-run cc-switch
 
 | 应用类型 | 入口 | 行为与边界 |
 |---|---|---|
-| Chromium、Electron | `gpu-run auto BINARY`；已知应用可用 `chromium/chatgpt/trae` 别名 | ANGLE Vulkan；保留应用用户配置，root 下采用当前无 sandbox 配置 |
+| Chromium、Electron | `gpu-run auto BINARY`；已知应用可用 `chromium/chatgpt/trae` 别名 | 二维原生 Skia Vulkan + WebGL ANGLE Vulkan；保留应用用户配置，root 下采用当前无 sandbox 配置 |
 | 原生 OpenGL/Mesa | `gpu-run gl BINARY` 或继承桌面环境直接启动 | Zink → Vulkan；不注入浏览器参数 |
 | 原生 Vulkan | `gpu-run vulkan BINARY` 或继承桌面环境直接启动 | 当前前缀的 ICD + X11 WSI |
 | WebKitGTK/Tauri | CC Switch 用 `gpu-run cc-switch`；其他明确的 WebKit 应用用 `gpu-run webkit BINARY` | 单独的 WebKit 合成策略与 SHM 传输适配，不套用 Electron 参数 |
@@ -64,6 +66,7 @@ Trae 使用 `bin/trae-start`：只在启动最初 8 秒遇到精确 Oilpan cage 
 | Display | `:1` | `DEBIAN_DISPLAY=:N` 可选择本机显示号；另一个 display 不保证隔离 APK renderer |
 | X11 DPI | `120` | `X11_DPI` 可覆盖，与 Android 系统 DPI 不等同 |
 | `X11_MAX_FPS` | `60` | Termux 启动参数，允许 1–240，只在新建 X server 时生效 |
+| `PAD_GPU_SKIA_BACKEND` | `native` | Chromium/Electron 二维后端；`angle` 是硬件回退 |
 | `PAD_GPU_MAX_FPS` | `60` | 每个 WSI 交换链的提交上限；允许 1–240，0 关闭此上限 |
 | `PAD_GPU_X11_COLOR_MODE` | `bgra` | 当前 Termux:X11 使用的统一字节契约 |
 | `HYBRIS_VULKANPLATFORM` | `null` | 避免选择未配置的 Wayland 平台 |
@@ -72,7 +75,7 @@ Trae 使用 `bin/trae-start`：只在启动最初 8 秒遇到精确 Oilpan cage 
 
 应用级限帧使用可被关闭事件唤醒的等待，降低持续提交频率，不做内容去重，不能说静止窗口已停止渲染。X11 与应用级上限现均为 60，长期功耗和双重节拍的延迟仍需同条件测量。会话移除了旧 `vblank_mode=0`，不伪装 OpenGL 版本。Mesa/Zink 基线曾报告 Mali 硬件 OpenGL 3.2，同时提示缺少 `fillModeNonSolid`、`shaderClipDistance`；高版本功能仍以真实驱动能力为准。
 
-本轮保留已安装 APK，没有升级 Termux:X11。`patches/termux-x11/0002-*.patch` 是候选显示端改进，不能写成已部署或已验收功能。
+当前 APK 已更新：原生 Copy 批处理和输入接口修正已在前端运行；既存 X server 的显示 tick 更新在正常重开桌面后生效。详见 CURRENT-STATE。
 
 ## 显式软件模式与诊断
 
@@ -105,3 +108,5 @@ gpu-run --headless vulkan vulkaninfo --summary
 ```sh
 bash ~/debian-stop.sh
 ```
+
+普通 `~/debian-desktop.sh` 与 zink Widget 共用当前 GPU 桌面。CLI 别名和 `/usr/bin/chatgpt` 的已知发行版 shell 入口也转发 gpu-run；直接 ELF 是开发接口。历史诊断脚本不是日常启动方式。

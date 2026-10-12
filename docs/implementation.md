@@ -1,5 +1,7 @@
 # 实现机制与流程
 
+当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
+
 本文对应 2026-10-07 的源码开发更新，入口与依赖分别见 [配置](configuration.md)、[sources.lock.json](../sources.lock.json)。作者已从 Widget 重启会话并反馈正常；这不等于干净新 rootfs、长时负载或整机续航验收。
 
 ## 1. 固定源码到独立安装
@@ -75,3 +77,5 @@ CC Switch 会主动选择 WebKit 的 `NEVER` 策略，单纯设置 Zink 环境�
 ## 验证范围
 
 已有真实 Vulkan 提交/读回、AHB 往返、swapchain 重建、正确 RGB、Chromium WebGL1/2、ChatGPT/Trae/CC Switch 短启动及用户 Widget 重启反馈。短测数据和阶段性快照在 [evidence](../evidence/README.md)。冷 rootfs、长期输入/项目/导航、睡眠恢复、受控功耗、视频硬解和更高图形特性仍需独立验证。
+
+2026-10-12：管理的 PATH shim 会被 gpu-run 解包到真实程序，避免递归和丢失显式软件模式；普通桌面默认已统一硬件。限帧按上个截止时间推进，跳过过期时隙，避免逐帧累积调度误差。

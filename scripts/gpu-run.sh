@@ -47,12 +47,34 @@ resolve_prefix() {
   [[ "$prefix" =~ ^/opt/[a-zA-Z0-9_.-]+$ ]] || { log 'prefix resolves outside /opt'; return 64; }
 }
 
+application_binary() {
+  case "$1" in
+    chromium) printf '%s\n' /usr/lib/chromium/chromium ;;
+    chatgpt) printf '%s\n' /usr/lib/chatgpt/ChatGPT ;;
+    trae) printf '%s\n' /usr/share/trae-cn/trae-cn ;;
+    cc-switch) printf '%s\n' /usr/bin/cc-switch ;;
+    *) return 64 ;;
+  esac
+}
+
 resolve_binary() {
   if [[ "$binary" != */* ]]; then
     binary=$(command -v -- "$binary") || { fail 'executable not found in Linux PATH'; return; }
   fi
   [[ -f "$binary" && -x "$binary" ]] || { fail "executable not found: $binary"; return; }
   binary=$(readlink -f -- "$binary")
+  # Managed PATH shims must not recurse or lose an explicit --software mode.
+  if [[ ${binary##*/} == gpu-entry-* || ${binary##*/} == codex-launcher ]]; then
+    local first second
+    { IFS= read -r first; IFS= read -r second; } < "$binary" || true
+    case "$second" in
+      '# pad-gpu entry: '*)
+        managed_application=${second#\# pad-gpu entry: }
+        binary=$(application_binary "$managed_application") || return
+        [[ -x "$binary" ]] || { fail "managed executable missing: $binary"; return; }
+        binary=$(readlink -f -- "$binary") ;;
+    esac
+  fi
 }
 
 is_angle_application() {
@@ -242,7 +264,7 @@ doctor() {
 }
 
 main() {
-  local mode binary angle=0 webkit=0 software=0 headless=0 requested_binary
+  local mode binary angle=0 webkit=0 software=0 headless=0 requested_binary managed_application=
   local -a arguments=()
   while (($#)); do
     case "$1" in
@@ -259,9 +281,9 @@ main() {
   case "$mode" in
     info) (($# <= 1 && !software && !headless)) || { usage; return; }; show_info "${1:-}"; return ;;
     doctor) (($# == 0 && !software && !headless)) || { usage; return; }; doctor; return ;;
-    chromium) binary=/usr/lib/chromium/chromium; angle=1 ;;
-    trae) binary=/usr/share/trae-cn/trae-cn; angle=1 ;;
-    chatgpt) binary=/usr/bin/chatgpt; angle=1 ;;
+    chromium) binary=$(application_binary chromium); angle=1 ;;
+    trae) binary=$(application_binary trae); angle=1 ;;
+    chatgpt) binary=$(application_binary chatgpt); angle=1 ;;
     cc-switch) binary=/usr/bin/cc-switch; webkit=1 ;;
     auto|electron|webkit|gl|vulkan)
       binary=${1:-}; [[ -n "$binary" ]] || { usage; return; }; shift
@@ -275,6 +297,7 @@ main() {
   esac
   requested_binary=$binary
   resolve_binary || return
+  if [[ "$mode" == auto && ${managed_application:-} == cc-switch ]]; then webkit=1; fi
   if [[ "$mode" == auto && ${binary##*/} == cc-switch ]]; then webkit=1; fi
   if [[ "$mode" == auto ]] && {
     is_angle_application "$requested_binary" || is_angle_application "$binary" || has_electron_distribution "$binary"

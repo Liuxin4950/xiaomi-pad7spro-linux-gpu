@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-12",
+  "version": "r3.3",
+  "desktop_and_termux": {
+    "applied": true,
+    "entries": [
+      {
+        "path": "/root/Desktop/启动Word.desktop",
+        "before_sha256": "c68b159efc3b206d5e1b75301363027e71291ca552e038adb3c27eecc5ab0677",
+        "after_sha256": "ebad2d34e1e624f8151842f2709db9db4df522dea45c821e886f9d53fcfacf81"
+      },
+      {
+        "path": "/root/Desktop/启动Excel.desktop",
+        "before_sha256": "1593f476d7fc8fc65250a9894525f70237e4abf644c1fd85c486f8c82f42757c",
+        "after_sha256": "b5c66252d12c30a9c0e649a2bdffe72c9e1f2ff84d815de1bbc26e6d36f7efc3"
+      },
+      {
+        "path": "/root/Desktop/启动PPT.desktop",
+        "before_sha256": "1ac532481aa4a424976c228ab018eb33d52a6a998b2d553c90b171dca16de8c0",
+        "after_sha256": "993ff11405c71602d9df1ef6049647d71383b5082bba01bbb6130a6ee0dd04ca"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-startcenter.desktop",
+        "before_sha256": "d39b2d5e8d7baeeecbb0a80486b8e0a10c012ab265b482d9a247bfb3220b1750",
+        "after_sha256": "1cf9b5122c03fe149a611a7d04aec4534b900149ec6a42f6fe7b556242e88ae2"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-xsltfilter.desktop",
+        "before_sha256": "f3a35df4bc2519ca5dbc0ae82cbbf193a9f57ab06d8c851e4ae2d8f08e52556b",
+        "after_sha256": "aaf6b1661e9036bfc23677fcb53b8c6905d7173a6406edfaffdbece978b4ae8c"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-calc.desktop",
+        "before_sha256": "b2c8c764b8d8a81bbca82fe4f7df63cc07e440ad7136441084d76ad0828aefba",
+        "after_sha256": "1e791876563cd252caf01ff286ae5ac2bf0d333fc3fdfc4911b824ce9776660f"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-draw.desktop",
+        "before_sha256": "df4c5d91213349b2e4f1fb9b4082d509f3af9d88155184a54d889feff5d2ada2",
+        "after_sha256": "4d8d6b6ed781d58ebf4ecff722a5d6f7fd5d623bc44b8915fd85f79c10c5ac0d"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-impress.desktop",
+        "before_sha256": "f2508a4db1c51a6a5a26e1734d288025fbac39a4eaba40b1fc708622c0479c4c",
+        "after_sha256": "9a08168c076db7f9662e02e2e5f17e2c64eb4d7b4b5916b3a122bb8029768eb5"
+      },
+      {
+        "path": "/usr/share/applications/libreoffice-writer.desktop",
+        "before_sha256": "c5603fef0bfd4cf7ac3f711395a7e26a5266e9befaf65935358092e278da3cde",
+        "after_sha256": "9530159a8feacf65d67e330b6317e4f2c18dceca6c80c559940ad1e5d0554584"
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/mali-work/desktop-zink.sh",
+        "before_sha256": "108455e4e46674b65e0a16a390dfa41922d154b824f7d61a33b5f96cfa4263c8",
+        "after_sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518"
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/debian-desktop.sh",
+        "before_sha256": "07c62329b6dc5cb72c050baadb446f988d87ce162551336beca42734ab48b90a",
+        "after_sha256": "3fccde3dff7192bf6a273c2a34d1cb35833a5ceb6490034515523d53a08ed9b1"
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/.shortcuts/debian-zink.sh",
+        "before_sha256": "2959e3e4baebccb22723509db9fe1afd9526ccb8da25974e280806d2db7f742f",
+        "after_sha256": "985a0114262184a94f5d2a300315a710b815848832bed5508697b66205ccdfab"
+      }
+    ]
+  },
+  "cli": {
+    "applied": true,
+    "prefix": "/opt/pad7spro-gpu-observe-20261012",
+    "aliases": {
+      "/usr/local/bin/chromium": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-chromium"
+      },
+      "/usr/local/bin/chatgpt": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-chatgpt"
+      },
+      "/usr/local/bin/ChatGPT": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-chatgpt"
+      },
+      "/usr/local/bin/trae": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-trae"
+      },
+      "/usr/local/bin/trae-cn": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-trae"
+      },
+      "/usr/local/bin/cc-switch": {
+        "before_symlink": null,
+        "before_file": false,
+        "after": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-cc-switch"
+      }
+    },
+    "files": {
+      "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-chromium": "#!/bin/sh\n# pad-gpu entry: chromium\nexec /usr/local/bin/gpu-run chromium \"$@\"\n",
+      "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-chatgpt": "#!/bin/sh\n# pad-gpu entry: chatgpt\nexec /usr/local/bin/gpu-run chatgpt \"$@\"\n",
+      "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-trae": "#!/bin/sh\n# pad-gpu entry: trae\nexec /usr/local/bin/gpu-run trae \"$@\"\n",
+      "/opt/pad7spro-gpu-observe-20261012/bin/gpu-entry-cc-switch": "#!/bin/sh\n# pad-gpu entry: cc-switch\nexec /usr/local/bin/gpu-run cc-switch \"$@\"\n",
+      "/usr/lib/chatgpt/codex-launcher": "#!/bin/sh\n# pad-gpu entry: chatgpt\nexec /usr/local/bin/gpu-run chatgpt \"$@\"\n"
+    }
+  },
+  "default_software_desktop_removed": true,
+  "user_profiles_changed": false,
+  "already_running_processes_restarted": false,
+  "documents_current": "docs/CURRENT-STATE.md"
+}

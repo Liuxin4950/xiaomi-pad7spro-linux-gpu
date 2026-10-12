@@ -24,6 +24,11 @@ def desktop_text(path, text):
             suffix = line[len('Exec=/usr/share/trae-cn/trae-cn'):]
             if not suffix or suffix.startswith(' '):
                 line = 'Exec=' + RUNNER + ' trae' + suffix
+        if line.startswith('Exec=') and (path.name.startswith('libreoffice-') or path.name in ('启动Word.desktop','启动Excel.desktop','启动PPT.desktop')):
+            for command in ('soffice','libreoffice','/usr/bin/soffice','/usr/bin/libreoffice'):
+                if line[5:] == command or line[5:].startswith(command+' '):
+                    line = 'Exec=' + RUNNER + ' auto /usr/bin/libreoffice' + line[5+len(command):]
+                    break
         if is_cc and line.startswith('Exec='):
             # Only replace the known entry points; preserve all URL placeholders.
             for command in ('env GALLIUM_DRIVER=llvmpipe cc-switch', '"/usr/bin/cc-switch"', '/usr/bin/cc-switch'):
@@ -78,11 +83,14 @@ def main():
             if updated != original:
                 # Do not reformat unrelated desktop files.
                 if OLD not in original and path.name not in ('CC Switch.desktop', 'cc-switch-handler.desktop', 'trae-cn.desktop', 'trae-cn-url-handler.desktop'):
-                    continue
+                    if not path.name.startswith('libreoffice-') and path.name not in ('启动Word.desktop','启动Excel.desktop','启动PPT.desktop'):
+                        continue
                 changes[path] = updated.encode()
     fixed = {
         Path('/opt/mali-bridge-canary/bin/gpu-app.sh'): ROOT / 'reference/chroot/gpu-app.sh',
         args.termux_home / 'mali-work/desktop-zink.sh': ROOT / 'reference/termux/desktop-zink.sh',
+        args.termux_home / 'debian-desktop.sh': ROOT / 'reference/termux/debian-desktop.sh',
+        args.termux_home / '.shortcuts/debian-zink.sh': ROOT / 'reference/termux/debian-zink-widget.sh',
     }
     for path, source in fixed.items():
         if not path.is_file():

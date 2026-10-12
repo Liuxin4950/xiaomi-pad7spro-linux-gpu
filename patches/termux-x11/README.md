@@ -1,5 +1,7 @@
 # Termux:X11 GPU Present 补丁
 
+更新：2026-10-12。当前 gpu-direct APK 已部署三个补丁的组合：前端批处理、可见裁剪和拒绝不可用光标几何接口已运行；老 X server 要正常重开桌面才能加载 tick 门控。以下带 2026-10-07 日期的“候选未安装”描述仅属于历史阶段。当前运行状态见 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
+
 上游：[termux/termux-x11](https://github.com/termux/termux-x11)。
 
 固定基线：`d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f`。
@@ -94,3 +96,9 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 离线 Gradle 尝试因缓存版本 `9.3.1` 低于插件要求的 `9.5.0` 而停止。候选包采用**原生增量重打包**：在已核验的原 APK 中只替换四种 ABI 的新 `libXlorie.so`，其他归档内容逐字节保持一致，再执行 `zipalign -P 16` 和 v2 签名。它不是干净全量构建；Manifest、DEX、资源及原版本号均被保留。
 
 签名采用上游 `lorie-app/build.gradle` 的公开测试签名配置。候选和原 APK 的证书 SHA-256 均为 `b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1`；签名、CRC、16 KiB ZIP 对齐和库内容核对通过，满足覆盖原包的签名条件。候选尚未安装或运行，实机升级和功能验收仍未完成。旁边的 `verification.json` 保存完整验证结果；密钥不随候选产物发布。
+
+## 输入法接口补丁与当前构建
+
+`0003-ime-cursor-cancellation.patch` 返回不支持实际光标几何更新，取消请求不回调；文本/组合/selection/按键路径不变，避免虚构 CursorAnchorInfo 触发搜狗忙循环。依次应用 0001、0002、0003，哈希以 sources.lock.json 为准。
+
+实机构建使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36 / targetSdk 34、buildTools 37 ARM aapt2/aidl、JDK 21，关闭新 DSL 和 companion 生成；保留已校验 0002 的四种 ABI 原生库作为 jniLibs，不执行 externalNativeBuild，构建 `:lorie-app:assembleStandaloneDebug`，同上游测试证书。这个 Java/资源构建 + 既有原生库的方法不是干净全量 NDK 复现。APK 和全量日志在忽略目录 build/native-display-20261012。

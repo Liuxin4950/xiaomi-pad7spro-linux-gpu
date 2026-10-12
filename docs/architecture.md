@@ -1,12 +1,16 @@
 # 架构与组件
 
+当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
+
 ## 两条数据路径
 
 Linux 应用运行于 glibc，Android 厂商驱动依赖 bionic。`sysvk` 向 Linux Vulkan loader 提供 ICD 入口，`libhybris` 负责 Android 动态库与 ABI 兼容；驱动使用当前固件已有的 Mali 内核接口。
 
 ```mermaid
 flowchart TD
-    A[Chromium / Electron] --> B[ANGLE Vulkan]
+    A[Chromium / Electron 二维] --> S[Skia 原生 Vulkan]
+    W[WebGL] --> B[ANGLE Vulkan]
+    S --> F
     C[OpenGL / WebKitGTK] --> D[Mesa Zink]
     E[原生 Vulkan] --> F[Linux Vulkan loader]
     B --> F
@@ -26,7 +30,7 @@ WebKitGTK 的 GPU 内容合成另有共享内存帧传输步骤。此路径能�
 
 ## 一个前缀包含完整桥接
 
-构建默认前缀为 `/opt/pad7spro-gpu`；作者当前验收前缀为 `/opt/pad7spro-gpu-dev-20261007-r2`。以下 `PREFIX` 代表所选独立前缀：
+构建默认前缀为 `/opt/pad7spro-gpu`；作者当前验收前缀为 `/opt/pad7spro-gpu-observe-20261012`。以下 `PREFIX` 代表所选独立前缀：
 
 | 路径 | 职责 |
 |---|---|
@@ -59,7 +63,7 @@ flowchart TD
 
 `gpu-run` 不是必须手动打开的界面。会话启动时，它设置统一的驱动环境；原有应用图标再按需调用它选择后端。菜单中的 GPU 应用启动器只提供临时程序输入框。
 
-Chromium/Electron 使用 ANGLE Vulkan；普通 GL/Vulkan 主要依靠会话继承。CC Switch 需要额外纠正应用主动禁用 GPU 的策略。纯 CPU 绘制和业务计算不会自动迁移到 GPU。
+Chromium/Electron 的二维 Skia 使用原生 Vulkan，WebGL 使用 ANGLE Vulkan；普通 GL/Vulkan 主要依靠会话继承。CC Switch 需要额外纠正应用主动禁用 GPU 的策略。纯 CPU 绘制和业务计算不会自动迁移到 GPU。
 
 ## 颜色、同步和帧率
 
@@ -67,7 +71,7 @@ Chromium/Electron 使用 ANGLE Vulkan；普通 GL/Vulkan 主要依靠会话继�
 
 每张图像的 producer semaphore、传输指令与 fence 属于同一次同步提交；转换完成后才向 X11 Present。资源重建、线程取消和旧 swapchain 退役需保持图像/事件锁顺序与生命周期。详细修正在 [实现说明](implementation.md)。
 
-`PAD_GPU_MAX_FPS=60` 在每个 WSI swapchain 呈现端以可取消等待限制提交，避免忙等。它不限制所有离屏 GPU 指令，也不比较静止内容。`X11_MAX_FPS=60` 是启动请求；原 APK 主要限制 RandR 报告值，真正显示 tick 门控在尚未部署的第二阶段 X11 补丁中。
+`PAD_GPU_MAX_FPS=60` 在每个 WSI swapchain 呈现端以可取消等待限制提交，避免忙等。它不限制所有离屏 GPU 指令，也不比较静止内容。`X11_MAX_FPS=60` 是启动请求；原 APK 主要限制 RandR 报告值，第二阶段原生 tick 门控已在安装包中，旧 X server 要正常重开桌面才加载。
 
 ## Android 运行依赖
 

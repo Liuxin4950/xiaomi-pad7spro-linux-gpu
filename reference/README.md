@@ -11,3 +11,5 @@
 `debian-shell.sh` 与 `debian-stop.sh` 管理整个 rootfs 的进程、挂载及调度，停止会结束该 chroot 内的工作。不要在其他任务仍使用此环境时调用，也不要直接复制到不同布局的设备而跳过核对。
 
 许可证和第三方边界见 [LICENSE-STATUS.md](../LICENSE-STATUS.md)。公开源代码不等于所有新设备和冷 rootfs 已验收。
+
+2026-10-12：普通 desktop、zink Widget、手动 zink 共用当前 GPU 入口；Shell/TUI/stop 保留会话逻辑。当前版本和精确哈希以 reference-manifest、CURRENT-STATE 为准，不采用旧“llvmpipe 性能最好”的默认分支。

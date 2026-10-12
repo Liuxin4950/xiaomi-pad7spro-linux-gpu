@@ -39,8 +39,11 @@ fi
 if [[ ${MOCK_READELF:-0} == 1 ]]; then
   readelf() { printf '  (RUNPATH) [%s/lib]\\n' "$prefix"; }
 fi
+if [[ -n ${MOCK_MANAGED_BINARY:-} ]]; then
+  application_binary() { printf '%s\n' "$MOCK_MANAGED_BINARY"; }
+fi
 main "$@"
-'''
+''' 
 
 
 class LauncherTests(unittest.TestCase):
@@ -261,6 +264,17 @@ class LauncherTests(unittest.TestCase):
         self.assertIn('--use-angle=vulkan', data['argv'])
         for argument in ('--use-vulkan=swiftshader', '--disable-features=Vulkan'):
             self.assertEqual(self.run_launcher('auto', self.prefix / 'bin/chromium', argument).returncode, 78)
+
+    def test_managed_path_shim_unwraps_and_preserves_software_selection(self):
+        shim = self.prefix / 'bin/gpu-entry-chromium'
+        shim.write_text('#!/bin/sh\n# pad-gpu entry: chromium\nexit 99\n')
+        shim.chmod(0o755)
+        mock = {'MOCK_MANAGED_BINARY': str(self.prefix / 'bin/chromium')}
+        hardware = self.data(self.run_launcher('auto', shim, env=mock))
+        self.assertIn('--use-vulkan=native', hardware['argv'])
+        software = self.data(self.run_launcher('--software', 'auto', shim, env=mock))
+        self.assertIn('--disable-gpu', software['argv'])
+        self.assertNotIn('--use-vulkan=native', software['argv'])
 
     def test_target_exit_status_is_preserved(self):
         result = self.run_launcher('auto', self.prefix / 'bin/app', env={'TEST_EXIT': '23'})

@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# desktop-zink.sh — XFCE 桌面的 Mali-zink 变体会话（2026-09-16 新增，实验性）。
+# desktop-zink.sh — current GPU desktop session (r3.3, 2026-10-12).
 # 与 debian-desktop.sh 的差异：
 #   1) 会话经 /usr/local/bin/gpu-run 继承当前统一桥接配置（原来写死主基线）
 #   2) 额外挂载 system/vendor/apex 供 hybris 加载 Android Mali 驱动
@@ -104,7 +104,7 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TMPDIR=
 export DISPLAY='$X11_DISPLAY'
 export PULSE_SERVER=tcp:127.0.0.1:4713
 unset LIBGL_ALWAYS_SOFTWARE LP_NUM_THREADS DEBIAN_LLVM_THREADS mesa_glthread vblank_mode PAD_GPU_PREFIX
-export PAD_GPU_X11_COLOR_MODE=bgra PAD_GPU_MAX_FPS='$PAD_GPU_MAX_FPS'
+export PAD_GPU_X11_COLOR_MODE=bgra PAD_GPU_MAX_FPS='$PAD_GPU_MAX_FPS' PAD_GPU_SKIA_BACKEND=native
 export HYBRIS_VULKANPLATFORM=null
 export XDG_RUNTIME_DIR=/run/user/0
 export GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx SDL_IM_MODULE=fcitx
