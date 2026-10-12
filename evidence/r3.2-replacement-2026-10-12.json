@@ -241,14 +241,40 @@
     "enabled_module_in_scope": "com.sevtinge.hyperceiler",
     "profile_samples": 318,
     "lost_samples": 0,
-    "hook_causal_isolation_status": "pending user approval",
-    "data_paths_private": true
+    "hook_causal_isolation_status": "deferred because same process returned to idle without scope changes",
+    "data_paths_private": true,
+    "later_same_pid_checks": [
+      {
+        "case": "current-r3.2-idle",
+        "seconds": 10.000166,
+        "sogou_pid": 9163,
+        "sogou_start_ticks": 18278,
+        "sogou_cpu_s": 0.0,
+        "power_w_min": 3.131835,
+        "power_w_max": 3.668721,
+        "power_w_mean": 3.370451
+      },
+      {
+        "case": "second-idle",
+        "seconds": 8.000182,
+        "sogou_pid": 9163,
+        "sogou_start_ticks": 18278,
+        "sogou_cpu_s": 0.0,
+        "power_w_min": 3.011124,
+        "power_w_max": 4.048856,
+        "power_w_mean": 3.35030075
+      }
+    ],
+    "later_cgroup_frozen": false,
+    "later_main_wchan": "do_epoll_wait",
+    "module_settings_unchanged": true,
+    "resolution": "current hot loop stopped; recurrence and attribution unproven"
   },
   "limitations": [
     "Actual SF present interval tail did not improve in the short WSI case.",
     "SF presentations include duplicates; never interpreted as new-content FPS.",
     "Full-resolution transfer still exists; no zero-copy claim.",
-    "Sogou abnormal CPU and approximately 5W idle remain unresolved.",
-    "Cold-start and suspend/resume robustness and stable-condition battery life remain unverified."
+    "Cold-start and suspend/resume robustness and stable-condition battery life remain unverified.",
+    "Input-method CPU later stopped and short-window total power averaged 3.35-3.37 W; long-term stability and attribution are unproven."
   ]
 }
