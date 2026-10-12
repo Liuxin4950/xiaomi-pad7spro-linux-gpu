@@ -70,3 +70,5 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 - `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前设备没有升级候选 `0002`。
 
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
+
+2026-10-12 输入法修正包另外采用 Java/资源构建并保留已安装 APK 的四个原生库：锁定 d55f1b7 的源码 + popup 补丁 + `0003-ime-cursor-cancellation.patch`，使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36、buildTools 37.0.0 和 ARM aapt2/aidl；关闭新版 DSL 与 companion 生成，不启用 externalNativeBuild，将原 APK 的 `lib/*/libXlorie.so` 作为 jniLibs 输入，构建 `:lorie-app:assembleStandaloneDebug`。保持 minSdk 24、targetSdk 34、包名和 versionCode 15，用相同上游测试证书签名。原 APK 与修正包 native 内容及证书逐项比较后才安装；原 APK 保留在私有 build 目录。原生节拍候选 0002 仍未安装，不能据新 Java 包声称其已生效。

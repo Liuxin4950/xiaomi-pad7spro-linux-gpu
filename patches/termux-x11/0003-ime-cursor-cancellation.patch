@@ -1,0 +1,53 @@
+--- a/lorie/src/main/java/com/termux/x11/LorieView.java
++++ b/lorie/src/main/java/com/termux/x11/LorieView.java
+@@ -128,12 +128,24 @@
+         // Needed to trace current fake cursor position.
+         int currentPos = 1, requestedPos;
+         boolean resetCursorPosition;
++        boolean monitorCursorUpdates;
++        int lastCursorAnchorPosition = Integer.MIN_VALUE;
++        void sendCursorAnchor(boolean immediate) {
++            if (!immediate && (!monitorCursorUpdates || lastCursorAnchorPosition == currentPos))
++                return;
++            lastCursorAnchorPosition = currentPos;
++            mIMM.updateCursorAnchorInfo(LorieView.this, new CursorAnchorInfo.Builder()
++                    .setComposingText(-1, null)
++                    .setSelectionRange(currentPos, currentPos)
++                    .build());
++        }
+         void sendCursorPosition() {
+             if (resetCursorPosition) {
+                 mIMM.updateSelection(LorieView.this, -1, -1, -1, -1);
+                 currentPos = 1;
+             }
+             mIMM.updateSelection(LorieView.this, currentPos, currentPos, -1, -1);
++            sendCursorAnchor(false);
+         }
+ 
+         // Needed to send arrow keys with IME's cursor control feature
+@@ -269,15 +281,21 @@
+ 
+         @Override
+         public boolean requestCursorUpdates(int cursorUpdateMode) {
+-            mIMM.updateCursorAnchorInfo(LorieView.this, new CursorAnchorInfo.Builder()
+-                    .setComposingText(-1, null)
+-                    .setSelectionRange(currentPos, currentPos)
+-                    .build());
++            // Mode zero cancels monitoring. Sending an update here can trigger
++            // an IME cancellation/update feedback loop while the keyboard is hidden.
++            final int modes = CURSOR_UPDATE_IMMEDIATE | CURSOR_UPDATE_MONITOR;
++            if ((cursorUpdateMode & ~modes) != 0)
++                return false; // No real editor geometry is available for filters.
++            monitorCursorUpdates = (cursorUpdateMode & CURSOR_UPDATE_MONITOR) != 0;
++            if ((cursorUpdateMode & CURSOR_UPDATE_IMMEDIATE) != 0)
++                sendCursorAnchor(true);
+             return true;
+         }
+ 
+         @Override
+         public boolean requestCursorUpdates(int cursorUpdateMode, int cursorUpdateFilter) {
++            if (cursorUpdateFilter != 0)
++                return false;
+             return requestCursorUpdates(cursorUpdateMode);
+         }
+     };

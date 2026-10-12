@@ -82,7 +82,7 @@ check_angle_arguments() {
     else
       case "$argument" in
         --use-angle=vulkan|--use-gl=angle) ;;
-        --use-angle=*|--use-gl=*|--disable-gpu|--disable-gpu-compositing)
+        --use-angle=*|--use-gl=*|--disable-gpu|--disable-gpu-compositing|--disable-gpu-rasterization)
           fail "argument conflicts with the ANGLE Vulkan route: $argument"; return ;;
       esac
     fi
@@ -171,6 +171,9 @@ configure_hardware() {
     fail 'PAD_GPU_MAX_FPS must be 0 (uncapped) or 1-240'; return;
   }
   export PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-60}
+  # RandR's advertised refresh is not proof of an MSC/scanout cap. The old
+  # installed X11 server still ticks at Android's rate, so retain the cap.
+  export PAD_GPU_FIFO_DISPLAY_PACED=0
   export HYBRIS_LD_LIBRARY_PATH="$prefix/android-override:/apex/com.android.runtime/lib64/bionic:/system/lib64:/vendor/lib64:/vendor/lib64/hw"
   export HYBRIS_VULKANPLATFORM=null
   export VK_DRIVER_FILES="$prefix/share/vulkan/icd.d/sysvk_icd.json"
@@ -292,7 +295,7 @@ main() {
     if ((angle)); then
       [[ $EUID != 0 ]] || arguments+=(--no-sandbox)
       arguments+=(--disable-gpu-sandbox --use-gl=angle --use-angle=vulkan \
-        --enable-gpu --disable-software-rasterizer --ozone-platform=x11)
+        --enable-gpu --enable-gpu-rasterization --disable-software-rasterizer --ozone-platform=x11)
     fi
     log "hardware environment; prefix=$prefix executable=$binary angle=$angle"
     log "ICD=$VK_DRIVER_FILES WSI=$VK_IMPLICIT_LAYER_PATH"

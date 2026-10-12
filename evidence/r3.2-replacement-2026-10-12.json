@@ -1,0 +1,254 @@
+{
+  "date": "2026-10-12",
+  "release": "r3.2",
+  "default_prefix": "/opt/pad7spro-gpu-observe-20261012",
+  "default_runner": "/opt/pad7spro-gpu-observe-20261012/bin/gpu-run",
+  "whole_device_power_target_verified": false,
+  "wsi_frame_checks": [
+    {
+      "label": "r2-moving",
+      "rc": 0,
+      "start": {
+        "monotonic_ns": 33753226893277,
+        "boottime_ns": 42522248840241,
+        "realtime_ns": 1791805907231099187
+      },
+      "end": {
+        "monotonic_ns": 33758744774453,
+        "boottime_ns": 42527766729906,
+        "realtime_ns": 1791805912748992368
+      },
+      "screen_awake": true,
+      "freezer": "0",
+      "client_frames": 300,
+      "client_cpu_s": 0.82,
+      "client_cpu_method": "last live proc stat; final exit ticks may be missed",
+      "steady_cpu_ms_per_s": 138.04022067971047,
+      "tracked_cpu_s": {
+        "6911": 0.0,
+        "23811": 0.96,
+        "24256": 1.86
+      },
+      "mali_mapped": true,
+      "actual_sf_presents": 373,
+      "actual_sf_interval_ms": {
+        "p50": 16.641979,
+        "p95": 16.814141,
+        "p99": 25.064193
+      },
+      "actual_sf_max_ms": 33.448828,
+      "actual_sf_hz": 68.57113458137894,
+      "acquire_us": {
+        "p50": 175.13,
+        "p95": 9416.563,
+        "p99": 11648.542
+      },
+      "host_frame_us": {
+        "p50": 1981.641,
+        "p95": 11431.25,
+        "p99": 14101.641
+      },
+      "clock_offset_change_ns": 8489,
+      "valid": true
+    },
+    {
+      "label": "fixed-moving",
+      "rc": 0,
+      "start": {
+        "monotonic_ns": 33758797689401,
+        "boottime_ns": 42527819636886,
+        "realtime_ns": 1791805912801896405
+      },
+      "end": {
+        "monotonic_ns": 33764066075993,
+        "boottime_ns": 42533088023634,
+        "realtime_ns": 1791805918070283049
+      },
+      "screen_awake": true,
+      "freezer": "0",
+      "client_frames": 300,
+      "client_cpu_s": 0.9,
+      "client_cpu_method": "last live proc stat; final exit ticks may be missed",
+      "steady_cpu_ms_per_s": 158.0555394601587,
+      "tracked_cpu_s": {
+        "6911": 0.0,
+        "23811": 1.02,
+        "24256": 1.88
+      },
+      "mali_mapped": true,
+      "actual_sf_presents": 328,
+      "actual_sf_interval_ms": {
+        "p50": 16.655313,
+        "p95": 16.827396,
+        "p99": 33.262604
+      },
+      "actual_sf_max_ms": 41.686797,
+      "actual_sf_hz": 65.50895772152316,
+      "acquire_us": {
+        "p50": 131.823,
+        "p95": 510.234,
+        "p99": 1777.317
+      },
+      "host_frame_us": {
+        "p50": 1714.922,
+        "p95": 3625.573,
+        "p99": 4950.651
+      },
+      "clock_offset_change_ns": 156,
+      "valid": true
+    }
+  ],
+  "browser_process_cpu_compare": [
+    {
+      "mode": "hardware",
+      "duration_s": 6.000437503997091,
+      "cpu_s": {
+        "gpu": 1.62,
+        "renderer": 0.88,
+        "other": 0.26
+      },
+      "pids": [
+        "14305",
+        "14326",
+        "14327",
+        "14348",
+        "14351",
+        "14355",
+        "14401",
+        "14412",
+        "14413"
+      ],
+      "survived": true,
+      "features": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled_force",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "disabled_software",
+        "video_encode": "disabled_software",
+        "vulkan": "disabled_off",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webgpu_on_vk_via_gl_interop": "disabled_off",
+        "webnn": "disabled_off"
+      },
+      "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis-49.1.0)",
+      "crashes": 0
+    },
+    {
+      "mode": "software",
+      "duration_s": 6.0002404209990345,
+      "cpu_s": {
+        "gpu": 5.45,
+        "renderer": 0.58,
+        "other": 0.16999999999999998
+      },
+      "pids": [
+        "14521",
+        "14533",
+        "14534",
+        "14671",
+        "14674",
+        "14684",
+        "14725",
+        "14736",
+        "14738"
+      ],
+      "survived": true,
+      "features": {
+        "2d_canvas": "disabled_software",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "disabled_software",
+        "multiple_raster_threads": "disabled_off",
+        "opengl": "disabled_off",
+        "rasterization": "disabled_software",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "disabled_software",
+        "video_encode": "disabled_software",
+        "vulkan": "disabled_off",
+        "webgl": "disabled_off",
+        "webgpu": "disabled_off",
+        "webgpu_on_vk_via_gl_interop": "disabled_off",
+        "webnn": "disabled_off"
+      },
+      "renderer": "Disabled",
+      "crashes": 0
+    }
+  ],
+  "browser_cpu_limit": "Different rendering modes, same CSS scroll scene, six seconds; browser processes only, no per-content-frame display matching and no whole-device power comparison.",
+  "live_chatgpt_gpu": {
+    "operation": "one GPU child restart to load the corrected capped WSI; browser main preserved",
+    "old_gpu_pid": 24358,
+    "old_start_ticks": 4018366,
+    "main_pid": 24303,
+    "monotonic_ns": 33905532337273,
+    "new_gpu_pid": 15164,
+    "mali_loaded": true,
+    "library_updated": true,
+    "main_alive": true
+  },
+  "termux_apk": {
+    "old_sha256": "cafaa567a76ebd08baa0115629b522ff58697b71738ef5a732b4a0b4da259bcf",
+    "new_sha256": "6f3ea04421ec45d3693cfe7a0aad44398686c666c2b9a31a04a7b0c845a33209",
+    "native_libraries": 4,
+    "changed_native": [],
+    "installed": true,
+    "installed_native_patches": [
+      "popup_fix"
+    ],
+    "installed_java_patches": [
+      "cursor_cancellation"
+    ],
+    "pacing_native_candidate_installed": false,
+    "sogou_full_cpu_resolved": false
+  },
+  "daemon": {
+    "before": {
+      "pid": 6911,
+      "start_ticks": 17842,
+      "seconds": 15.000178,
+      "exceptions": 1735,
+      "process_cpu_s": 17.12
+    },
+    "after": {
+      "pid": 6911,
+      "start_ticks": 17842,
+      "seconds": 30.000168,
+      "exceptions": 0,
+      "process_cpu_s": 0.0
+    },
+    "repair": "One fingerprint-guarded malformed ty=388 row quarantined after online backup. Service/package/SELinux policy unchanged; recurrence possible."
+  },
+  "idle_issue": {
+    "process": "com.sohu.inputmethod.sogou.xiaomi",
+    "pid": 9163,
+    "process_cpu_pct_observed": [
+      128.5,
+      134.4
+    ],
+    "hot_thread": "main",
+    "hot_thread_pct": 92.8,
+    "gc_thread_pct": 37.4,
+    "battery_snapshot_w": 4.84288,
+    "input_shown": false,
+    "enabled_module_in_scope": "com.sevtinge.hyperceiler",
+    "profile_samples": 318,
+    "lost_samples": 0,
+    "hook_causal_isolation_status": "pending user approval",
+    "data_paths_private": true
+  },
+  "limitations": [
+    "Actual SF present interval tail did not improve in the short WSI case.",
+    "SF presentations include duplicates; never interpreted as new-content FPS.",
+    "Full-resolution transfer still exists; no zero-copy claim.",
+    "Sogou abnormal CPU and approximately 5W idle remain unresolved.",
+    "Cold-start and suspend/resume robustness and stable-condition battery life remain unverified."
+  ]
+}

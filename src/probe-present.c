@@ -14,6 +14,18 @@
 #include <signal.h>
 
 static volatile sig_atomic_t stop_requested;
+static int marker_fd = -1;
+static void trace_stage(const char *stage)
+{
+    if (marker_fd < 0) return;
+    char line[128];
+    int n = snprintf(line, sizeof(line), "B|%d|PAD_CLIENT.%s", getpid(), stage);
+    if (n > 0 && n < (int)sizeof(line)) (void)write(marker_fd, line, n);
+}
+static void trace_end(void)
+{
+    if (marker_fd >= 0) (void)write(marker_fd, "E", 1);
+}
 static void request_stop(int signal_number)
 {
     (void)signal_number;
@@ -47,7 +59,8 @@ int main(int argc, char **argv)
     unsigned width = 256, height = 192, delay_ms = 20, idle_ms = 0;
     const char *timings_path = NULL;
     FILE *timings = NULL;
-    int replace = 0, bgra = 0, solid_red = 0, resize = 0;
+    int replace = 0, bgra = 0, solid_red = 0, resize = 0, motion = 0, fullscreen = 0, prewait = 0;
+    unsigned rate = 0;
     VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--cycles") && i + 1 < argc) cycles = number(argv[++i]);
@@ -57,6 +70,11 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--bgra")) bgra = 1;
         else if (!strcmp(argv[i], "--solid-red")) solid_red = 1;
         else if (!strcmp(argv[i], "--resize")) resize = 1;
+        else if (!strcmp(argv[i], "--motion")) motion = 1;
+        else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
+        else if (!strcmp(argv[i], "--prewait-render")) prewait = 1;
+        else if (!strcmp(argv[i], "--markers")) marker_fd = open("/proc/1/root/sys/kernel/tracing/trace_marker", O_WRONLY | O_CLOEXEC);
+        else if (!strcmp(argv[i], "--rate") && i + 1 < argc) rate = number(argv[++i]);
         else if (!strcmp(argv[i], "--width") && i + 1 < argc) width = number(argv[++i]);
         else if (!strcmp(argv[i], "--height") && i + 1 < argc) height = number(argv[++i]);
         else if (!strcmp(argv[i], "--delay-ms") && i + 1 < argc) {
@@ -70,10 +88,11 @@ int main(int argc, char **argv)
             if (!idle_ms && strcmp(value, "0")) return 64;
         }
         else if (!strcmp(argv[i], "--timings") && i + 1 < argc) timings_path = argv[++i];
-        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV]\n", argv[0]); return 64; }
+        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV] [--motion] [--fullscreen] [--rate N] [--prewait-render] [--markers]\n", argv[0]); return 64; }
     }
     if (!cycles || !frames || !width || !height || width > 10000 || height > 10000 || delay_ms > 10000 ||
-        (resize && (width < 32 || height < 32))) return 64;
+        (resize && (width < 32 || height < 32)) || rate > 240 || (motion && (width < 64 || height < 32))) return 64;
+    if (rate) delay_ms = 0;
     signal(SIGINT, request_stop);
     signal(SIGTERM, request_stop);
     if (timings_path) {
@@ -82,7 +101,7 @@ int main(int argc, char **argv)
             if (fd >= 0) close(fd);
             perror("timings"); return 73;
         }
-        fputs("cycle,frame,start_ns,acquire_us,queue_present_us,host_frame_us\n", timings);
+        fputs("cycle,frame,start_ns,acquire_us,queue_present_us,host_frame_us,due_ns,render_ready_us\n", timings);
     }
     int exit_status = 1;
     VkResult status = VK_SUCCESS;
@@ -92,6 +111,9 @@ int main(int argc, char **argv)
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkSwapchainKHR old_swapchain = VK_NULL_HANDLE;
     VkCommandPool pool = VK_NULL_HANDLE;
+    VkRenderPass render_pass = VK_NULL_HANDLE;
+    VkImageView *views = NULL;
+    VkFramebuffer *framebuffers = NULL;
     VkSemaphore acquired = VK_NULL_HANDLE, *rendered = NULL;
     VkSemaphore *old_rendered = NULL;
     VkFence fence = VK_NULL_HANDLE;
@@ -104,10 +126,10 @@ int main(int argc, char **argv)
     if (xcb_connection_has_error(connection)) goto done;
     xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
     window = xcb_generate_id(connection);
-    uint32_t values[] = {screen->black_pixel, XCB_EVENT_MASK_STRUCTURE_NOTIFY};
+    uint32_t values[] = {screen->black_pixel, fullscreen, XCB_EVENT_MASK_STRUCTURE_NOTIFY};
     xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root,
-                      24, 120, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
-                      XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, values);
+                      fullscreen ? 0 : 24, fullscreen ? 0 : 120, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
+                      XCB_CW_BACK_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK, values);
     const char title[] = "GPU bridge validation";
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME,
                          XCB_ATOM_STRING, 8, sizeof(title) - 1, title);
@@ -231,11 +253,47 @@ int main(int argc, char **argv)
         CHECK(vkGetSwapchainImagesKHR(device, swapchain, &image_count, images));
         for (unsigned i = 0; i < image_count; ++i)
             CHECK(vkCreateSemaphore(device, &semaphore_create, NULL, &rendered[i]));
+        if (motion) {
+            VkAttachmentDescription attachment = {.format=format.format, .samples=VK_SAMPLE_COUNT_1_BIT,
+                .loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR, .storeOp=VK_ATTACHMENT_STORE_OP_STORE,
+                .stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                .initialLayout=VK_IMAGE_LAYOUT_UNDEFINED, .finalLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+            VkAttachmentReference reference = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+            VkSubpassDescription subpass = {.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS,
+                .colorAttachmentCount=1, .pColorAttachments=&reference};
+            VkRenderPassCreateInfo pass = {.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                .attachmentCount=1, .pAttachments=&attachment, .subpassCount=1, .pSubpasses=&subpass};
+            CHECK(vkCreateRenderPass(device, &pass, NULL, &render_pass));
+            views = calloc(image_count, sizeof(*views));
+            framebuffers = calloc(image_count, sizeof(*framebuffers));
+            if (!views || !framebuffers) goto done;
+            for (unsigned i=0; i<image_count; ++i) {
+                VkImageViewCreateInfo view = {.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                    .image=images[i], .viewType=VK_IMAGE_VIEW_TYPE_2D, .format=format.format,
+                    .subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
+                CHECK(vkCreateImageView(device, &view, NULL, &views[i]));
+                VkFramebufferCreateInfo framebuffer = {.sType=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                    .renderPass=render_pass, .attachmentCount=1, .pAttachments=&views[i],
+                    .width=extent.width, .height=extent.height, .layers=1};
+                CHECK(vkCreateFramebuffer(device, &framebuffer, NULL, &framebuffers[i]));
+            }
+        }
+        uint64_t due = now_ns();
         unsigned completed_frames = 0;
         for (unsigned frame = 0; frame < frames && !stop_requested; ++frame) {
+            if (rate) {
+                struct timespec deadline = {.tv_sec=due/1000000000, .tv_nsec=due%1000000000};
+                while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL) == EINTR && !stop_requested) {}
+            }
             const uint64_t started = now_ns();
+            if (marker_fd >= 0) {
+                char marker[96]; int length=snprintf(marker,sizeof(marker),"C|%d|PAD_FRAME|%u",getpid(),frame);
+                (void)write(marker_fd, marker, length);
+            }
             uint32_t index;
+            trace_stage("Acquire");
             status = vkAcquireNextImageKHR(device, swapchain, UINT64_C(5000000000), acquired, VK_NULL_HANDLE, &index);
+            trace_end();
             if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) goto done;
             const uint64_t acquired_at = now_ns();
             CHECK(vkResetCommandBuffer(command, 0));
@@ -246,43 +304,84 @@ int main(int argc, char **argv)
                 .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = images[index], .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
-            vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                 0, 0, NULL, 0, NULL, 1, &barrier);
-            VkClearColorValue color = {.float32 = {(cycle % 3) / 2.0f, 0.25f, (frame % 3) / 2.0f, 1.0f}};
-            if (solid_red) color = (VkClearColorValue){.float32 = {1.0f, 0.0f, 0.0f, 1.0f}};
-            vkCmdClearColorImage(command, images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                &color, 1, &barrier.subresourceRange);
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            trace_stage("RecordRender");
+            if (motion) {
+                VkClearValue clear = {.color={.float32={0.2f,0.2f,0.2f,1.0f}}};
+                VkRenderPassBeginInfo pass = {.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                    .renderPass=render_pass, .framebuffer=framebuffers[index], .renderArea={{0,0},extent},
+                    .clearValueCount=1, .pClearValues=&clear};
+                vkCmdBeginRenderPass(command, &pass, VK_SUBPASS_CONTENTS_INLINE);
+                VkClearAttachment bar = {.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT, .colorAttachment=0,
+                    .clearValue={.color={.float32={0.15f,0.45f,0.85f,1.0f}}}};
+                VkClearRect rect = {.rect={{(int32_t)((frame*8)%(extent.width-63)),(int32_t)(extent.height/4)},
+                    {64,extent.height/2}}, .baseArrayLayer=0, .layerCount=1};
+                vkCmdClearAttachments(command,1,&bar,1,&rect);
+                vkCmdEndRenderPass(command);
+            } else {
+                vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     0, 0, NULL, 0, NULL, 1, &barrier);
+                VkClearColorValue color = {.float32 = {(cycle % 3) / 2.0f, 0.25f, (frame % 3) / 2.0f, 1.0f}};
+                if (solid_red) color = (VkClearColorValue){.float32 = {1.0f, 0.0f, 0.0f, 1.0f}};
+                vkCmdClearColorImage(command, images[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                    &color, 1, &barrier.subresourceRange);
+            }
+            barrier.srcAccessMask = motion ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = 0;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.oldLayout = motion ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            vkCmdPipelineBarrier(command, motion ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                  0, 0, NULL, 0, NULL, 1, &barrier);
             CHECK(vkEndCommandBuffer(command));
-            VkPipelineStageFlags stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            trace_end();
+            VkPipelineStageFlags stage = motion ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT;
             VkSubmitInfo submit = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                 .waitSemaphoreCount = 1, .pWaitSemaphores = &acquired, .pWaitDstStageMask = &stage,
                 .commandBufferCount = 1, .pCommandBuffers = &command,
                 .signalSemaphoreCount = 1, .pSignalSemaphores = &rendered[index]};
             CHECK(vkQueueSubmit(queue, 1, &submit, fence));
+            uint64_t render_ready_us = 0;
+            if (prewait) {
+                trace_stage("RenderFence");
+                CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
+                trace_end();
+                render_ready_us = (now_ns()-started)/1000;
+            }
             VkPresentInfoKHR present = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1, .pWaitSemaphores = &rendered[index],
                 .swapchainCount = 1, .pSwapchains = &swapchain, .pImageIndices = &index};
             const uint64_t present_started = now_ns();
+            trace_stage("Present");
             status = vkQueuePresentKHR(queue, &present);
+            trace_end();
             if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) goto done;
             const uint64_t presented_at = now_ns();
-            CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
+            if (!prewait) {
+                trace_stage("RenderFence");
+                CHECK(vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
+                trace_end();
+                render_ready_us = (now_ns()-started)/1000;
+            }
             CHECK(vkResetFences(device, 1, &fence));
             /* Bounded low load; this tool is for correctness, not peak FPS. */
-            if (timings) fprintf(timings, "%u,%u,%llu,%.3f,%.3f,%.3f\n", cycle, frame,
+            if (timings) fprintf(timings, "%u,%u,%llu,%.3f,%.3f,%.3f,%llu,%llu\n", cycle, frame,
                 (unsigned long long)started, (acquired_at - started) / 1000.,
-                (presented_at - present_started) / 1000., (now_ns() - started) / 1000.);
+                (presented_at - present_started) / 1000., (now_ns() - started) / 1000.,
+                (unsigned long long)due, (unsigned long long)render_ready_us);
             ++completed_frames;
             pause_ms(delay_ms);
+            if (rate) {
+                due += UINT64_C(1000000000)/rate;
+                uint64_t current = now_ns();
+                if (current > due) due += ((current-due)/(UINT64_C(1000000000)/rate)+1)*(UINT64_C(1000000000)/rate);
+            }
         }
         pause_ms(idle_ms);
         CHECK(vkDeviceWaitIdle(device));
+        if (motion) {
+            for (unsigned i=0;i<image_count;++i) { vkDestroyFramebuffer(device,framebuffers[i],NULL); vkDestroyImageView(device,views[i],NULL); }
+            free(framebuffers); framebuffers=NULL; free(views); views=NULL;
+            vkDestroyRenderPass(device,render_pass,NULL); render_pass=VK_NULL_HANDLE;
+        }
         if (replace && cycle + 1 < cycles) {
             old_swapchain = swapchain;
             old_rendered = rendered;
@@ -305,6 +404,12 @@ int main(int argc, char **argv)
 done:
     if (exit_status) fprintf(stderr, "Presentation regression failed: %d\n", status);
     if (device) vkDeviceWaitIdle(device);
+    if (device) for (unsigned i=0;i<image_count;++i) {
+        if (framebuffers && framebuffers[i]) vkDestroyFramebuffer(device,framebuffers[i],NULL);
+        if (views && views[i]) vkDestroyImageView(device,views[i],NULL);
+    }
+    free(framebuffers); free(views);
+    if (render_pass) vkDestroyRenderPass(device,render_pass,NULL);
     if (swapchain) vkDestroySwapchainKHR(device, swapchain, NULL);
     if (old_swapchain) vkDestroySwapchainKHR(device, old_swapchain, NULL);
     if (rendered) for (unsigned i = 0; i < image_count; ++i)
@@ -322,5 +427,6 @@ done:
     if (window) { xcb_destroy_window(connection, window); xcb_flush(connection); }
     if (connection) xcb_disconnect(connection);
     if (timings) fclose(timings);
+    if (marker_fd >= 0) close(marker_fd);
     return exit_status;
 }

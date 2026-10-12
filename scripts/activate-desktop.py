@@ -20,6 +20,10 @@ def desktop_text(path, text):
     lines = []
     is_cc = path.name in ('CC Switch.desktop', 'cc-switch-handler.desktop')
     for line in updated.splitlines():
+        if path.name in ('trae-cn.desktop', 'trae-cn-url-handler.desktop') and line.startswith('Exec=/usr/share/trae-cn/trae-cn'):
+            suffix = line[len('Exec=/usr/share/trae-cn/trae-cn'):]
+            if not suffix or suffix.startswith(' '):
+                line = 'Exec=' + RUNNER + ' trae' + suffix
         if is_cc and line.startswith('Exec='):
             # Only replace the known entry points; preserve all URL placeholders.
             for command in ('env GALLIUM_DRIVER=llvmpipe cc-switch', '"/usr/bin/cc-switch"', '/usr/bin/cc-switch'):
@@ -73,7 +77,7 @@ def main():
             updated = desktop_text(path, original)
             if updated != original:
                 # Do not reformat unrelated desktop files.
-                if OLD not in original and path.name not in ('CC Switch.desktop', 'cc-switch-handler.desktop'):
+                if OLD not in original and path.name not in ('CC Switch.desktop', 'cc-switch-handler.desktop', 'trae-cn.desktop', 'trae-cn-url-handler.desktop'):
                     continue
                 changes[path] = updated.encode()
     fixed = {

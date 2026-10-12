@@ -243,7 +243,7 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(self.checks.read_text(), 'android:0\n')
 
     def test_conflicting_renderer_arguments_are_rejected(self):
-        for args in (('auto', '--use-angle=gl-egl'), ('auto', '--disable-gpu')):
+        for args in (('auto', '--use-angle=gl-egl'), ('auto', '--disable-gpu'), ('auto', '--disable-gpu-rasterization')):
             result = self.run_launcher(args[0], self.prefix / 'bin/chromium', args[1])
             self.assertEqual(result.returncode, 78)
             self.assertIn('conflicts', result.stderr)

@@ -30,6 +30,14 @@
         {
           "path": "patches/wsi/0002-r3-efficiency.patch",
           "sha256": "6da3711c1086e581dbb115a2d8c0e39099244bd6f36d9e40a024606741158e30"
+        },
+        {
+          "path": "patches/wsi/0003-timeline-diagnostics.patch",
+          "sha256": "ec544d53fb5ff665e18106f3ec7e61de40e36f18da586c64524126d85486e622"
+        },
+        {
+          "path": "patches/wsi/0004-complete-before-idle.patch",
+          "sha256": "56455a6c29588d6300a533b314289ef95146873fee923e07a076485a21edf18c"
         }
       ]
     },
@@ -59,6 +67,10 @@
       {
         "path": "patches/termux-x11/0002-pacing-and-copy-batching.patch",
         "sha256": "c518cdc8fd7e53be1a6449cc2541e999e4ca78609dbd6beca55279ba9be0f69a"
+      },
+      {
+        "path": "patches/termux-x11/0003-ime-cursor-cancellation.patch",
+        "sha256": "c76175bb93a2e0873a470da4e0c30890a82bf4740f865b85f5699e6b85a59436"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

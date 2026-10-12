@@ -4,7 +4,7 @@
 
 **状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
 
-2026-10-12 完成了[隔离 r3 效率审查](docs/r3-efficiency-audit.md)：减少 WSI 指令重录与空闲唤醒，实测发现系统异常上传循环；整体帧时间/功耗收益尚未达标，默认仍保留 r2。
+2026-10-12 已将 [r3.2 GPU 桥接](docs/r3.2-gpu-replacement.md)切换为默认，替换 r2：保留命令复用和空闲休眠，修复缓冲释放与限帧截止时间漂移，并统一 Trae 入口。已验证 Mali 硬件渲染；整机续航和 Android 显示尾延迟仍需验证。原始 [r3 审查](docs/r3-efficiency-audit.md)保留作为历史证据。
 
 ## 日常使用
 

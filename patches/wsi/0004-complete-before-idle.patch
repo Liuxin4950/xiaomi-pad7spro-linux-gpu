@@ -1,0 +1,108 @@
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 32ff37e..14b1fc1 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -81,6 +81,8 @@ struct x11_image_data
+    VkCommandBuffer conversion_command{};
+    bool presentation_initialized{ false };
+    bool conversion_reusable{ false };
++   bool waiting_for_idle{false};
++   uint32_t idle_serial{0};
+    VkQueryPool timestamp_pool{};
+    uint64_t payload_sequence{0}, reported_sequence{0};
+    VkSubresourceLayout layout;
+@@ -348,7 +350,7 @@ void swapchain::present_event_thread()
+                continue;
+ 
+             auto data = reinterpret_cast<x11_image_data *>(image.data);
+-            if (data->pending_completions.size() != 0)
++            if (!data->pending_completions.empty() || (m_idle_acquire_waiters && data->waiting_for_idle))
+             {
+                assume_forward_progress = true;
+                break;
+@@ -429,6 +431,16 @@ void swapchain::present_event_thread()
+       {
+          auto idle = reinterpret_cast<xcb_present_idle_notify_event_t *>(event);
+          if (m_timeline) m_timeline->record("x11_idle", idle->pixmap, idle->serial);
++         {
++            const std::lock_guard<std::recursive_mutex> image_status_lock(m_image_status_mutex);
++            for (auto &image : m_swapchain_images) {
++               if (!image.data || image.status == swapchain_image::INVALID || image.status == swapchain_image::UNALLOCATED)
++                  continue;
++               auto data = reinterpret_cast<x11_image_data *>(image.data);
++               if (data->pixmap == idle->pixmap && data->idle_serial == idle->serial)
++                  data->waiting_for_idle = false;
++            }
++         }
+          m_free_buffer_pool.push_back(idle->pixmap);
+          m_thread_status_cond.notify_all();
+          break;
+@@ -498,6 +510,8 @@ void swapchain::present_image(const pending_present_request &pending_present)
+          return set_present_id(pending_present.present_id);
+    }
+ 
++   // The legacy X11 server's advertised refresh does not enforce its MSC
++   // clock. Retain the requested cap for both FIFO and MAILBOX.
+    if (m_max_present_fps)
+    {
+       // Sleep without holding the image lock or spinning; cancellation and
+@@ -509,9 +523,15 @@ void swapchain::present_image(const pending_present_request &pending_present)
+          return set_present_id(pending_present.present_id);
+       if (!m_present_event_thread_run)
+          return unpresent_image(pending_present.image_index);
+-      // No catch-up burst after a delayed frame or suspend/resume.
+-      m_next_present = std::chrono::steady_clock::now() +
+-         std::chrono::nanoseconds(UINT64_C(1000000000) / m_max_present_fps);
++      // Keep a fixed cadence instead of adding wake-up jitter every frame.
++      // Skip missed deadlines after stalls; never replay a catch-up burst.
++      const auto now = std::chrono::steady_clock::now();
++      const auto interval = std::chrono::nanoseconds(UINT64_C(1000000000) / m_max_present_fps);
++      if (m_next_present.time_since_epoch().count() == 0)
++         m_next_present = now;
++      m_next_present += interval;
++      if (m_next_present <= now)
++         m_next_present += interval * ((now - m_next_present) / interval + 1);
+    }
+ 
+    if (m_diagnostics)
+@@ -526,6 +546,8 @@ void swapchain::present_image(const pending_present_request &pending_present)
+    xcb_discard_reply(m_connection, cookie.sequence);
+    xcb_flush(m_connection);
+ 
++   image_data->waiting_for_idle = true;
++   image_data->idle_serial = serial;
+    image_data->pending_completions.push_back({ serial, pending_present.present_id });
+    m_thread_status_cond.notify_all();
+ 
+@@ -585,7 +607,18 @@ VkResult swapchain::get_free_buffer(uint64_t *timeout)
+    {
+       return free_image_found() ? VK_SUCCESS : VK_NOT_READY;
+    }
+-   else if (*timeout == UINT64_MAX)
++   // A front buffer may legitimately stay busy forever while the window is
++   // static. Listen for Idle when Acquire actually needs it, keeping static
++   // chains asleep instead of introducing another periodic poll.
++   struct idle_wait_guard {
++      uint32_t &waiters;
++      std::condition_variable &condition;
++      idle_wait_guard(uint32_t &count, std::condition_variable &cond) : waiters(count), condition(cond)
++      { ++waiters; condition.notify_all(); }
++      ~idle_wait_guard() { --waiters; condition.notify_all(); }
++   } wake_event_worker(m_idle_acquire_waiters, m_thread_status_cond);
++
++   if (*timeout == UINT64_MAX)
+    {
+       while (!free_image_found())
+       {
+diff --git a/wsi/x11/swapchain.hpp b/wsi/x11/swapchain.hpp
+index a0785bf..34c81fd 100644
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -167,6 +167,7 @@ private:
+    uint64_t m_send_sbc;
+    uint64_t m_target_msc;
+    uint64_t m_last_present_msc;
++   uint32_t m_idle_acquire_waiters{0};
+    std::unique_ptr<timeline> m_timeline;
+    float m_timestamp_period{0};
+    bool m_gpu_timestamps{false};

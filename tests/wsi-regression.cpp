@@ -484,6 +484,42 @@ int main()
          require(old_chain->m_swapchain_images[0].data == nullptr, "deprecate did not retire the FREE image");
          new_chain.reset(); old_chain.reset();
       }
+      // Complete is also allowed to precede Idle. After all other buffers are
+      // acquired, the event worker must keep listening for the final release.
+      {
+         auto chain = f.create(false);
+         uint32_t index;
+         require(chain->acquire_next_image(UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &index) == VK_SUCCESS && index == 0,
+                 "Complete-before-Idle initial acquire");
+         VkPresentInfoKHR info{};
+         wsi::swapchain_presentation_parameters params{}; params.handle_present_frame_boundary_event = false;
+         require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "Complete-before-Idle present");
+         for (unsigned i=0; i<3; ++i)
+            require(chain->acquire_next_image(UINT64_MAX, VK_NULL_HANDLE, VK_NULL_HANDLE, &index) == VK_SUCCESS,
+                    "Complete-before-Idle acquire remaining buffers");
+         auto complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
+         complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY;
+         complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+         complete->serial = last_present_serial;
+         complete->msc = 42;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
+         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+         for (;;) {
+            { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock);
+              if (chain->m_last_present_msc == 42) break; }
+            require(std::chrono::steady_clock::now() < deadline, "Complete notification not consumed");
+            std::this_thread::yield();
+         }
+         std::this_thread::sleep_for(std::chrono::milliseconds(20));
+         auto idle = static_cast<xcb_present_idle_notify_event_t *>(calloc(1, sizeof(xcb_present_idle_notify_event_t)));
+         idle->event_type = XCB_PRESENT_EVENT_IDLE_NOTIFY;
+         idle->pixmap = last_present_pixmap;
+         idle->serial = last_present_serial;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(idle));
+         uint64_t timeout = UINT64_C(500000000);
+         require(chain->get_free_buffer(&timeout) == VK_SUCCESS,
+                 "Complete-before-Idle was ignored: buffer acquisition blocked");
+      }
       {
          const unsigned before_images = image_creates, before_allocations = allocations;
          auto chain = f.create(false, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);
