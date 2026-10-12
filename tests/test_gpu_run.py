@@ -43,7 +43,7 @@ if [[ -n ${MOCK_MANAGED_BINARY:-} ]]; then
   application_binary() { printf '%s\n' "$MOCK_MANAGED_BINARY"; }
 fi
 main "$@"
-''' 
+'''
 
 
 class LauncherTests(unittest.TestCase):
