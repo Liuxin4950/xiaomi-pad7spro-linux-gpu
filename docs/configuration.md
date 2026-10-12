@@ -75,7 +75,7 @@ Trae 使用 `bin/trae-start`：只在启动最初 8 秒遇到精确 Oilpan cage 
 
 应用级限帧使用可被关闭事件唤醒的等待，降低持续提交频率，不做内容去重，不能说静止窗口已停止渲染。X11 与应用级上限现均为 60，长期功耗和双重节拍的延迟仍需同条件测量。会话移除了旧 `vblank_mode=0`，不伪装 OpenGL 版本。Mesa/Zink 基线曾报告 Mali 硬件 OpenGL 3.2，同时提示缺少 `fillModeNonSolid`、`shaderClipDistance`；高版本功能仍以真实驱动能力为准。
 
-当前 APK 已更新：原生 Copy 批处理和输入接口修正已在前端运行；既存 X server 的显示 tick 更新在正常重开桌面后生效。详见 CURRENT-STATE。
+当前 APK 已更新：原生 Copy 批处理和输入接口修正已在前端运行；X server 已正常重开并加载显示 tick 更新；后续升级同样需要重开。详见 CURRENT-STATE。
 
 ## 显式软件模式与诊断
 

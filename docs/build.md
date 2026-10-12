@@ -69,7 +69,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 - libhybris、WSI 和 Android headers 按固定上游源码构建，保留其许可证并应用项目补丁。
 - 修改版 bionic 是固定上游二进制运行依赖，当前流程没有从 Android 整体源码重建它；不能声称全部依赖均在本仓库从源码生成。
 - Android 原厂 Mali 驱动仍由用户固件提供，不包含在项目发布源码中。
-- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前前端已加载 `0002` 的批处理；旧 X server 的 tick 限制等待正常桌面重启。
+- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前前端与已重开的 X server 均已加载 `0002` 的原生代码；实际 APK 哈希和进程映射见入口证据。
 
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
 

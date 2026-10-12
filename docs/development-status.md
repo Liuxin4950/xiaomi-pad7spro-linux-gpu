@@ -6,7 +6,7 @@
 
 已取得运行证据：Chromium/Trae GaneshVulkan + Mali + 0 GPU 崩溃，WebGL 颜色回读正确；同一滚动页 rAF 35.83→58.86/s，CPU/页面帧 10.43→8.39 ms。28 项启动器检查通过，既有 WSI 生命周期回归通过。数据/范围见 [r3.3 交付](r3.3-native-rendering.md)。
 
-当前已有进程不是热更新：旧 X server 的真实显示 tick 上限与旧 ChatGPT 的二维后端在正常重开后才生效。新 APK 已安装，前端和新应用已使用更新。目录名 observe 不代表日常开启诊断。
+当前桌面与 ChatGPT 已重开，新 X server 映射当前 APK，ChatGPT 使用原生 Vulkan 参数并加载当前 WSI/Mali。以后文件升级仍不是进程热更新，需分别核对；目录名 observe 不代表日常开启诊断。
 
 尚未证明：所有应用与工作流兼容、长期续航、休眠恢复、视频硬解、完整中文触控输入、物理屏幕所有尾延迟消除、零拷贝。页面 rAF 不是实际新内容屏幕 FPS，单位帧 CPU 减少不等于整机功率相同比例减少。
 

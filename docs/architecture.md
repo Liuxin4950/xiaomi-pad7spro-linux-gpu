@@ -71,7 +71,7 @@ Chromium/Electron 的二维 Skia 使用原生 Vulkan，WebGL 使用 ANGLE Vulkan
 
 每张图像的 producer semaphore、传输指令与 fence 属于同一次同步提交；转换完成后才向 X11 Present。资源重建、线程取消和旧 swapchain 退役需保持图像/事件锁顺序与生命周期。详细修正在 [实现说明](implementation.md)。
 
-`PAD_GPU_MAX_FPS=60` 在每个 WSI swapchain 呈现端以可取消等待限制提交，避免忙等。它不限制所有离屏 GPU 指令，也不比较静止内容。`X11_MAX_FPS=60` 是启动请求；原 APK 主要限制 RandR 报告值，第二阶段原生 tick 门控已在安装包中，旧 X server 要正常重开桌面才加载。
+`PAD_GPU_MAX_FPS=60` 在每个 WSI swapchain 呈现端以可取消等待限制提交，避免忙等。它不限制所有离屏 GPU 指令，也不比较静止内容。`X11_MAX_FPS=60` 是启动请求；原 APK 主要限制 RandR 报告值，第二阶段原生 tick 门控已在当前新 X server 加载的安装包中。配置上限不等于屏幕实际呈现帧率。
 
 ## Android 运行依赖
 

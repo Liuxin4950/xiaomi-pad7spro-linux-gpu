@@ -5,13 +5,15 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Keep application/session settings, but discard a previous graphics stack.
 clean_graphics_environment() {
-  local name
+  local name exported_names
+  # A newly mounted chroot may not have /dev/fd yet. Avoid process substitution.
+  exported_names=$(compgen -e)
   while IFS= read -r name; do
     case "$name" in
       LD_PRELOAD|LD_LIBRARY_PATH|VK_*|HYBRIS_*|MESA_*|GALLIUM_*|LIBGL_*|EGL_*|ZINK_*|ANGLE_*|DISABLE_WSI_LAYER|vblank_mode|__EGL_VENDOR_LIBRARY_*)
         unset "$name" ;;
     esac
-  done < <(compgen -e)
+  done <<< "$exported_names"
 }
 clean_graphics_environment
 launcher_path=$(readlink -f -- "${BASH_SOURCE[0]}")

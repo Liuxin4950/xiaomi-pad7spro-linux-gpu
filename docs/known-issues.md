@@ -5,7 +5,7 @@
 | 情况 | 已知事实 / 操作 |
 |---|---|
 | 入口已更新但旧应用未变 | 单实例仍复用旧主进程；保存工作后完整重开，查实际 renderer/Skia |
-| X11 报 60 Hz 仍有多余 tick | 老 X server 尚未加载当前 APK；WSI 上限仍保留，正常重开桌面后再核对原生 tick |
+| X11 报 60 Hz 不代表实屏 60 张新画面 | 当前新 X server 已加载原生 tick 门控；WSI 上限仍保留，实际呈现需单独跟踪 |
 | 单核满载或 idle 5 W | 独立测进程/线程；曾由搜狗 CursorAnchorInfo/Hook 忙循环造成，不把它直接归因于 Mali |
 | daemon NullPointerException | 固件处理一条 NULL subclass 根事件不设防；已备份隔离，更新/新根事件可能复发 |
 | 原生二维路径应用兼容问题 | `PAD_GPU_SKIA_BACKEND=angle` 是原来的 Mali 硬件路径；不自动切 CPU |

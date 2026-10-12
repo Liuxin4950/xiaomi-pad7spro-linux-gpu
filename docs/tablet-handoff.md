@@ -12,6 +12,18 @@
 - 二维 Skia 原生 Vulkan；WebGL ANGLE Vulkan；GL Zink；CC Switch 使用 WebKit 适配。
 - 原生分辨率，60 fps 请求与 WSI 上限；BGRA 字节契约，不设置 vblank_mode=0，不自动软件回退。
 
+## Android 实际文件同步
+
+三个设备文件已经更新，最终 SHA-256 与仓库参考文件逐字节一致；原件保留在 `build/entry-handoff-20261012`。
+
+| Android 文件（Termux home 下） | 仓库参考文件 |
+|---|---|
+| `mali-work/desktop-zink.sh` | `reference/termux/desktop-zink.sh` |
+| `debian-desktop.sh` | `reference/termux/debian-desktop.sh` |
+| `.shortcuts/debian-zink.sh` | `reference/termux/debian-zink-widget.sh` |
+
+Termux home 是 Android `/data/data/com.termux/files/home`；在本 chroot 用 `/proc/1/root` 前缀访问。更新入口必须同步这里的实际文件；仅改 chroot bin 或仓库参考文件不算交付。设备文件属主与组 10305、权限 0700，原标签保留。已有 shell/TUI、停止脚本和用户数据保持原用途。完整哈希和核对时间见 `evidence/entrypoints-2026-10-12.json`。
+
 ## 安全接手步骤
 
 ```sh
@@ -24,7 +36,7 @@ gpu-run info GPU_PID
 
 查当前实际进程，不抄历史 PID。doctor / 命令行参数只证明前置配置；renderer、Skia 后端和已显示窗口才是运行证据。源码修改不自动更新安装前缀；manifest / 入口 / 文档需同步。RUNPATH 固定，不能随意重命名前缀。
 
-现在已安装 gpu-direct APK（详细版本/哈希在 CURRENT-STATE），前端批处理与输入修正已运行。存活的旧 X server 和旧 ChatGPT 主进程需要正常重开才能全部加载新代码/参数。再次点已有单实例只复用它。保存工作后，用户可正常停止桌面再从 Widget 开启；不要替用户直接全局 pkill。
+现在已安装 gpu-direct APK（详细版本/哈希在 CURRENT-STATE），新 X server 已映射其原生代码，当前 ChatGPT 已完整重开并加载新参数与 WSI/Mali。最终核对快照见 entrypoints 证据；快照 PID 不能照抄用于以后的诊断。以后升级仍需区分文件更新与已运行进程；再次点已有单实例只复用它。正常停止桌面会结束 chroot 应用，先保存工作，不直接全局 pkill。
 
 ## 回退和诊断
 

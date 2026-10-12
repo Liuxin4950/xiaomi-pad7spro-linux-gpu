@@ -57,12 +57,14 @@
       {
         "path": "/proc/1/root/data/data/com.termux/files/home/debian-desktop.sh",
         "before_sha256": "07c62329b6dc5cb72c050baadb446f988d87ce162551336beca42734ab48b90a",
-        "after_sha256": "3fccde3dff7192bf6a273c2a34d1cb35833a5ceb6490034515523d53a08ed9b1"
+        "after_sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "intermediate_after_sha256": "3fccde3dff7192bf6a273c2a34d1cb35833a5ceb6490034515523d53a08ed9b1"
       },
       {
         "path": "/proc/1/root/data/data/com.termux/files/home/.shortcuts/debian-zink.sh",
         "before_sha256": "2959e3e4baebccb22723509db9fe1afd9526ccb8da25974e280806d2db7f742f",
-        "after_sha256": "985a0114262184a94f5d2a300315a710b815848832bed5508697b66205ccdfab"
+        "after_sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "intermediate_after_sha256": "985a0114262184a94f5d2a300315a710b815848832bed5508697b66205ccdfab"
       }
     ]
   },
@@ -111,6 +113,53 @@
   },
   "default_software_desktop_removed": true,
   "user_profiles_changed": false,
-  "already_running_processes_restarted": false,
-  "documents_current": "docs/CURRENT-STATE.md"
+  "already_running_processes_restarted": true,
+  "documents_current": "docs/CURRENT-STATE.md",
+  "android_device_verification": [
+    {
+      "android_path": "/data/data/com.termux/files/home/mali-work/desktop-zink.sh",
+      "repository_reference": "reference/termux/desktop-zink.sh",
+      "sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518",
+      "byte_for_byte_match": true,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0o700"
+    },
+    {
+      "android_path": "/data/data/com.termux/files/home/debian-desktop.sh",
+      "repository_reference": "reference/termux/debian-desktop.sh",
+      "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+      "byte_for_byte_match": true,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0o700"
+    },
+    {
+      "android_path": "/data/data/com.termux/files/home/.shortcuts/debian-zink.sh",
+      "repository_reference": "reference/termux/debian-zink-widget.sh",
+      "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+      "byte_for_byte_match": true,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0o700"
+    }
+  ],
+  "verified_at_utc": "2026-10-12T13:57:22.749152+00:00",
+  "live_snapshot": {
+    "verified_at_utc": "2026-10-12T13:57:22.749152+00:00",
+    "x11_server_pid": 19652,
+    "xfce_pid": 19744,
+    "chatgpt_main_pid": 20072,
+    "chatgpt_gpu_pid": 20126,
+    "x11_server_maps_current_apk": true,
+    "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+    "x11_requested_max_fps": 60,
+    "chatgpt_native_vulkan_main_argument": true,
+    "chatgpt_gpu_crash_count": 0,
+    "chatgpt_maps_mali": true,
+    "chatgpt_maps_current_wsi": true,
+    "chatgpt_runtime_skia_name_sampled_this_check": false,
+    "physical_scanout_fps_sampled_this_check": false
+  },
+  "launcher_startup_fix": "Environment cleanup no longer requires /dev/fd during early chroot startup."
 }

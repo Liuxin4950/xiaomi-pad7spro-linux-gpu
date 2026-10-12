@@ -7,8 +7,8 @@
 - 原生分辨率；默认 `X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60`、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝或静止内容去重的承诺。
 - 图标、菜单、URL、XFCE 浏览器 helper、CLI `chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch`、旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 会话入口。旧普通桌面默认 llvmpipe 的分支已撤掉；命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前 APK：`1.03.01-d55f1b7-gpu-direct-12.10.26`；SHA-256 `c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`；同证书，上游 d55f1b7 + popup/原生批处理/输入接口修正。前端批处理已运行；仍存活的旧 X server 要正常重开桌面才加载真正的显示 tick 限制。
-- 已打开的旧 ChatGPT 主进程已使用 Mali，但新二维 Skia 后端要完整重开应用。重复点图标会复用旧进程，不能当成已升级。
+- 当前 APK：`1.03.01-d55f1b7-gpu-direct-12.10.26`；SHA-256 `c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`；同证书，上游 d55f1b7 + popup/原生批处理/输入接口修正。新 X server 已重开并映射该 APK 的原生代码，启动请求为 60 fps。最终核对没有重新测量屏幕扫描帧率。
+- 当前 ChatGPT 已完整重开，主进程包含原生 Vulkan 参数；GPU 子进程映射当前 WSI 与 Mali，崩溃计数 0。Chromium/Trae 的 GaneshVulkan 已独立实测；此轮没有额外采样 ChatGPT 的 Skia 名称。以后重复点已有单实例仍不能当成重启。
 
 ## 已验证和边界
 

@@ -54,10 +54,10 @@
   "native_2d_cpu_per_frame_reduction_pct": 19.610881542699733,
   "frame_measurement": "page requestAnimationFrame, not physical scanout FPS",
   "termux_frontend_native_batching_installed": true,
-  "current_x11_server_restarted": false,
-  "current_x11_server_native_cap_active": false,
+  "current_x11_server_restarted": true,
+  "current_x11_server_native_cap_active": true,
   "current_chatgpt_already_hardware": true,
-  "current_chatgpt_direct_skia_pending_main_restart": true,
+  "current_chatgpt_direct_skia_pending_main_restart": false,
   "whole_device_battery_life_verified": false,
   "system_service_disables": 0,
   "selinux_policy_changes": 0,
@@ -75,5 +75,22 @@
     ],
     "enabled_module_scopes_changed": false,
     "typing_composing_selection_keyevent_code_changed": false
-  }
+  },
+  "live_snapshot": {
+    "verified_at_utc": "2026-10-12T13:57:22.749152+00:00",
+    "x11_server_pid": 19652,
+    "xfce_pid": 19744,
+    "chatgpt_main_pid": 20072,
+    "chatgpt_gpu_pid": 20126,
+    "x11_server_maps_current_apk": true,
+    "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+    "x11_requested_max_fps": 60,
+    "chatgpt_native_vulkan_main_argument": true,
+    "chatgpt_gpu_crash_count": 0,
+    "chatgpt_maps_mali": true,
+    "chatgpt_maps_current_wsi": true,
+    "chatgpt_runtime_skia_name_sampled_this_check": false,
+    "physical_scanout_fps_sampled_this_check": false
+  },
+  "native_cap_verification": "Current X server executable maps the verified patched APK and starts with -max-fps 60; physical scanout cadence was not sampled in this final check."
 }
