@@ -20,10 +20,24 @@ def main():
  cmd=Path(f'/proc/{a.pid}/cmdline').read_bytes().split(b'\0');exe=Path(f'/proc/{a.pid}/exe').resolve()
  if str(exe)!='/usr/lib/chatgpt/ChatGPT' or any(x.startswith(b'--type=') for x in cmd):raise RuntimeError('expected ChatGPT main process')
  old_start=identity(a.pid)
- environment={}
+ gui_keys={'DBUS_SESSION_BUS_ADDRESS','DISPLAY','XDG_RUNTIME_DIR','PULSE_SERVER','LANG','LC_ALL','LC_CTYPE','GTK_IM_MODULE','QT_IM_MODULE','XMODIFIERS','XAUTHORITY','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_CURRENT_DESKTOP','XDG_SESSION_TYPE','PATH','HOME','TMPDIR','USER','LOGNAME','SHELL'}
+ environment={k:v for k,v in os.environ.items() if k in gui_keys}
+ # Electron can clear procfs' original environ. Recover the desktop session
+ # rather than starting a new bus or changing the profile/keyring context.
+ for item in Path('/proc').iterdir():
+  if not item.name.isdigit():continue
+  try:
+   if (item/'comm').read_text().strip() not in ('xfce4-session','xfce4-panel'):continue
+   for field in (item/'environ').read_bytes().split(b'\0'):
+    if b'=' in field:
+     key,value=field.split(b'=',1)
+     if key.decode() in gui_keys:environment.setdefault(key.decode(),value.decode(errors='surrogateescape'))
+  except OSError:pass
  for field in Path(f'/proc/{a.pid}/environ').read_bytes().split(b'\0'):
   if b'=' in field:
-   k,v=field.split(b'=',1);environment[k.decode()]=v.decode(errors='surrogateescape')
+   key,value=field.split(b'=',1)
+   if key.decode() in gui_keys:environment[key.decode()]=value.decode(errors='surrogateescape')
+ environment.update(HOME='/root',TMPDIR='/tmp')
  environment.pop('PAD_GPU_PREFIX',None)
  environment.update(DISPLAY=':1',XDG_RUNTIME_DIR='/run/user/0')
  if not a.apply:print('Prepared graceful restart; no process changed.');return
