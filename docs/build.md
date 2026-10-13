@@ -80,3 +80,5 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 Linux 构建增加锁定 WSI 0008，独立目标 `/opt/pad7spro-gpu-r3.4.2-display`。X11 0004 在 popup、0002、0003 后应用；其中嵌套 xserver.patch 也必须应用到 gitlink `65d790bd208ec380b196eb98f144abb0b32e334d`。四 ABI 的 InitOutput.c、InitInput.c、renderer.cpp、present_execute.c、present_scmd.c 使用本地 NDK 28.2.13676358 和既有生成配置增量编译，present archive 使用私有副本，其余固定基线对象保留；cmdentrypoint 使用已有 0002 对象。每个 ABI 重新链接 libXlorie.so。
 
 在当前已核验 gpu-direct APK 中只替换四个 native 库，保持 DEX/资源/manifest，16 KiB ZIP 对齐并使用相同上游测试证书 v2 签名。候选与原件均在 `build/r3.4.2-display-20261013`；该流程是原生增量构建，不是干净全量 Gradle/NDK 构建。顶层补丁和嵌套补丁已经锁定原始源码应用检查。详见 [交付记录](r3.4-display-efficiency.md)。
+
+最新独立 r3.4.3 使用 WSI 0001–0009；r3.5 增加 0010。X11 0005 包含规范化的完整 gitlink patch，需整体应用到锁定 65d790b，再编译所有 Present 单元与三个 lorie 修改单元（四 ABI 各 13 个），不能混用旧私有结构的 archive。构建与安装路径及验收边界见 [r3.5](r3.5-efficiency.md)。

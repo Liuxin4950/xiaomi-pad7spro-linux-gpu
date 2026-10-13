@@ -54,6 +54,14 @@
         {
           "path": "patches/wsi/0008-display-clock-pacing.patch",
           "sha256": "19258aba0e09f507963d96c957e3568ae414814cfc6143d281d2f904735ea111"
+        },
+        {
+          "path": "patches/wsi/0009-copy-target-msc.patch",
+          "sha256": "ec9d90220a390c9f4e91e61fe4c28cf08c168200cca4a7237c8f26960c94d872"
+        },
+        {
+          "path": "patches/wsi/0010-downstream-present-regions.patch",
+          "sha256": "deb1ff7a81affe47b9d2120f3047fad216d7a361b1afbea0033922f18c185452"
         }
       ]
     },
@@ -91,6 +99,10 @@
       {
         "path": "patches/termux-x11/0004-demand-driven-display.patch",
         "sha256": "54c571bed2dfe9b9a0c272662684f0d647f3a3c557a9b81cb42ebf893449dc59"
+      },
+      {
+        "path": "patches/termux-x11/0005-present-damage-repair.patch",
+        "sha256": "db707ca67edd10fc85f0f0493ed5e2af91d49a519a37d87d4fc37845ee33a23b"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

@@ -1,0 +1,288 @@
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -865,7 +865,7 @@
+     if (!displayClockPublished && pScreenPtr->root && maxFramerate) {
+         const char name[] = "_TERMUX_X11_DISPLAY_CLOCK";
+         Atom property = MakeAtom(name, sizeof(name)-1, TRUE);
+-        const CARD32 capability[3] = {1, maxFramerate, 7};
++        const CARD32 capability[3] = {1, maxFramerate, 15};
+         if (dixChangeWindowProperty(serverClient, pScreenPtr->root, property,
+               XA_CARDINAL, 32, PropModeReplace, 3, capability, FALSE) == Success)
+             displayClockPublished = TRUE;
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -821,7 +821,12 @@
+                          realSrcDesc.stride, srcDesc->width, srcDesc->height, srcDesc->stride);
+                 }
+             }
+-            for (i = 0; i < entry.numRects; i++) {
++            // Same source/destination/swizzle for every rectangle in this entry.
++            // Submit one triangle batch instead of repeating GL state and draws.
++            float vertices[LORIE_GPU_COPY_MAX_RECTS * 6 * 4];
++            unsigned vertexCount = 0;
++            const uint8_t needsSwizzle = LorieBuffer_isRgba(src) != LorieBuffer_isRgba(dst);
++            for (i = 0; i < entry.numRects && i < LORIE_GPU_COPY_MAX_RECTS; i++) {
+                 LorieGpuCopyRect r = entry.rects[i];
+                 float x0 = 2.f * (float) (r.x1 + entry.xOff) / (float) dstDesc->width - 1.f;
+                 float x1 = 2.f * (float) (r.x2 + entry.xOff) / (float) dstDesc->width - 1.f;
+@@ -836,12 +841,32 @@
+                 float v0 = (float) r.y1 / (float) srcDesc->height;
+                 float v1 = (float) r.y2 / (float) srcDesc->height;
+                 // Only swap channels if src/dst storage formats actually differ.
+-                uint8_t needsSwizzle = LorieBuffer_isRgba(src) != LorieBuffer_isRgba(dst);
+                 if (lorieDebugEnabled)
+                     log("rendererApplyPendingGpuCopies: rect (%d,%d)-(%d,%d) off=(%d,%d) -> ndc=(%.3f,%.3f)-(%.3f,%.3f) uv=(%.3f,%.3f)-(%.3f,%.3f) srcTex=%u dstTex=%u swizzle=%d\n",
+                         r.x1, r.y1, r.x2, r.y2, entry.xOff, entry.yOff, x0, y0, x1, y1, u0, v0, u1, v1,
+                         LorieBuffer_getGLTextureId(src), LorieBuffer_getGLTextureId(dst), needsSwizzle);
+-                drawRegion(0, x0, y0, x1, y1, u0, v0, u1, v1, needsSwizzle);
++                const float quad[4][4] = {{x0, -y0, u0, v0}, {x1, -y0, u1, v0},
++                                          {x0, -y1, u0, v1}, {x1, -y1, u1, v1}};
++                const unsigned indices[6] = {0, 1, 2, 2, 1, 3};
++                for (unsigned index : indices) {
++                    memcpy(vertices + vertexCount * 4, quad[index], 4 * sizeof(float));
++                    ++vertexCount;
++                }
++            }
++            if (vertexCount) {
++                GLuint position = needsSwizzle ? gv_pos_bgra : gv_pos;
++                GLuint coords = needsSwizzle ? gv_coords_bgra : gv_coords;
++                glActiveTexture(GL_TEXTURE0);
++                glUseProgram(needsSwizzle ? g_texture_program_bgra : g_texture_program);
++                // GPU copies are exact texel transfers, independent of display zoom/filtering.
++                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
++                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++                glVertexAttribPointer(position, 2, GL_FLOAT, GL_FALSE, 16, vertices);
++                glVertexAttribPointer(coords, 2, GL_FLOAT, GL_FALSE, 16, vertices + 2);
++                glEnableVertexAttribArray(position);
++                glEnableVertexAttribArray(coords);
++                glDrawArrays(GL_TRIANGLES, 0, vertexCount); checkGlError();
++                lorieTraceEvent("CopyDraws", entry.serial, 1);
+             }
+         }
+ 
+--- a/lorie/src/main/cpp/patches/xserver.patch
++++ b/lorie/src/main/cpp/patches/xserver.patch
+@@ -1,4 +1,5 @@
+-+++ ./Xext/shm.c
++--- a/Xext/shm.c
+++++ b/Xext/shm.c
+ @@ -193,6 +193,10 @@
+  
+  #endif
+@@ -10,7 +11,8 @@
+  static Bool
+  ShmCloseScreen(ScreenPtr pScreen)
+  {
+-+++ ./Xext/shmint.h
++--- a/Xext/shmint.h
+++++ b/Xext/shmint.h
+ @@ -80,6 +80,8 @@
+  #define SHMDESC_IS_FD(shmdesc)  (0)
+  #endif
+@@ -20,7 +22,8 @@
+  extern _X_EXPORT void
+   ShmRegisterFuncs(ScreenPtr pScreen, ShmFuncsPtr funcs);
+  
+-+++ ./dix/dixutils.c
++--- a/dix/dixutils.c
+++++ b/dix/dixutils.c
+ @@ -504,6 +504,11 @@
+   * sleeps for input.
+   */
+@@ -45,8 +48,8 @@
+  /*
+   * Manage a queue of sleeping clients, awakening them
+   * when requested, by using the OS functions IgnoreClient
+-
+-+++ ./dix/enterleave.c
++--- a/dix/enterleave.c
+++++ b/dix/enterleave.c
+ @@ -1541,6 +1541,8 @@
+      }
+  }
+@@ -66,7 +69,8 @@
+      if (!IsKeyboardDevice(pDev))
+          return;
+  
+-+++ ./dix/main.c
++--- a/dix/main.c
+++++ b/dix/main.c
+ @@ -268,6 +268,7 @@
+          }
+  
+@@ -75,7 +79,8 @@
+  
+          InputThreadInit();
+  
+-+++ ./include/os.h
++--- a/include/os.h
+++++ b/include/os.h
+ @@ -557,6 +557,8 @@
+  extern _X_EXPORT void
+  ddxGiveUp(enum ExitCode error);
+@@ -85,7 +90,8 @@
+  ddxInputThreadInit(void);
+  extern _X_EXPORT int
+  TimeSinceLastInputEvent(void);
+-+++ ./include/xkbfile.h
++--- a/include/xkbfile.h
+++++ b/include/xkbfile.h
+ @@ -79,6 +79,36 @@
+  
+  /***====================================================================***/
+@@ -123,7 +129,8 @@
+  _XFUNCPROTOBEGIN
+  
+  extern _X_EXPORT char *XkbIndentText(unsigned   /* size */
+-+++ ./os/connection.c
++--- a/os/connection.c
+++++ b/os/connection.c
+ @@ -185,9 +185,10 @@
+  {
+  #if !defined(WIN32)
+@@ -136,7 +143,8 @@
+          RunFromSmartParent = TRUE;
+      OsSignal(SIGUSR1, handler);
+      ParentProcess = getppid();
+-+++ ./os/osinit.c
++--- a/os/osinit.c
+++++ b/os/osinit.c
+ @@ -170,13 +170,11 @@
+  #endif
+  
+@@ -153,7 +161,8 @@
+              SIGXCPU,
+              SIGXFSZ,
+  #ifdef SIGEMT
+-+++ ./os/utils.c
++--- a/os/utils.c
+++++ b/os/utils.c
+ @@ -214,6 +214,8 @@
+  {
+  #if defined(WIN32) && !defined(__CYGWIN__)
+@@ -289,7 +298,8 @@
+      if (last == NULL)
+          pidlist = cur->next;
+      else
+-+++ ./present/present.h
++--- a/present/present.h
+++++ b/present/present.h
+ @@ -93,6 +93,9 @@
+                                    uint64_t target_msc,
+                                    PixmapPtr pixmap,
+@@ -308,17 +318,18 @@
+      present_unflip_ptr                  unflip;
+      present_check_flip2_ptr             check_flip2;
+  
+-+++ ./present/present_execute.c
+-@@ -34,5 +34,7 @@
++--- a/present/present_execute.c
+++++ b/present/present_execute.c
++@@ -33,6 +33,8 @@
++     present_vblank_ptr      vblank = param;
+      ScreenPtr               screen = vblank->screen;
+      present_screen_priv_ptr screen_priv = present_screen_priv(screen);
+--
+ +    /* lorie: disarm, or miSyncTriggerFence()'s restart-scan re-fires this callback. */
+ +    present_fence_set_callback(vblank->wait_fence, NULL, NULL);
+-+
++ 
+      screen_priv->re_execute(vblank);
+  }
+-@@ -67,6 +69,43 @@
++@@ -67,6 +69,59 @@
+      WindowPtr                   window = vblank->window;
+      ScreenPtr                   screen = window->drawable.pScreen;
+      present_screen_priv_ptr screen_priv = present_screen_priv(screen);
+@@ -337,6 +348,22 @@
+ +     * region explicitly.  Without this, every full-window frame overwrites popup/IME windows that
+ +     * were drawn into the root pixmap after the previous frame. */
+ +    if (!vblank->gpu_copy_pending) {
+++        present_window_priv_ptr history = present_get_window_priv(window, TRUE);
+++        /* The update hint is relative to prior content. Clipping, movement,
+++         * redirection or backing-pixmap changes invalidate that content.
+++         * Repair the visible destination from the complete source, then clip
+++         * against siblings as usual. Never overwrite an IME/popup above us. */
+++        if (vblank->update && (!history || history->lorie_copy_dst != gpuCopyDst ||
+++            history->lorie_copy_window_serial != window->drawable.serialNumber ||
+++            history->lorie_copy_dst_serial != gpuCopyDst->drawable.serialNumber)) {
+++            RegionDestroy(vblank->update);
+++            vblank->update = NULL;
+++        }
+++        if (history) {
+++            history->lorie_copy_dst = gpuCopyDst;
+++            history->lorie_copy_window_serial = window->drawable.serialNumber;
+++            history->lorie_copy_dst_serial = gpuCopyDst->drawable.serialNumber;
+++        }
+ +        if (vblank->update) {
+ +            gpuCopyRegion = RegionCreate(NULL, 1);
+ +            if (gpuCopyRegion)
+@@ -362,7 +389,9 @@
+  
+      /* If present_flip failed, we may have to requeue for the next MSC */
+      if (vblank->exec_msc == crtc_msc + 1 &&
+-@@ -79,13 +124,66 @@
++@@ -76,15 +131,70 @@
++                                              vblank->event_id,
++                                              vblank->exec_msc)) {
+          vblank->queued = TRUE;
+ +        if (gpuCopyRegion)
+ +            RegionDestroy(gpuCopyRegion);
+@@ -384,6 +413,8 @@
+ +        if (gpuCopyStalled && !lorieGpuCopyIsDone(vblank->gpu_copy_serial)) {
+ +            /* lorie: the renderer never actually finished this copy - tell the client it was
+ +             * skipped instead of falsely reporting it as presented. */
+++            present_window_priv_ptr history = present_window_priv(window);
+++            if (history) history->lorie_copy_dst = NULL;
+ +            present_vblank_scrap(vblank);
+ +            screen_priv->flush(window);
+ +            return;
+@@ -434,7 +465,8 @@
+      screen_priv->flush(window);
+  
+      present_pixmap_idle(vblank->pixmap, vblank->window, vblank->serial, vblank->idle_fence);
+-+++ ./present/present_priv.h
++--- a/present/present_priv.h
+++++ b/present/present_priv.h
+ @@ -24,6 +24,7 @@
+  #define _PRESENT_PRIV_H_
+  
+@@ -477,7 +509,17 @@
+  typedef struct present_screen_priv present_screen_priv_rec, *present_screen_priv_ptr;
+  typedef struct present_window_priv present_window_priv_rec, *present_window_priv_ptr;
+  
+-+++ ./present/present_scmd.c
++@@ -222,6 +248,8 @@
++     uint64_t               msc;         /* Last reported MSC from the current crtc */
++     struct xorg_list       vblank;
++     struct xorg_list       notifies;
+++    unsigned long         lorie_copy_window_serial, lorie_copy_dst_serial;
+++    PixmapPtr             lorie_copy_dst;
++ };
++ 
++ #define PresentCrtcNeverSet     ((RRCrtcPtr) 1)
++--- a/present/present_scmd.c
+++++ b/present/present_scmd.c
+ @@ -252,6 +252,21 @@
+      }
+  }
+@@ -510,7 +552,8 @@
+                  return;
+              }
+  
+-+++ ./present/present_vblank.c
++--- a/present/present_vblank.c
+++++ b/present/present_vblank.c
+ @@ -188,6 +188,14 @@
+                    vblank->pixmap->drawable.id, vblank->window->drawable.id,
+                    vblank->crtc));
+@@ -540,7 +583,8 @@
+      /* Remove vblank from window and screen lists */
+      xorg_list_del(&vblank->window_list);
+      /* Also make sure vblank is removed from event queue (wnmd) */
+-+++ ./xkb/ddxLoad.c
++--- a/xkb/ddxLoad.c
+++++ b/xkb/ddxLoad.c
+ @@ -56,6 +56,9 @@
+  #define PATHSEPARATOR "/"
+  #endif

@@ -114,3 +114,5 @@ bash ~/debian-stop.sh
 ## 显示时钟候选
 
 r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。对应 APK 未安装，当前默认与用户会话不受影响。见 [显示效率候选](r3.4-display-efficiency.md)。
+
+当前显示/区域复制协商、硬件回退和实装范围见 [r3.5](r3.5-efficiency.md)。旧“APK 未安装”说明仅对应当时历史候选。新区域路径需能力位 8；旧 APK 自动继续完整 X11 Copy。

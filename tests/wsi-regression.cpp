@@ -40,6 +40,11 @@ VkImage exported_image{};
 std::map<VkDeviceMemory, VkImage> memory_images;
 pixels expected_pixels{};
 bool verify_pixels = false;
+bool verify_downstream = false;
+std::map<xcb_xfixes_region_t, std::vector<xcb_rectangle_t>> update_regions;
+pixels downstream_pixels{};
+uint64_t downstream_copy_pixels = 0;
+unsigned downstream_region_requests = 0;
 std::array<uint32_t, 3> clock_capability{};
 bool malformed_clock = false;
 std::atomic<uint64_t> last_target_msc{0};
@@ -370,13 +375,40 @@ xcb_void_cookie_t xcb_dri3_pixmap_from_buffers_checked(xcb_connection_t *, xcb_p
    uint8_t, uint16_t, uint16_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
    uint32_t, uint32_t, uint8_t, uint8_t, uint64_t, const int32_t *buffers)
 { pixmap_images[pixmap] = exported_image; const char ack = 1; require(write(buffers[0], &ack, 1) == 1, "mock DRI3 handshake"); close(buffers[0]); return {1}; }
+xcb_void_cookie_t xcb_xfixes_create_region_checked(xcb_connection_t *, xcb_xfixes_region_t region, uint32_t, const xcb_rectangle_t *) {
+   update_regions[region] = {}; return {1};
+}
+xcb_void_cookie_t xcb_xfixes_set_region(xcb_connection_t *, xcb_xfixes_region_t region, uint32_t count, const xcb_rectangle_t *rects) {
+   update_regions.at(region).assign(rects, rects + count); return {1};
+}
+xcb_void_cookie_t xcb_xfixes_destroy_region(xcb_connection_t *, xcb_xfixes_region_t region) {
+   require(update_regions.erase(region) == 1, "update region leaked/destroyed twice"); return {1};
+}
 xcb_void_cookie_t xcb_present_pixmap_checked(xcb_connection_t *, xcb_window_t, xcb_pixmap_t pixmap, uint32_t serial,
-   xcb_xfixes_region_t, xcb_xfixes_region_t, int16_t, int16_t, xcb_randr_crtc_t,
+   xcb_xfixes_region_t, xcb_xfixes_region_t update, int16_t, int16_t, xcb_randr_crtc_t,
    xcb_sync_fence_t, xcb_sync_fence_t, uint32_t, uint64_t target, uint64_t, uint64_t, uint32_t, const xcb_present_notify_t *)
 { require(gpu_complete, "X11 consumed an unfinished frame");
   if (verify_pixels)
      require(image_pixels.at(pixmap_images.at(pixmap)) == expected_pixels,
              "rotating-buffer presentation contains stale pixels");
+  if (verify_downstream) {
+     const auto &source = image_pixels.at(pixmap_images.at(pixmap));
+     if (!update) { downstream_pixels = source; downstream_copy_pixels += 64 * 64; }
+     else {
+        ++downstream_region_requests;
+        for (const auto &r : update_regions.at(update))
+           for (unsigned y=r.y; y<unsigned(r.y)+r.height; ++y)
+              for (unsigned x=r.x; x<unsigned(r.x)+r.width; ++x) {
+                 require(x < 64 && y < 64, "downstream update out of bounds");
+                 downstream_pixels[y*64+x] = source[y*64+x]; ++downstream_copy_pixels;
+              }
+     }
+     require(downstream_pixels == expected_pixels, "downstream region resurrected stale/missing pixels");
+     auto complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
+     complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY; complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+     complete->serial = serial; complete->msc = presents.load() + 1;
+     deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
+  }
   last_target_msc = target;
   last_present_pixmap = pixmap; last_present_serial = serial; ++presents; return {1}; }
 }
@@ -431,7 +463,7 @@ int main()
          complete->serial = serial; complete->msc = 42;
          deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
          require(next.wait_for(std::chrono::seconds(1)) == std::future_status::ready && next.get() == VK_SUCCESS &&
-                 presents == before+1 && last_target_msc == 44, "COPY target-1 must still execute on a future tick");
+                 presents == before+1 && last_target_msc == 43, "COPY must request the next tick without an extra period");
          params.pending_present.image_index = 2;
          const auto secondSerial = last_present_serial.load();
          auto flipNext = std::async(std::launch::async, [&] {
@@ -805,6 +837,54 @@ int main()
                  "overlapping damage forced unnecessary full copies");
          verify_pixels = false;
       }
+      // The oracle applies the actual X11 update region to a separate consumer
+      // image. Valid AHB pixels alone cannot detect a lost downstream update.
+      clock_capability = {1, 60, 15}; setenv("PAD_GPU_MAX_FPS", "60", 1);
+      for (bool byte_copy : {false, true}) {
+         if (byte_copy) setenv("PAD_GPU_X11_COLOR_MODE", "bgra", 1);
+         else unsetenv("PAD_GPU_X11_COLOR_MODE");
+         auto chain = f.create(false, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);
+         require(chain->m_region_present && chain->m_update_region, "consumer repair not negotiated");
+         // Synthetic history exercises skips, future payloads, overflow and
+         // invalid hints without depending on a specific FIFO thread schedule.
+         auto &history = chain->m_damage_history;
+         wsi::present_damage d{}; d.status=wsi::present_damage::RECTS; d.rect_count=1;
+         d.rects[0]={{1,1},{1,1}}; history[2]={2,d};
+         d.rects[0]={{3,1},{1,1}}; history[3]={3,d};
+         d.rects[0]={{5,1},{1,1}}; history[4]={4,d};
+         chain->m_last_update_sequence=1;
+         require(chain->damage_since(3).rect_count==2, "skipped payload damage not unioned");
+         chain->m_last_update_sequence=3;
+         require(chain->damage_since(4).rect_count==1, "future payload damage consumed by older present");
+         require(chain->damage_since(4+chain->DAMAGE_HISTORY).status==wsi::present_damage::UNKNOWN,
+                 "history overflow did not force full");
+         history[4].damage.rects[0].offset.x=-1;
+         require(chain->damage_since(4).status==wsi::present_damage::UNKNOWN, "negative X11 coordinates accepted");
+         chain->m_last_update_sequence=0;
+         expected_pixels.fill(0); downstream_pixels.fill(0); verify_downstream=true; verify_pixels=true;
+         const auto before_pixels=downstream_copy_pixels;
+         VkPresentInfoKHR info{}; wsi::swapchain_presentation_parameters params{};
+         params.handle_present_frame_boundary_event=false; params.use_image_present_semaphore=false;
+         for (unsigned frame=0; frame<40; ++frame) {
+            const unsigned index=frame%4, x=frame+2;
+            if (frame==0 || frame==20) {
+               expected_pixels.fill(0xff002000u | frame); params.pending_present.damage={};
+            } else {
+               expected_pixels[8*64+x]=0xff000000u | frame;
+               auto &hint=params.pending_present.damage;
+               hint.status=wsi::present_damage::RECTS; hint.rect_count=1;
+               hint.rects[0]={{static_cast<int32_t>(x),8},{1,1}};
+            }
+            params.pending_present.image_index=index;
+            image_pixels[chain->m_swapchain_images[index].image]=expected_pixels;
+            require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS, "downstream pixel present");
+         }
+         require(downstream_region_requests>=38, "region path not exercised");
+         require(downstream_copy_pixels-before_pixels < 4*64*64, "downstream still copies whole frames");
+         verify_downstream=false; verify_pixels=false;
+      }
+      require(update_regions.empty(), "swapchain retained an X11 region resource");
+      clock_capability={}; unsetenv("PAD_GPU_MAX_FPS");
       unsetenv("PAD_GPU_X11_COLOR_MODE");
       {
          auto chain = f.create(true, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);

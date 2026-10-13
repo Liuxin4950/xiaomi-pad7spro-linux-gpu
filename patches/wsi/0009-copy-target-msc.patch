@@ -1,0 +1,27 @@
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 0bb9619..3dff24b 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -477,17 +477,16 @@ void swapchain::present_event_thread()
+                   }
+                   if (m_display_clock_fps && complete->serial == m_display_serial) {
+                      m_display_request_pending = false;
+-                     // Xorg schedules synchronous COPY at target-1. Its GPU
+-                     // completion notification can arrive on that same MSC;
+-                     // target+2 makes the next COPY execute on a future tick.
+-                     // FLIP already completes at its target tick, so needs +1.
++                     // In the locked Xorg, COPY executes at target_msc. Only
++                     // synchronous FLIP decrements exec_msc before submission;
++                     // its Complete still reports the completed target tick.
++                     // Both modes can request the next tick without a second wait.
+                      if (complete->mode == XCB_PRESENT_COMPLETE_MODE_SKIP) {
+                         m_display_clock_fps = 0;
+                         m_target_msc = 0;
+                         if (m_timeline) m_timeline->record("display_clock_skip_fallback", data->pixmap, complete->serial);
+                      } else
+-                        m_target_msc = complete->msc +
+-                           (complete->mode == XCB_PRESENT_COMPLETE_MODE_FLIP ? 1 : 2);
++                        m_target_msc = complete->msc + 1;
+                   }
+                   set_present_id(iter->present_id);
+                   data->pending_completions.erase(iter);

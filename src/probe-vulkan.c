@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_android.h>
 
 /* Submit real device work and verify it through host-visible memory. */
 static int check_device_work(VkPhysicalDevice physical)
@@ -99,10 +101,38 @@ done:
 #undef CHECK
 }
 
-int main(void)
+/* Capability gate for a direct shared color-attachment image. A successful
+ * query is necessary, not proof of byte order, ownership or screen correctness. */
+static void ahb_formats(VkPhysicalDevice physical)
 {
+    const VkFormat formats[] = {VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8A8_UNORM};
+    const VkImageTiling tilings[] = {VK_IMAGE_TILING_LINEAR, VK_IMAGE_TILING_OPTIMAL};
+    for (unsigned f=0; f<2; ++f) for (unsigned t=0; t<2; ++t) {
+        VkPhysicalDeviceExternalImageFormatInfo external = {
+            .sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO,
+            .handleType=VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID};
+        VkPhysicalDeviceImageFormatInfo2 info = {.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+            .pNext=&external, .format=formats[f], .type=VK_IMAGE_TYPE_2D, .tiling=tilings[t],
+            .usage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT};
+        VkAndroidHardwareBufferUsageANDROID usage = {.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID};
+        VkExternalImageFormatProperties properties = {.sType=VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES,.pNext=&usage};
+        VkImageFormatProperties2 output = {.sType=VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,.pNext=&properties};
+        VkResult result=vkGetPhysicalDeviceImageFormatProperties2(physical,&info,&output);
+        printf("AHB_COLOR_ATTACHMENT format=%s tiling=%s result=%d external_features=0x%x usage=0x%llx max=%ux%u\n",
+            f ? "BGRA8" : "RGBA8", t ? "optimal" : "linear", result,
+            properties.externalMemoryProperties.externalMemoryFeatures,
+            (unsigned long long)usage.androidHardwareBufferUsage,
+            output.imageFormatProperties.maxExtent.width,output.imageFormatProperties.maxExtent.height);
+    }
+}
+
+int main(int argc, char **argv)
+{
+    int formats_only = argc==2 && !strcmp(argv[1], "--ahb-formats");
+    if (argc!=1 && !formats_only) { fprintf(stderr,"usage: %s [--ahb-formats]\n",argv[0]); return 64; }
     VkInstance instance = VK_NULL_HANDLE;
-    VkInstanceCreateInfo create = { .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+    VkApplicationInfo app = {.sType=VK_STRUCTURE_TYPE_APPLICATION_INFO,.apiVersion=VK_API_VERSION_1_1};
+    VkInstanceCreateInfo create = { .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,.pApplicationInfo=&app };
     VkResult result = vkCreateInstance(&create, NULL, &instance);
     if (result != VK_SUCCESS) {
         fprintf(stderr, "vkCreateInstance failed: %d\n", result);
@@ -131,7 +161,10 @@ int main(void)
                    VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion),
                    VK_VERSION_PATCH(properties.apiVersion));
             if (properties.vendorID == 0x13b5 && properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU)
-                hardware = check_device_work(devices[i]);
+            {
+                if (formats_only) { ahb_formats(devices[i]); hardware=1; }
+                else hardware = check_device_work(devices[i]);
+            }
         }
     }
     free(devices);

@@ -1,0 +1,175 @@
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 3dff24b..2dc92af 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -51,6 +51,7 @@
+ 
+ #include <xcb/present.h>
+ #include <xcb/dri3.h>
++#include <xcb/xfixes.h>
+ #include <xcb/xcb.h>
+ #include <xcb/xproto.h>
+ 
+@@ -87,6 +88,7 @@ struct x11_image_data
+    VkQueryPool timestamp_pool{};
+    uint64_t payload_sequence{0}, reported_sequence{0};
+    uint64_t conversion_pixels{0};
++   uint64_t update_sequence{0};
+    /* Damage accumulated for presentation_image since its last copy caught it up
+     * with the render image. Starts unknown: the first copy is always full. */
+    VkRect2D accum_rects[present_damage::MAX_RECTS]{};
+@@ -155,6 +157,7 @@ swapchain::~swapchain()
+       close(m_event_thread_wakeup_fd);
+ 
+    teardown();
++   if (m_update_region) xcb_xfixes_destroy_region(m_connection, m_update_region);
+    if (m_diagnostics)
+       m_diagnostics->report(m_window, m_reuse_conversion);
+ }
+@@ -423,6 +426,7 @@ void swapchain::present_event_thread()
+       case XCB_PRESENT_EVENT_CONFIGURE_NOTIFY:
+       {
+          auto config = reinterpret_cast<xcb_present_configure_notify_event_t *>(event);
++         m_region_force_full = true;
+          if (config->pixmap_flags & (1 << 0))
+          {
+             set_error_state(VK_ERROR_SURFACE_LOST_KHR);
+@@ -488,6 +492,9 @@ void swapchain::present_event_thread()
+                      } else
+                         m_target_msc = complete->msc + 1;
+                   }
++                  if (complete->mode == XCB_PRESENT_COMPLETE_MODE_SKIP ||
++                      complete->mode == XCB_PRESENT_COMPLETE_MODE_FLIP)
++                     m_region_force_full = true;
+                   set_present_id(iter->present_id);
+                   data->pending_completions.erase(iter);
+                   m_thread_status_cond.notify_all();
+@@ -583,7 +590,30 @@ void swapchain::present_image(const pending_present_request &pending_present)
+       m_display_serial = serial;
+    }
+    if (m_timeline) m_timeline->record("x11_request", image_data->pixmap, serial, image_data->payload_sequence);
+-   auto cookie = xcb_present_pixmap_checked(m_connection, m_window, image_data->pixmap, serial, 0, 0, 0, 0, 0, 0, 0,
++   xcb_xfixes_region_t update = 0;
++   if (m_region_present) {
++      const std::lock_guard<std::mutex> lock(m_damage_lock);
++      const auto damage = damage_since(image_data->update_sequence);
++      if (!m_region_force_full && damage.status == present_damage::RECTS) {
++         xcb_rectangle_t rects[present_damage::MAX_RECTS];
++         uint64_t area = 0;
++         for (uint32_t i = 0; i < damage.rect_count; ++i) {
++            const auto &r = damage.rects[i];
++            rects[i] = {static_cast<int16_t>(r.offset.x), static_cast<int16_t>(r.offset.y),
++                        static_cast<uint16_t>(r.extent.width), static_cast<uint16_t>(r.extent.height)};
++            area += static_cast<uint64_t>(r.extent.width) * r.extent.height;
++         }
++         xcb_xfixes_set_region(m_connection, m_update_region, damage.rect_count, rects);
++         update = m_update_region;
++         if (m_timeline) m_timeline->record("x11_update_pixels", image_data->pixmap, serial, area);
++      } else if (m_timeline)
++         m_timeline->record("x11_update_full", image_data->pixmap, serial);
++      // Future payloads remain in the bounded history. MAILBOX-skipped payloads
++      // are unioned up to this image's sequence, never cleared by an older frame.
++      m_last_update_sequence = image_data->update_sequence;
++      m_region_force_full = false;
++   }
++   auto cookie = xcb_present_pixmap_checked(m_connection, m_window, image_data->pixmap, serial, 0, update, 0, 0, 0, 0, 0,
+                                             options, m_target_msc, 0, 0, 0, nullptr);
+    xcb_discard_reply(m_connection, cookie.sequence);
+    xcb_flush(m_connection);
+@@ -816,6 +846,40 @@ void swapchain::accumulate_damage(const present_damage &damage)
+    }
+ }
+ 
++// Return a conservative union relative to the last *downstream* submission.
++// A bounded history retains skipped MAILBOX payloads and future queued frames.
++// Missing/invalid history and unsupported X11 coordinate ranges copy the full image.
++present_damage swapchain::damage_since(uint64_t sequence)
++{
++   present_damage result{};
++   if (!sequence || !m_last_update_sequence || sequence <= m_last_update_sequence ||
++       sequence - m_last_update_sequence > DAMAGE_HISTORY)
++      return result;
++   result.status = present_damage::RECTS;
++   for (uint64_t n = m_last_update_sequence + 1; n <= sequence; ++n) {
++      const auto &entry = m_damage_history[n % DAMAGE_HISTORY];
++      if (entry.sequence != n || entry.damage.status != present_damage::RECTS ||
++          !entry.damage.rect_count || entry.damage.rect_count > present_damage::MAX_RECTS)
++         return present_damage{};
++      for (uint32_t i = 0; i < entry.damage.rect_count; ++i) {
++         auto rect = entry.damage.rects[i];
++         if (rect.offset.x < 0 || rect.offset.y < 0 || rect.offset.x > INT16_MAX || rect.offset.y > INT16_MAX ||
++             !rect.extent.width || !rect.extent.height || rect.extent.width > UINT16_MAX || rect.extent.height > UINT16_MAX ||
++             static_cast<uint64_t>(rect.offset.x) + rect.extent.width > m_image_create_info.extent.width ||
++             static_cast<uint64_t>(rect.offset.y) + rect.extent.height > m_image_create_info.extent.height)
++            return present_damage{};
++         for (uint32_t r = 0; r < result.rect_count;) {
++            if (merge_damage_rects(rect, result.rects[r])) {
++               result.rects[r] = result.rects[--result.rect_count]; r = 0;
++            } else ++r;
++         }
++         if (result.rect_count == present_damage::MAX_RECTS) return present_damage{};
++         result.rects[result.rect_count++] = rect;
++      }
++   }
++   return result;
++}
++
+ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &data)
+ {
+    VkResult result = data.present_fence.wait_payload(UINT64_MAX);
+@@ -1002,6 +1066,10 @@ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue qu
+    }
+    else
+       result = data->present_fence.set_payload(queue, semaphores, submission_pnext);
++   if (result == VK_SUCCESS && m_region_present) {
++      data->update_sequence = ++m_damage_sequence;
++      m_damage_history[m_damage_sequence % DAMAGE_HISTORY] = {m_damage_sequence, damage};
++   }
+    if (m_timeline) m_timeline->record("payload_submitted", data->pixmap, data->payload_sequence);
+    if (m_diagnostics)
+       m_diagnostics->host_payload.add(diagnostics::now() - started);
+@@ -1076,7 +1144,11 @@ void swapchain::negotiate_display_clock()
+       // still uses the original timer; no implicit uncapped override.
+       if (words[0] == 1 && words[1] > 0 && words[1] <= 240 && (words[2] & 3) == 3 &&
+           words[1] <= m_max_present_fps)
++      {
+          m_display_clock_fps = words[1];
++         // Bit 8 promises consumer repair after clipping/destination changes.
++         m_region_present = (words[2] & 8) != 0;
++      }
+    }
+    free(reply);
+ }
+@@ -1106,6 +1178,12 @@ VkResult swapchain::init_platform(VkDevice device, const VkSwapchainCreateInfoKH
+       m_timestamp_period = properties.limits.timestampPeriod;
+    }
+    negotiate_display_clock();
++   if (m_region_present) {
++      m_update_region = xcb_generate_id(m_connection);
++      auto error = xcb_request_check(m_connection,
++         xcb_xfixes_create_region_checked(m_connection, m_update_region, 0, nullptr));
++      if (error) { free(error); m_update_region = 0; m_region_present = false; }
++   }
+    if (m_timeline) m_timeline->record("display_clock_fps", 0, 0, m_display_clock_fps);
+    auto eid = xcb_generate_id(m_connection);
+    m_special_event = xcb_register_for_special_xge(m_connection, &xcb_present_id, eid, nullptr);
+diff --git a/wsi/x11/swapchain.hpp b/wsi/x11/swapchain.hpp
+index a5b5191..e10aad5 100644
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -179,6 +179,15 @@ private:
+    bool m_display_request_pending{ false };
+    uint32_t m_display_serial{ 0 };
+    void negotiate_display_clock();
++   bool m_region_present{ false };
++   bool m_region_force_full{ true }; // protected by the existing event-thread lock
++   xcb_xfixes_region_t m_update_region{ 0 };
++   static constexpr uint32_t DAMAGE_HISTORY = 32;
++   struct damage_entry { uint64_t sequence{0}; present_damage damage{}; };
++   damage_entry m_damage_history[DAMAGE_HISTORY]{};
++   uint64_t m_damage_sequence{0}; // protected by m_damage_lock
++   uint64_t m_last_update_sequence{0};
++   present_damage damage_since(uint64_t sequence);
+    std::chrono::steady_clock::time_point m_next_present{};
+ 
+    xcb_special_event_t *m_special_event{ nullptr };
