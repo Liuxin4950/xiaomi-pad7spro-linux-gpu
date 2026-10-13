@@ -504,6 +504,33 @@ int main()
             std::this_thread::yield();
          }
       }
+      {
+         auto chain = f.create(false);
+         VkPresentInfoKHR info{}; wsi::swapchain_presentation_parameters params{};
+         params.handle_present_frame_boundary_event = false;
+         require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "resume clock first present");
+         auto deliverComplete = [&](uint8_t mode, uint64_t msc) {
+            auto *event = static_cast<xcb_present_complete_notify_event_t *>(calloc(1,sizeof(xcb_present_complete_notify_event_t)));
+            event->event_type=XCB_PRESENT_EVENT_COMPLETE_NOTIFY;event->kind=XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+            event->serial=last_present_serial;event->mode=mode;event->msc=msc;
+            deliver_event(reinterpret_cast<xcb_generic_event_t *>(event));
+         };
+         deliverComplete(XCB_PRESENT_COMPLETE_MODE_SKIP, 60);
+         auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(1);
+         for (;;) {
+            { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock); if(!chain->m_display_clock_fps)break; }
+            require(std::chrono::steady_clock::now()<deadline,"resume SKIP fallback");std::this_thread::yield();
+         }
+         params.pending_present.image_index=1;
+         require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS,"timer fallback present");
+         deliverComplete(XCB_PRESENT_COMPLETE_MODE_COPY,61);
+         deadline=std::chrono::steady_clock::now()+std::chrono::seconds(1);
+         for (;;) {
+            { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock);
+              if(chain->m_display_clock_fps==60) { require(chain->m_target_msc==62,"recovery added extra target tick");break; } }
+            require(std::chrono::steady_clock::now()<deadline,"successful COPY did not recover negotiated clock");std::this_thread::yield();
+         }
+      }
       clock_capability = {}; unsetenv("PAD_GPU_MAX_FPS");
       // A spurious condition notification must not consume a semaphore token.
       {

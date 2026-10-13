@@ -1,0 +1,47 @@
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -497,6 +497,25 @@
+                      m_region_force_full = true;
+                   set_present_id(iter->present_id);
+                   data->pending_completions.erase(iter);
++                  // SKIP is a temporary occlusion/unavailable-consumer fallback.
++                  // A successful completion can restore the negotiated clock only
++                  // after every older timer-paced request has drained. Explicit
++                  // timer/lower-cap/legacy policies never set a negotiated rate.
++                  if (!m_display_clock_fps && m_negotiated_clock_fps &&
++                      (complete->mode == XCB_PRESENT_COMPLETE_MODE_COPY ||
++                       complete->mode == XCB_PRESENT_COMPLETE_MODE_FLIP)) {
++                     bool drained = true;
++                     for (const auto &other : m_swapchain_images) {
++                        if (!other.data || other.status == swapchain_image::INVALID) continue;
++                        const auto *pending = reinterpret_cast<const x11_image_data *>(other.data);
++                        if (!pending->pending_completions.empty()) { drained = false; break; }
++                     }
++                     if (drained) {
++                        m_display_clock_fps = m_negotiated_clock_fps;
++                        m_target_msc = complete->msc + 1;
++                        if (m_timeline) m_timeline->record("display_clock_recovered", data->pixmap, complete->serial, m_display_clock_fps);
++                     }
++                  }
+                   m_thread_status_cond.notify_all();
+                }
+             }
+@@ -1145,7 +1164,7 @@
+       if (words[0] == 1 && words[1] > 0 && words[1] <= 240 && (words[2] & 3) == 3 &&
+           words[1] <= m_max_present_fps)
+       {
+-         m_display_clock_fps = words[1];
++         m_display_clock_fps = m_negotiated_clock_fps = words[1];
+          // Bit 8 promises consumer repair after clipping/destination changes.
+          m_region_present = (words[2] & 8) != 0;
+       }
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -176,6 +176,7 @@
+    std::unique_ptr<diagnostics> m_diagnostics;
+    uint32_t m_max_present_fps{ 0 };
+    uint32_t m_display_clock_fps{ 0 };
++   uint32_t m_negotiated_clock_fps{ 0 };
+    bool m_display_request_pending{ false };
+    uint32_t m_display_serial{ 0 };
+    void negotiate_display_clock();

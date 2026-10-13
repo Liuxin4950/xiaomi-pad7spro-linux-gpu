@@ -62,6 +62,10 @@
         {
           "path": "patches/wsi/0010-downstream-present-regions.patch",
           "sha256": "deb1ff7a81affe47b9d2120f3047fad216d7a361b1afbea0033922f18c185452"
+        },
+        {
+          "path": "patches/wsi/0011-recover-display-clock.patch",
+          "sha256": "9fde47801072b5873cfeb9f3493c77e255cefca182cdf17297f5448eacba8b07"
         }
       ]
     },
