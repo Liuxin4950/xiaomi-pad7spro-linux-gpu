@@ -1,6 +1,6 @@
 # GPU 与显示验证
 
-当前版本 r3.3，最新配置及范围见 [CURRENT-STATE](CURRENT-STATE.md)，原生二维实测见 [交付报告](r3.3-native-rendering.md)。下文早期数据保留其日期，不作为新版本功耗结论。
+当前版本 r3.4.1，最新配置及范围见 [CURRENT-STATE](CURRENT-STATE.md)，原生二维实测见 [交付报告](r3.3-native-rendering.md)。下文早期数据保留其日期，不作为新版本功耗结论。
 
 窗口能显示、命令行有 Vulkan 参数、进程打开了 `/dev/mali0`，都不能单独证明目标应用稳定使用 GPU。验证时组合渲染器、进程、日志、实际负载和画面证据。
 
@@ -54,3 +54,13 @@ AHB/GPU 直出路径不一定支持传统 X11 截图读回。验证显示问题�
 - `gpu-run gl glxinfo -B` 只验证上下文与 renderer；必须另测 `glxgears` 或目标应用的真实窗口，防止“识别 Mali 但 swapchain 失败”。
 
 WSI mock 回归入口为 `tests/run-wsi-regression.sh PATCHED_WSI_SOURCE WSI_CMAKE_BUILD BRIDGE_DEPS_PREFIX`。它检查创建/销毁计数、deferred/alias、分配失败、延迟 producer fence、线程取消、连接断开、oldSwapchain 并发和 BGRA 转换；不代替真实显示测试。
+
+## 增量复制专项验收
+
+`probe-present --regions` 覆盖重叠 damage、轮换缓冲；`--empty-regions` 持续变色并验证空列表仍完整复制/呈现。默认关闭诊断，测试用 `PAD_GPU_WSI_TRACE=1` 核查 `copied_pixels/full_copy_pixels` 和 region 提示实际使用；这是复制工作量，不能充当功耗或屏幕 FPS。mock 逐帧比较完整目标图，物理屏幕抽查另记检查帧与范围。
+
+本轮截图原始色空间 ID 为 2（[AOSP screencap 定义](https://android.googlesource.com/platform/frameworks/base/+/android-15.0.0_r1/cmds/screencap/screencap.cpp)），检查按 sRGB 到 Display P3 转换后的预期字节进行；不能直接把未经色空间转换的屏幕 RGB 与 Vulkan UNORM 字节等同。实测与限定见 [r3.4.1 优化证据](../evidence/r3.4.1-optimization-2026-10-13.json)。
+
+## r3.4.2 显示链路候选验收
+
+源码/构建通过与实际显示效果分开。候选 APK 必须在保存工作后安装并正常重开桌面，核对 APK/server 映射、`_TERMUX_X11_DISPLAY_CLOCK` 和 WSI 实际协商结果，再进行 r3.3 / candidate timer / candidate auto 交替对照。APK 自身空闲变化需与原 APK 独立 A/B，不能归入仅切换桥接的成绩。统一的工具、Perfetto 配置、帧 ID 关联与缺失数据规则见 [显示效率技术交付](r3.4-display-efficiency.md)。

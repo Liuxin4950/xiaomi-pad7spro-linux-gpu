@@ -1,0 +1,475 @@
+diff --git a/lorie/src/main/cpp/lorie/InitInput.c b/lorie/src/main/cpp/lorie/InitInput.c
+index a344700..01378c8 100644
+--- a/lorie/src/main/cpp/lorie/InitInput.c
++++ b/lorie/src/main/cpp/lorie/InitInput.c
+@@ -37,6 +37,7 @@ from The Open Group.
+ #include "xserver-properties.h"
+ #include "exevents.h"
+ #include "lorie.h"
++#include "display-trace.h"
+ 
+ #define XI_PEN	"TERMUX-X11 PEN"
+ #define XI_ERASER	"TERMUX-X11 ERASER"
+@@ -45,7 +46,9 @@ __unused DeviceIntPtr lorieMouse, lorieTouch, lorieKeyboard, loriePen, lorieEras
+ 
+ void
+ ProcessInputEvents(void) {
++    ATrace_beginSection("PAD_X11.InputDispatch");
+     mieqProcessInputEvents();
++    ATrace_endSection();
+ }
+ 
+ void
+diff --git a/lorie/src/main/cpp/lorie/InitOutput.c b/lorie/src/main/cpp/lorie/InitOutput.c
+index be68b25..893fc42 100644
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -41,6 +41,9 @@
+ 
+ #include "lorie.h"
+ #include "frame-pacing.h"
++#include "display-trace.h"
++#include "property.h"
++#include <X11/Xatom.h>
+ 
+ #define DRM_FORMAT_MOD_LINEAR 0
+ 
+@@ -107,6 +110,26 @@ static uint32_t maxFramerate = 0;
+ static pthread_mutex_t frameTickLock = PTHREAD_MUTEX_INITIALIZER;
+ static uint64_t latestFrameTimeNanos;
+ static Bool frameWorkQueued;
++static Bool frameCallbackPending, displayClockPublished;
++static AChoreographer *displayChoreographer;
++static uint64_t displayClockEpochNanos;
++static void lorieRequestFrame(void);
++static void lorieDisplayBlock(void *data, void *timeout);
++static void lorieDisplayWakeup(void *data, int result);
++
++static uint64_t lorieMonotonicNanos(void) {
++    struct timespec now;
++    clock_gettime(CLOCK_MONOTONIC, &now);
++    return (uint64_t) now.tv_sec * UINT64_C(1000000000) + now.tv_nsec;
++}
++
++static void lorieUpdateMSC(uint64_t frameTimeNanos) {
++    uint32_t rate = maxFramerate ? maxFramerate : pvfb->root.framerate;
++    if (!displayClockEpochNanos) displayClockEpochNanos = frameTimeNanos;
++    if (frameTimeNanos >= displayClockEpochNanos && rate) {
++        pvfb->current_msc = lorieFrameClockMSC(displayClockEpochNanos, frameTimeNanos, rate, pvfb->current_msc);
++    }
++}
+ 
+ // Owned by the activity process, handed to us over the connection socket. Points at a placeholder until
+ // the first connection so callers don't need a NULL check.
+@@ -541,7 +564,9 @@ static Bool lorieRedraw(__unused ClientPtr pClient, __unused void *closure) {
+         return TRUE;
+     }
+ 
+-    pvfb->current_msc++;
++    if (maxFramerate) lorieUpdateMSC(frameTimeNanos);
++    else pvfb->current_msc++;
++    lorieTraceEvent("Tick", pvfb->current_msc, frameTimeNanos);
+     loriePerformVblanks();
+ 
+     pvfb->state->waitForNextFrame = false;
+@@ -612,7 +637,8 @@ static Bool lorieCreateScreenResources(ScreenPtr pScreen) {
+         FatalError("Couldn't setup damage\n");
+ 
+     DamageRegister(&(*pScreen->GetScreenPixmap)(pScreen)->drawable, pvfb->damage);
+-    pvfb->fpsTimer = TimerSet(NULL, 0, 5000, lorieFramecounter, pScreen);
++    // Normal idle has no statistics timer; opt-in diagnostics retain the summary.
++    pvfb->fpsTimer = lorieServerDebugEnabled ? TimerSet(NULL, 0, 5000, lorieFramecounter, pScreen) : NULL;
+ 
+     lorieRegisterBuffer(LORIE_BUFFER_FROM_PIXMAP(pScreenPtr->devPrivate));
+ 
+@@ -620,6 +646,9 @@ static Bool lorieCreateScreenResources(ScreenPtr pScreen) {
+ }
+ 
+ static Bool lorieCloseScreen(ScreenPtr pScreen) {
++    RemoveBlockAndWakeupHandlers(lorieDisplayBlock, lorieDisplayWakeup, NULL);
++    displayClockPublished = FALSE;
++    displayClockEpochNanos = pvfb->current_msc = 0;
+     pScreenPtr = NULL;
+     pScreen->DestroyPixmap(pScreen->devPrivate);
+     pScreen->devPrivate = NULL;
+@@ -797,28 +826,72 @@ static void lorieQueueFrame(uint64_t frameTimeNanos) {
+ 
+ static void lorieChoreographerFrameCallback64(int64_t t, void *data) {
+     AChoreographer *d = data;
+-    postFrameCallback64(d, lorieChoreographerFrameCallback64, d);
++    pthread_mutex_lock(&frameTickLock);
++    frameCallbackPending = FALSE;
++    pthread_mutex_unlock(&frameTickLock);
+     lorieQueueFrame((uint64_t) t);
+ }
+ 
+ static void lorieChoreographerFrameCallback(__unused long t, void *data) {
+     AChoreographer *d = data;
+     struct timespec now;
+-    AChoreographer_postFrameCallback(d, lorieChoreographerFrameCallback, d);
++    pthread_mutex_lock(&frameTickLock);
++    frameCallbackPending = FALSE;
++    pthread_mutex_unlock(&frameTickLock);
+     /* API 24-28 expose a long timestamp, which wraps on 32-bit ABIs. */
+     if (clock_gettime(CLOCK_MONOTONIC, &now) == 0)
+         lorieQueueFrame((uint64_t) now.tv_sec * UINT64_C(1000000000) + now.tv_nsec);
+ }
+ 
+-void lorieStartChoreographer(AChoreographer *d) {
+-    /* Resolve once rather than importing an API 29 symbol on API 24 devices. */
+-    postFrameCallback64 = (LoriePostFrameCallback64) dlsym(RTLD_DEFAULT, "AChoreographer_postFrameCallback64");
++/* Callback ownership is independent of X server state. Only the server's
++ * block handler inspects Damage/Present queues, avoiding cross-thread Xorg access. */
++static void lorieRequestFrame(void) {
++    pthread_mutex_lock(&frameTickLock);
++    AChoreographer *d = displayChoreographer;
++    if (!d || frameCallbackPending || frameWorkQueued) {
++        pthread_mutex_unlock(&frameTickLock);
++        return;
++    }
++    frameCallbackPending = TRUE;
++    pthread_mutex_unlock(&frameTickLock);
+     if (postFrameCallback64)
+         postFrameCallback64(d, lorieChoreographerFrameCallback64, d);
+     else
+         AChoreographer_postFrameCallback(d, lorieChoreographerFrameCallback, d);
+ }
+ 
++static void lorieDisplayBlock(__unused void *data, __unused void *timeout) {
++    if (!pScreenPtr || !pvfb->state) return;
++    if (!displayClockPublished && pScreenPtr->root && maxFramerate) {
++        const char name[] = "_TERMUX_X11_DISPLAY_CLOCK";
++        Atom property = MakeAtom(name, sizeof(name)-1, TRUE);
++        const CARD32 capability[3] = {1, maxFramerate, 7};
++        if (dixChangeWindowProperty(serverClient, pScreenPtr->root, property,
++              XA_CARDINAL, 32, PropModeReplace, 3, capability, FALSE) == Success)
++            displayClockPublished = TRUE;
++    }
++    Bool pendingVblank = !xorg_list_is_empty(&pvfb->vblank_queue);
++    Bool visibleWork = lorieConnectionAlive() && pvfb->state->surfaceAvailable &&
++        ((pvfb->damage && RegionNotEmpty(DamageRegion(pvfb->damage))) ||
++         pvfb->state->drawRequested || pvfb->state->cursor.moved ||
++         pvfb->state->cursor.updated ||
++         __atomic_load_n(&pvfb->state->gpuCopyQueue.writeIndex, __ATOMIC_ACQUIRE) !=
++         __atomic_load_n(&pvfb->state->gpuCopyQueue.readIndex, __ATOMIC_ACQUIRE));
++    // Preserve legacy uncapped MSC behavior. Paced servers suspend callbacks
++    // only when no consumer needs a frame, and rearm on the next X11 event.
++    if (!maxFramerate || pendingVblank || visibleWork) lorieRequestFrame();
++}
++
++static void lorieDisplayWakeup(__unused void *data, __unused int result) {}
++
++void lorieStartChoreographer(AChoreographer *d) {
++    postFrameCallback64 = (LoriePostFrameCallback64) dlsym(RTLD_DEFAULT, "AChoreographer_postFrameCallback64");
++    pthread_mutex_lock(&frameTickLock);
++    displayChoreographer = d;
++    pthread_mutex_unlock(&frameTickLock);
++    lorieRequestFrame();
++}
++
+ static Bool lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
+     static int eventFd = -1;
+     pScreenPtr = pScreen;
+@@ -852,6 +925,8 @@ static Bool lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **ar
+     pScreen->CloseScreen = lorieCloseScreen;
+     pScreen->SetWindowPixmap = lorieSetWindowPixmap;
+ 
++    if (!RegisterBlockAndWakeupHandlers(lorieDisplayBlock, lorieDisplayWakeup, NULL))
++        return FALSE;
+     ShmRegisterFbFuncs(pScreen);
+     miSyncShmScreenInit(pScreen);
+ 
+@@ -926,6 +1001,7 @@ static RRCrtcPtr loriePresentGetCrtc(WindowPtr w) {
+ 
+ static int loriePresentGetUstMsc(__unused RRCrtcPtr crtc, uint64_t *ust, uint64_t *msc) {
+     *ust = GetTimeInMicros();
++    if (maxFramerate) lorieUpdateMSC(lorieMonotonicNanos());
+     *msc = pvfb->current_msc;
+     return Success;
+ }
+@@ -1078,12 +1154,22 @@ Bool lorieTryScheduleGpuCopy(PixmapPtr pixmap, PixmapPtr dst, RegionPtr update,
+     __atomic_store_n(&pvfb->state->gpuCopyQueue.writeIndex, writeIndex + 1, __ATOMIC_RELEASE); // release-publish entry writes above
+     pthread_cond_signal(rendererCond);
+ 
++    lorieTraceEvent("CopyEnqueue", entry->serial, desc->id);
+     *out_serial = entry->serial;
+     gpuCopyAttempts++;
+     gpuCopyOffloads++;
+     return TRUE;
+ }
+ 
++void lorieTracePresentFlip(PixmapPtr pixmap, uint32_t clientSerial) {
++    LorieBuffer *buffer = LORIE_BUFFER_FROM_PIXMAP(pixmap);
++    if (buffer) lorieTraceTriple("PresentFlip", pixmap->drawable.id, clientSerial, LorieBuffer_description(buffer)->id);
++}
++
++void lorieTracePresentCopy(uint32_t pixmap, uint32_t clientSerial, uint64_t copySerial) {
++    lorieTraceTriple("PresentCopy", pixmap, clientSerial, copySerial);
++}
++
+ Bool lorieGpuCopyIsDone(uint64_t serial) {
+     return __atomic_load_n(&pvfb->state->gpuCopyQueue.completedSerial, __ATOMIC_ACQUIRE) >= serial;
+ }
+diff --git a/lorie/src/main/cpp/lorie/display-trace.h b/lorie/src/main/cpp/lorie/display-trace.h
+new file mode 100644
+index 0000000..c452578
+--- /dev/null
++++ b/lorie/src/main/cpp/lorie/display-trace.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: MIT */
++#pragma once
++#include <android/trace.h>
++#include <stdint.h>
++#include <stdio.h>
++
++/* Perfetto/atrace opts in; no logging, allocation or image inspection by default.
++ * Marker names carry identifiers, while the trace supplies its unified clock. */
++static inline void lorieTraceTriple(const char *stage, uint64_t a, uint64_t b, uint64_t c) {
++    if (!ATrace_isEnabled()) return;
++    char name[120];
++    snprintf(name, sizeof(name), "PAD_X11.%s.%llu.%llu.%llu", stage,
++             (unsigned long long)a, (unsigned long long)b, (unsigned long long)c);
++    ATrace_beginSection(name);
++    ATrace_endSection();
++}
++static inline void lorieTraceEvent(const char *stage, uint64_t a, uint64_t b) {
++    lorieTraceTriple(stage, a, b, 0);
++}
+diff --git a/lorie/src/main/cpp/lorie/frame-pacing.h b/lorie/src/main/cpp/lorie/frame-pacing.h
+index 3597fc7..4fb02dd 100644
+--- a/lorie/src/main/cpp/lorie/frame-pacing.h
++++ b/lorie/src/main/cpp/lorie/frame-pacing.h
+@@ -42,3 +42,13 @@ lorieFramePacerAccept(LorieFramePacer *pacer, uint64_t frameTimeNanos, uint32_t
+     pacer->nextFrameNanos += ((frameTimeNanos - pacer->nextFrameNanos) / interval + 1) * interval;
+     return true;
+ }
++
++/* Virtual MSC continues across idle without requesting callbacks to count it.
++ * Notifications still fire only at an accepted Choreographer tick. */
++static inline uint64_t lorieFrameClockMSC(uint64_t epoch, uint64_t now, uint32_t rate, uint64_t previous) {
++    if (!rate || now < epoch) return previous;
++    const uint64_t elapsed = now - epoch;
++    const uint64_t msc = elapsed / UINT64_C(1000000000) * rate +
++                         elapsed % UINT64_C(1000000000) * rate / UINT64_C(1000000000) + 1;
++    return msc > previous ? msc : previous;
++}
+diff --git a/lorie/src/main/cpp/lorie/renderer.cpp b/lorie/src/main/cpp/lorie/renderer.cpp
+index 7eb3d9b..96d0c1e 100644
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -30,6 +30,7 @@
+ #include <unistd.h>
+ #include "list.h"
+ #include "lorie.h"
++#include "surface-trace.h"
+ 
+ // libEGL exports this only since API 26, weak so the library still loads below that.
+ __attribute__((weak)) EGLClientBuffer eglGetNativeClientBufferANDROID(const struct AHardwareBuffer* buffer);
+@@ -719,6 +720,9 @@ void Renderer::refreshContext() {
+     if (state)
+         state->surfaceAvailable = state->drawRequested = state->cursor.updated = win != defaultWin;
+ 
++    // Idle servers no longer receive perpetual callbacks. Surface restore
++    // must wake their existing event queue even when dimensions did not change.
++    notifyGpuCopyDone();
+     glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win));
+     log("Xlorie: new surface applied: %p\n", sfc);
+ }
+@@ -764,6 +768,7 @@ uint64_t Renderer::applyPendingGpuCopiesLocked() {
+     if (!state || state->gpuCopyQueue.readIndex == state->gpuCopyQueue.writeIndex)
+         return 0;
+ 
++    ATrace_beginSection("PAD_X11.CopyBatchIssue");
+     while (state->gpuCopyQueue.readIndex != __atomic_load_n(&state->gpuCopyQueue.writeIndex, __ATOMIC_ACQUIRE)) {
+         LorieGpuCopyEntry entry = state->gpuCopyQueue.entries[state->gpuCopyQueue.readIndex % LORIE_GPU_COPY_QUEUE_CAPACITY];
+         LorieBuffer *src = findBufferWithRetry(entry.srcBufferId);
+@@ -840,6 +845,15 @@ uint64_t Renderer::applyPendingGpuCopiesLocked() {
+             }
+         }
+ 
++        if (ATrace_isEnabled() && src && dst) {
++            uint64_t pixels = 0;
++            for (unsigned i=0; i<entry.numRects; ++i) {
++                LorieGpuCopyRect r = entry.rects[i];
++                if (r.x2>r.x1 && r.y2>r.y1) pixels += (uint64_t)(r.x2-r.x1)*(r.y2-r.y1);
++            }
++            lorieTraceEvent("CopyPixels", entry.serial, pixels);
++        }
++        lorieTraceEvent(src && dst ? "CopyIssued" : "CopySkipped", entry.serial, entry.srcBufferId);
+         lastSerial = entry.serial;
+         state->gpuCopyQueue.readIndex++;
+     }
+@@ -848,6 +862,7 @@ uint64_t Renderer::applyPendingGpuCopiesLocked() {
+         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+         glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+     }
++    ATrace_endSection();
+     return lastSerial;
+ }
+ 
+@@ -863,10 +878,13 @@ void Renderer::applyPendingGpuCopies() {
+     if (serial) {
+         EGLSync fence = eglCreateSyncKHR(egl_display, EGL_SYNC_FENCE_KHR, nullptr);
+         glFlush();
+-        eglClientWaitSyncKHR(egl_display, fence, 0, EGL_FOREVER);
++        ATrace_beginSection("PAD_X11.CopyAndRootFenceWait");
++    eglClientWaitSyncKHR(egl_display, fence, 0, EGL_FOREVER);
++    ATrace_endSection();
+         eglDestroySyncKHR(egl_display, fence);
+         // Only now that the GPU has actually finished (not just been told to start) is it safe to
+         // let present_execute_copy release/idle the source pixmap back to the client.
++        lorieTraceEvent("CopyDone", serial, 0);
+         __atomic_store_n(&state->gpuCopyQueue.completedSerial, serial, __ATOMIC_RELEASE);
+         notifyGpuCopyDone();
+     }
+@@ -1038,16 +1056,25 @@ void Renderer::redrawLocked(bool* waitingForBuffers) {
+     glFlush();
+ 
+     // Wait until root window drawing is finished before giving control back to X server
++    ATrace_beginSection("PAD_X11.CopyAndRootFenceWait");
+     eglClientWaitSyncKHR(egl_display, fence, 0, EGL_FOREVER);
++    ATrace_endSection();
+     eglDestroySyncKHR(egl_display, fence);
+     if (gpuCopySerial) {
++        lorieTraceEvent("CopyDone", gpuCopySerial, 0);
+         __atomic_store_n(&state->gpuCopyQueue.completedSerial, gpuCopySerial, __ATOMIC_RELEASE);
+         notifyGpuCopyDone();
+     }
+     state->waitForNextFrame = true;
+     lorie_mutex_unlock(&state->lock, &state->lockingPid);
+ 
+-    if (eglSwapBuffers(egl_display, sfc) != EGL_TRUE)
++    // CopySerial and root buffer identify the content submitted to this Surface.
++    EGLuint64KHR frameId = lorieTraceSurface(egl_display, sfc);
++    lorieTraceTriple("SurfaceSubmit", gpuCopySerial, state->rootWindowTextureID, frameId);
++    ATrace_beginSection("PAD_X11.eglSwapBuffers");
++    EGLBoolean swapResult = eglSwapBuffers(egl_display, sfc);
++    ATrace_endSection();
++    if (swapResult != EGL_TRUE)
+         printEglError("Failed to swap buffers", __LINE__);
+ 
+     // Perform a little drawing operation to make sure the next buffer is ready on the next invocation of drawing
+diff --git a/lorie/src/main/cpp/lorie/surface-trace.h b/lorie/src/main/cpp/lorie/surface-trace.h
+new file mode 100644
+index 0000000..4a19f65
+--- /dev/null
++++ b/lorie/src/main/cpp/lorie/surface-trace.h
+@@ -0,0 +1,65 @@
++/* SPDX-License-Identifier: MIT */
++#pragma once
++#include "display-trace.h"
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++#include <string.h>
++
++/* Renderer thread only; bounded history, no idle polling and no waits for
++ * timestamps. Pending/unsupported measurements never become present samples. */
++static EGLuint64KHR lorieTraceSurface(EGLDisplay display, EGLSurface surface) {
++    static EGLSurface previousSurface = EGL_NO_SURFACE;
++    static bool enabled, supported;
++    static PFNEGLGETNEXTFRAMEIDANDROIDPROC nextFrame;
++    static PFNEGLGETFRAMETIMESTAMPSANDROIDPROC timestamps;
++    static PFNEGLGETFRAMETIMESTAMPSUPPORTEDANDROIDPROC timestampSupported;
++    static EGLuint64KHR pending[16];
++    static unsigned count;
++    const bool tracing = ATrace_isEnabled();
++    if (previousSurface != surface) {
++        previousSurface = surface; enabled = supported = false; count = 0;
++    }
++    if (!tracing) {
++        if (enabled) eglSurfaceAttrib(display, surface, EGL_TIMESTAMPS_ANDROID, EGL_FALSE);
++        enabled = false; count = 0;
++        return 0;
++    }
++    if (!enabled) {
++        const char *extensions = eglQueryString(display, EGL_EXTENSIONS);
++        supported = extensions && strstr(extensions, "EGL_ANDROID_get_frame_timestamps");
++        nextFrame = (PFNEGLGETNEXTFRAMEIDANDROIDPROC) eglGetProcAddress("eglGetNextFrameIdANDROID");
++        timestamps = (PFNEGLGETFRAMETIMESTAMPSANDROIDPROC) eglGetProcAddress("eglGetFrameTimestampsANDROID");
++        timestampSupported = (PFNEGLGETFRAMETIMESTAMPSUPPORTEDANDROIDPROC) eglGetProcAddress("eglGetFrameTimestampSupportedANDROID");
++        supported = supported && nextFrame && timestamps && timestampSupported &&
++                    eglSurfaceAttrib(display, surface, EGL_TIMESTAMPS_ANDROID, EGL_TRUE) == EGL_TRUE;
++        enabled = true;
++        lorieTraceEvent("SurfaceTimestampSupport", supported, 0);
++    }
++    if (!supported) return 0;
++    const EGLint requested[] = {EGL_REQUESTED_PRESENT_TIME_ANDROID, EGL_RENDERING_COMPLETE_TIME_ANDROID,
++        EGL_COMPOSITION_LATCH_TIME_ANDROID, EGL_DISPLAY_PRESENT_TIME_ANDROID};
++    EGLint names[4]; unsigned n = 0;
++    for (EGLint name : requested)
++        if (timestampSupported(display, surface, name)) names[n++] = name;
++    unsigned retained = 0;
++    for (unsigned i = 0; i < count; ++i) {
++        EGLnsecsANDROID values[4]; bool stillPending = false;
++        if (n && timestamps(display, surface, pending[i], n, names, values) == EGL_TRUE) {
++            for (unsigned j = 0; j < n; ++j) {
++                if (values[j] == EGL_TIMESTAMP_PENDING_ANDROID) stillPending = true;
++                else if (values[j] > 0) lorieTraceTriple("SurfaceTime", pending[i], names[j], values[j]);
++            }
++            if (stillPending) pending[retained++] = pending[i];
++        } else lorieTraceEvent("SurfaceTimeUnavailable", pending[i], 0);
++    }
++    count = retained;
++    EGLuint64KHR frameId = 0;
++    if (nextFrame(display, surface, &frameId) == EGL_TRUE) {
++        if (count == 16) {
++            lorieTraceEvent("SurfaceTimeDropped", pending[0], 0);
++            memmove(pending, pending+1, 15*sizeof(*pending)); --count;
++        }
++        pending[count++] = frameId;
++    }
++    return frameId;
++}
+diff --git a/lorie/src/main/cpp/patches/xserver.patch b/lorie/src/main/cpp/patches/xserver.patch
+index 68ea87d..95d429b 100644
+--- a/lorie/src/main/cpp/patches/xserver.patch
++++ b/lorie/src/main/cpp/patches/xserver.patch
+@@ -362,7 +362,7 @@
+  
+      /* If present_flip failed, we may have to requeue for the next MSC */
+      if (vblank->exec_msc == crtc_msc + 1 &&
+-@@ -79,12 +124,64 @@
++@@ -79,13 +124,66 @@
+          vblank->queued = TRUE;
+ +        if (gpuCopyRegion)
+ +            RegionDestroy(gpuCopyRegion);
+@@ -391,6 +391,7 @@
+ +    } else if (gpuCopyRegion &&
+ +               lorieTryScheduleGpuCopy(vblank->pixmap, gpuCopyDst, gpuCopyRegion, gpuCopyXOff, gpuCopyYOff,
+ +                                        &vblank->gpu_copy_serial, &vblank->gpu_copy_dst_buffer)) {
+++        lorieTracePresentCopy(vblank->pixmap->drawable.id, vblank->serial, vblank->gpu_copy_serial);
+ +        /* lorie: our GPU blit writes the destination pixmap directly, bypassing the normal GC
+ +         * ops that Damage tracking hooks into, so report it manually - same drawable and region
+ +         * present_scmd.c's flip success path already uses, so this also reaches Composite's
+@@ -442,7 +443,7 @@
+  #include <X11/X.h>
+  #include "scrnintstr.h"
+  #include "misc.h"
+-@@ -90,8 +91,31 @@
++@@ -90,8 +91,33 @@
+      Bool                abort_flip;     /* aborting this flip */
+      PresentFlipReason   reason;         /* reason for which flip is not possible */
+      Bool                has_suboptimal; /* whether client can support SuboptimalCopy mode */
+@@ -457,6 +458,8 @@
+ +/* lorie: hooks implemented in lorie/InitOutput.c, used by present_execute_copy() to offload the
+ + * pixmap->dst copy (dst being whatever GetWindowPixmap(window) is - root, or a Composite-redirected
+ + * window's own backing pixmap) to the renderer's GPU context instead of a CPU CopyArea. */
+++extern void lorieTracePresentFlip(PixmapPtr pixmap, uint32_t clientSerial);
+++extern void lorieTracePresentCopy(uint32_t pixmap, uint32_t clientSerial, uint64_t copySerial);
+ +extern Bool lorieTryScheduleGpuCopy(PixmapPtr pixmap, PixmapPtr dst, RegionPtr update, int16_t x_off, int16_t y_off,
+ +                                     uint64_t *out_serial, void **out_dst_buffer);
+ +extern Bool lorieGpuCopyIsDone(uint64_t serial);
+@@ -497,11 +500,12 @@
+  static void
+  present_flip_idle(ScreenPtr screen)
+  {
+-@@ -599,6 +614,8 @@
++@@ -599,6 +614,9 @@
+                      damage = &window->clipList;
+  
+                  DamageDamageRegion(&vblank->window->drawable, damage);
+ +
+++                lorieTracePresentFlip(vblank->pixmap, vblank->serial);
+ +                screen_priv->info->after_flip(vblank->crtc, vblank->event_id, ust, vblank->target_msc, vblank->pixmap);
+                  return;
+              }

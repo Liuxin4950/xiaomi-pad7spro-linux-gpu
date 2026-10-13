@@ -110,3 +110,7 @@ bash ~/debian-stop.sh
 ```
 
 普通 `~/debian-desktop.sh` 与 zink Widget 共用当前 GPU 桌面。CLI 别名和 `/usr/bin/chatgpt` 的已知发行版 shell 入口也转发 gpu-run；直接 ELF 是开发接口。历史诊断脚本不是日常启动方式。
+
+## 显示时钟候选
+
+r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。对应 APK 未安装，当前默认与用户会话不受影响。见 [显示效率候选](r3.4-display-efficiency.md)。

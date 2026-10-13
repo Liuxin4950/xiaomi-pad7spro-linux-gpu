@@ -17,7 +17,7 @@ keys = ('VK_DRIVER_FILES', 'VK_IMPLICIT_LAYER_PATH', 'VK_INSTANCE_LAYERS',
         'VK_ADD_DRIVER_FILES', 'HYBRIS_LD_LIBRARY_PATH', 'HYBRIS_LINKER_DIR',
         'HYBRIS_VULKANPLATFORM', 'LD_LIBRARY_PATH', 'MESA_LOADER_DRIVER_OVERRIDE',
         'GALLIUM_DRIVER', 'LIBGL_ALWAYS_SOFTWARE', 'DISABLE_WSI_LAYER', 'vblank_mode',
-        'DISPLAY', 'SENTINEL_APP_SETTING')
+        'DISPLAY', 'SENTINEL_APP_SETTING', 'PAD_GPU_PRESENT_CLOCK')
 print(json.dumps({'argv': sys.argv[1:], 'env': {key: os.environ.get(key) for key in keys}}))
 sys.exit(int(os.environ.get('TEST_EXIT', '0')))
 '''
@@ -168,6 +168,16 @@ class LauncherTests(unittest.TestCase):
         link = self.prefix / 'bin/custom-app'
         link.symlink_to(binary)
         self.assertIn('--use-angle=vulkan', self.data(self.run_launcher('auto', link))['argv'])
+
+    def test_display_clock_policy_preserves_timer_rollback_and_rejects_invalid(self):
+        for policy in ('auto', 'timer'):
+            data = self.data(self.run_launcher('vulkan', self.prefix / 'bin/app',
+                             env={'PAD_GPU_PRESENT_CLOCK': policy}))
+            self.assertEqual(data['env']['PAD_GPU_PRESENT_CLOCK'], policy)
+        invalid = self.run_launcher('vulkan', self.prefix / 'bin/app',
+                                    env={'PAD_GPU_PRESENT_CLOCK': 'force-uncapped'})
+        self.assertEqual(invalid.returncode, 78)
+        self.assertEqual(invalid.stdout, '')
 
     def test_gl_and_vulkan_do_not_inject_browser_flags(self):
         for mode in ('gl', 'vulkan'):

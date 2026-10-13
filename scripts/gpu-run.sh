@@ -195,6 +195,8 @@ configure_hardware() {
     fail 'PAD_GPU_MAX_FPS must be 0 (uncapped) or 1-240'; return;
   }
   export PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-60}
+  case "${PAD_GPU_PRESENT_CLOCK:-auto}" in auto|timer) ;; *) fail 'PAD_GPU_PRESENT_CLOCK must be auto or timer'; return ;; esac
+  export PAD_GPU_PRESENT_CLOCK=${PAD_GPU_PRESENT_CLOCK:-auto}
   # RandR's advertised refresh is not proof of an MSC/scanout cap. The old
   # installed X11 server still ticks at Android's rate, so retain the cap.
   export PAD_GPU_FIFO_DISPLAY_PACED=0

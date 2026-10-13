@@ -1,0 +1,551 @@
+diff --git a/layer/VkLayer_window_system_integration.json b/layer/VkLayer_window_system_integration.json
+index 6080458..ca23f82 100644
+--- a/layer/VkLayer_window_system_integration.json
++++ b/layer/VkLayer_window_system_integration.json
+@@ -26,7 +26,8 @@
+             {"name": "VK_EXT_swapchain_maintenance1", "spec_version": "1", "entrypoints": ["vkReleaseSwapchainImagesEXT"]},
+             {"name": "VK_EXT_present_timing", "spec_version": "1", "entrypoints": ["vkSetSwapchainPresentTimingQueueSizeEXT", "vkGetSwapchainTimingPropertiesEXT", "vkGetSwapchainTimeDomainPropertiesEXT", "vkGetPastPresentationTimingEXT"]},
+             {"name": "VK_KHR_swapchain", "spec_version": "70", "entrypoints": ["vkAcquireNextImageKHR", "vkCreateSwapchainKHR", "vkDestroySwapchainKHR", "vkGetSwapchainImagesKHR", "vkQueuePresentKHR", "vkAcquireNextImage2KHR", "vkGetDeviceGroupPresentCapabilitiesKHR", "vkGetDeviceGroupSurfacePresentModesKHR", "vkGetPhysicalDevicePresentRectanglesKHR"]},
+-            {"name": "VK_KHR_present_id", "spec_version": "1"}
++            {"name": "VK_KHR_present_id", "spec_version": "1"},
++            {"name": "VK_KHR_incremental_present", "spec_version": "2"}
+         ],
+         "disable_environment": {
+             "DISABLE_WSI_LAYER": "1"
+diff --git a/layer/swapchain_api.cpp b/layer/swapchain_api.cpp
+index e05fc03..77a521e 100644
+--- a/layer/swapchain_api.cpp
++++ b/layer/swapchain_api.cpp
+@@ -183,6 +183,8 @@ wsi_layer_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo)
+    VkResult ret = VK_SUCCESS;
+ 
+    auto *present_ids = util::find_extension<VkPresentIdKHR>(VK_STRUCTURE_TYPE_PRESENT_ID_KHR, pPresentInfo->pNext);
++   auto *present_regions = util::find_extension<VkPresentRegionsKHR>(VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR,
++                                                                    pPresentInfo->pNext);
+    const auto present_fence_info = util::find_extension<VkSwapchainPresentFenceInfoEXT>(
+       VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT, present_info->pNext);
+    const auto swapchain_present_mode_info = util::find_extension<VkSwapchainPresentModeInfoEXT>(
+@@ -218,6 +220,30 @@ wsi_layer_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo)
+       present_params.pending_present.image_index = pPresentInfo->pImageIndices[i];
+       present_params.pending_present.present_id = present_id;
+ 
++      if (present_regions != nullptr &&
++          present_regions->swapchainCount == pPresentInfo->swapchainCount &&
++          present_regions->pRegions != nullptr)
++      {
++         /* VK_KHR_incremental_present damage hints. Missing or oversized
++          * region lists keep the UNKNOWN default and force a full copy. */
++         const VkPresentRegionKHR &region = present_regions->pRegions[i];
++         auto &damage = present_params.pending_present.damage;
++         if (region.rectangleCount == 0)
++         {
++            damage.status = wsi::present_damage::UNCHANGED;
++         }
++         else if (region.rectangleCount <= wsi::present_damage::MAX_RECTS && region.pRectangles != nullptr)
++         {
++            damage.status = wsi::present_damage::RECTS;
++            damage.rect_count = region.rectangleCount;
++            for (uint32_t r = 0; r < region.rectangleCount; ++r)
++            {
++               damage.rects[r].offset = region.pRectangles[r].offset;
++               damage.rects[r].extent = region.pRectangles[r].extent;
++            }
++         }
++      }
++
+       present_params.use_image_present_semaphore = use_image_present_semaphore;
+       present_params.handle_present_frame_boundary_event = frame_boundary_event_handled;
+ 
+diff --git a/wsi/display/swapchain.cpp b/wsi/display/swapchain.cpp
+index 5868830..9212fc1 100644
+--- a/wsi/display/swapchain.cpp
++++ b/wsi/display/swapchain.cpp
+@@ -564,7 +564,8 @@ void swapchain::present_image(const pending_present_request &pending_present)
+ }
+ 
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+-                                              const queue_submit_semaphores &semaphores, const void *submission_pnext)
++                                              const queue_submit_semaphores &semaphores, const void *submission_pnext,
++                                              const present_damage &)
+ {
+    auto image_data = reinterpret_cast<display_image_data *>(image.data);
+    return image_data->present_fence.set_payload(queue, semaphores, submission_pnext);
+diff --git a/wsi/display/swapchain.hpp b/wsi/display/swapchain.hpp
+index cc58af0..275f0c4 100644
+--- a/wsi/display/swapchain.hpp
++++ b/wsi/display/swapchain.hpp
+@@ -104,7 +104,8 @@ public:
+ 
+    virtual VkResult image_set_present_payload(swapchain_image &image, VkQueue queue,
+                                               const queue_submit_semaphores &semaphores,
+-                                              const void *submission_pnext) override;
++                                              const void *submission_pnext,
++                                              const present_damage &damage) override;
+ 
+    virtual VkResult image_wait_present(swapchain_image &image, uint64_t timeout) override;
+ 
+diff --git a/wsi/headless/swapchain.cpp b/wsi/headless/swapchain.cpp
+index f71ff62..e905659 100644
+--- a/wsi/headless/swapchain.cpp
++++ b/wsi/headless/swapchain.cpp
+@@ -197,7 +197,8 @@ void swapchain::destroy_image(wsi::swapchain_image &image)
+ }
+ 
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+-                                              const queue_submit_semaphores &semaphores, const void *submission_pnext)
++                                              const queue_submit_semaphores &semaphores, const void *submission_pnext,
++                                              const present_damage &)
+ {
+    auto data = reinterpret_cast<image_data *>(image.data);
+    return data->present_fence.set_payload(queue, semaphores, submission_pnext);
+diff --git a/wsi/headless/swapchain.hpp b/wsi/headless/swapchain.hpp
+index 581d4c8..998d765 100644
+--- a/wsi/headless/swapchain.hpp
++++ b/wsi/headless/swapchain.hpp
+@@ -108,7 +108,7 @@ protected:
+     * @return VK_SUCCESS on success or an error code otherwise.
+     */
+    VkResult image_set_present_payload(swapchain_image &image, VkQueue queue, const queue_submit_semaphores &semaphores,
+-                                      const void *submission_pnext) override;
++                                      const void *submission_pnext, const present_damage &damage) override;
+ 
+    VkResult image_wait_present(swapchain_image &image, uint64_t timeout) override;
+ 
+diff --git a/wsi/swapchain_base.cpp b/wsi/swapchain_base.cpp
+index 4110b46..624ec8a 100644
+--- a/wsi/swapchain_base.cpp
++++ b/wsi/swapchain_base.cpp
+@@ -746,7 +746,8 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
+       (submit_info.present_fence != VK_NULL_HANDLE) ? 1u : 0,
+    };
+    TRY_LOG_CALL(image_set_present_payload(m_swapchain_images[submit_info.pending_present.image_index], queue,
+-                                          semaphores, submission_pnext));
++                                          semaphores, submission_pnext,
++                                          submit_info.pending_present.damage));
+ 
+    if (submit_info.present_fence != VK_NULL_HANDLE)
+    {
+diff --git a/wsi/swapchain_base.hpp b/wsi/swapchain_base.hpp
+index 7903c2f..e8d963c 100644
+--- a/wsi/swapchain_base.hpp
++++ b/wsi/swapchain_base.hpp
+@@ -72,6 +72,27 @@ struct swapchain_image
+    VkSemaphore present_fence_wait{ VK_NULL_HANDLE };
+ };
+ 
++/**
++ * Damage hints carried by VK_KHR_incremental_present. RECTS are the pixels the
++ * application reports as changed since its previous present; UNCHANGED is an
++ * explicit empty claim. UNKNOWN is the conservative fallback used whenever the
++ * application did not provide usable hints (including rect-count overflow): it
++ * forces a full copy so stale pixels can never leak into the presented buffer.
++ */
++struct present_damage
++{
++   enum status_kind : uint8_t
++   {
++      UNKNOWN = 0,
++      UNCHANGED = 1,
++      RECTS = 2,
++   };
++   static constexpr uint32_t MAX_RECTS = 12;
++   status_kind status{ UNKNOWN };
++   uint32_t rect_count{ 0 };
++   VkRect2D rects[MAX_RECTS]{};
++};
++
+ struct pending_present_request
+ {
+    /* The index of the pending image to use for present. */
+@@ -82,6 +103,9 @@ struct pending_present_request
+     * If 0, no present ID has been assigned to this request.
+     */
+    uint64_t present_id;
++
++   /* Damage hint for this present. Defaults to UNKNOWN (full copy). */
++   present_damage damage{};
+ };
+ 
+ struct swapchain_presentation_parameters
+@@ -561,12 +585,14 @@ protected:
+     * @param     queue            A Vulkan queue that can be used for any Vulkan commands needed.
+     * @param[in] semaphores       The wait and signal semaphores and their number of elements.
+     * @param[in] submission_pnext Chain of pointers to attach to the payload submission.
++    * @param[in] damage           Damage hint for this present request.
+     *
+     * @return VK_SUCCESS on success or an error code otherwise.
+     */
+    virtual VkResult image_set_present_payload(swapchain_image &image, VkQueue queue,
+                                               const queue_submit_semaphores &semaphores,
+-                                              const void *submission_pnext = nullptr) = 0;
++                                              const void *submission_pnext,
++                                              const present_damage &damage) = 0;
+ 
+    /**
+     * @brief Waits for the present payload of an image if necessary.
+diff --git a/wsi/wayland/swapchain.cpp b/wsi/wayland/swapchain.cpp
+index 747efbe..0d9e8f4 100644
+--- a/wsi/wayland/swapchain.cpp
++++ b/wsi/wayland/swapchain.cpp
+@@ -599,7 +599,8 @@ VkResult swapchain::get_free_buffer(uint64_t *timeout)
+ }
+ 
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+-                                              const queue_submit_semaphores &semaphores, const void *submission_pnext)
++                                              const queue_submit_semaphores &semaphores, const void *submission_pnext,
++                                              const present_damage &)
+ {
+    auto image_data = reinterpret_cast<wayland_image_data *>(image.data);
+    return image_data->present_fence.set_payload(queue, semaphores, submission_pnext);
+diff --git a/wsi/wayland/swapchain.hpp b/wsi/wayland/swapchain.hpp
+index 7667324..3b35ef2 100644
+--- a/wsi/wayland/swapchain.hpp
++++ b/wsi/wayland/swapchain.hpp
+@@ -163,7 +163,7 @@ protected:
+     * @return VK_SUCCESS on success or an error code otherwise.
+     */
+    VkResult image_set_present_payload(swapchain_image &image, VkQueue queue, const queue_submit_semaphores &semaphores,
+-                                      const void *submission_pnext) override;
++                                      const void *submission_pnext, const present_damage &damage) override;
+ 
+    VkResult image_wait_present(swapchain_image &image, uint64_t timeout) override;
+ 
+diff --git a/wsi/x11/diagnostics.hpp b/wsi/x11/diagnostics.hpp
+index 2ba0553..ffbc93a 100644
+--- a/wsi/x11/diagnostics.hpp
++++ b/wsi/x11/diagnostics.hpp
+@@ -36,6 +36,7 @@ struct diagnostics
+ {
+    diagnostic_metric host_payload, gpu_ready_wait, present_interval;
+    uint64_t recordings{0}, copies{0}, last_present{0};
++   uint64_t partial_recordings{0}, skipped_copies{0}, skipped_presents{0};
+    static uint64_t now()
+    {
+       return std::chrono::duration_cast<std::chrono::nanoseconds>(
+@@ -49,8 +50,10 @@ struct diagnostics
+    }
+    void report(uint32_t window, bool reuse) const
+    {
+-      std::fprintf(stderr, "PAD_WSI window=%u reuse=%u recordings=%llu copies=%llu\n", window, reuse,
+-         static_cast<unsigned long long>(recordings), static_cast<unsigned long long>(copies));
++      std::fprintf(stderr, "PAD_WSI window=%u reuse=%u recordings=%llu copies=%llu partial_recordings=%llu skipped_copies=%llu skipped_presents=%llu\n", window, reuse,
++         static_cast<unsigned long long>(recordings), static_cast<unsigned long long>(copies),
++         static_cast<unsigned long long>(partial_recordings), static_cast<unsigned long long>(skipped_copies),
++         static_cast<unsigned long long>(skipped_presents));
+       host_payload.report(window, "host_payload");
+       gpu_ready_wait.report(window, "gpu_ready_wait");
+       present_interval.report(window, "x11_submit_interval");
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index 14b1fc1..f82cde3 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -28,6 +28,7 @@
+  * @brief Contains the implementation for a x11 swapchain.
+  */
+ 
++#include <algorithm>
+ #include <cassert>
+ #include <cerrno>
+ #include <chrono>
+@@ -85,6 +86,14 @@ struct x11_image_data
+    uint32_t idle_serial{0};
+    VkQueryPool timestamp_pool{};
+    uint64_t payload_sequence{0}, reported_sequence{0};
++   /* Damage accumulated for presentation_image since its last copy caught it up
++    * with the render image. Starts unknown: the first copy is always full. */
++   VkRect2D accum_rects[present_damage::MAX_RECTS]{};
++   uint32_t accum_rect_count{ 0 };
++   bool accum_unknown{ true };
++   /* Set at payload time when this present needs no X11 update because the
++    * pixmap already shows the claimed content. Consumed by present_image. */
++   bool skip_present{ false };
+    VkSubresourceLayout layout;
+ 
+    fence_sync present_fence;
+@@ -494,6 +503,16 @@ void swapchain::present_image(const pending_present_request &pending_present)
+       return set_present_id(pending_present.present_id);
+    if (!m_present_event_thread_run)
+       return unpresent_image(pending_present.image_index);
++   if (image_data->skip_present)
++   {
++      // Zero-damage present: the pixmap already shows this content, so skip
++      // the X11 round trip entirely and recycle the image without pacing.
++      image_data->skip_present = false;
++      if (m_diagnostics)
++         ++m_diagnostics->skipped_presents;
++      set_present_id(pending_present.present_id);
++      return unpresent_image(pending_present.image_index);
++   }
+ 
+    while (image_data->pending_completions.size() == X11_SWAPCHAIN_MAX_PENDING_COMPLETIONS)
+    {
+@@ -704,15 +723,133 @@ void swapchain::release_image_resources(wsi::swapchain_image &image, bool destro
+    }
+ }
+ 
+-VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &data)
++static VkRect2D clamp_damage_rect(VkRect2D rect, VkExtent3D extent)
++{
++   const int64_t x = std::max<int64_t>(0, rect.offset.x);
++   const int64_t y = std::max<int64_t>(0, rect.offset.y);
++   const int64_t x2 = std::min<int64_t>(extent.width, static_cast<int64_t>(rect.offset.x) + rect.extent.width);
++   const int64_t y2 = std::min<int64_t>(extent.height, static_cast<int64_t>(rect.offset.y) + rect.extent.height);
++   VkRect2D out{};
++   if (x2 > x && y2 > y)
++   {
++      out.offset = { static_cast<int32_t>(x), static_cast<int32_t>(y) };
++      out.extent = { static_cast<uint32_t>(x2 - x), static_cast<uint32_t>(y2 - y) };
++   }
++   return out;
++}
++
++VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &data,
++                                      const present_damage &damage, bool &skip_copy)
+ {
++   skip_copy = false;
++   /* Catch the accumulated damage up with this present before deciding how much
++    * of the presentation image is stale. Rects from several presents union up:
++    * presentation_image lags the render image by everything not yet copied. */
++   if (damage.status == present_damage::UNKNOWN)
++   {
++      data.accum_unknown = true;
++   }
++   else if (damage.status == present_damage::RECTS)
++   {
++      if (damage.rect_count > present_damage::MAX_RECTS)
++      {
++         data.accum_unknown = true;
++      }
++      else
++      {
++         for (uint32_t i = 0; i < damage.rect_count; i++)
++         {
++            if (data.accum_rect_count == present_damage::MAX_RECTS)
++            {
++               data.accum_unknown = true;
++               break;
++            }
++            data.accum_rects[data.accum_rect_count++] = damage.rects[i];
++         }
++      }
++   }
++
++   /* The application claims nothing changed since this presentation image's
++    * last copy: leave the GPU copy idle and skip the X11 present as well. */
++   if (!data.accum_unknown && data.presentation_initialized && data.accum_rect_count == 0)
++   {
++      skip_copy = true;
++      return VK_SUCCESS;
++   }
++
+    VkResult result = data.present_fence.wait_payload(UINT64_MAX);
+    if (result != VK_SUCCESS)
+       return result;
++
++   uint64_t damage_area = 0;
++   for (uint32_t i = 0; i < data.accum_rect_count; i++)
++   {
++      damage_area += static_cast<uint64_t>(data.accum_rects[i].extent.width) *
++                     static_cast<uint64_t>(data.accum_rects[i].extent.height);
++   }
++   const uint64_t image_area = static_cast<uint64_t>(m_image_create_info.extent.width) *
++                               static_cast<uint64_t>(m_image_create_info.extent.height);
++   /* Full copies stay reusable; only genuinely small updates are worth
++    * re-recording as partial copies. Unknown damage always copies everything. */
++   const bool full_copy = data.accum_unknown || !data.presentation_initialized ||
++                          damage_area * 2 >= image_area;
+    // Only reuse after the previous producer/copy fence and X11 Idle/acquire
+    // rules have made this image safe. Never remove either lifetime boundary.
+-   if (m_reuse_conversion && data.conversion_reusable)
++   if (full_copy && m_reuse_conversion && data.conversion_reusable)
++   {
++      /* The cached command buffer performs a full copy and already catches up. */
++      data.accum_rect_count = 0;
++      data.accum_unknown = false;
+       return VK_SUCCESS;
++   }
++
++   VkImageBlit blit{};
++   blit.srcSubresource = blit.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
++   blit.srcOffsets[1] = blit.dstOffsets[1] = {
++      static_cast<int32_t>(m_image_create_info.extent.width), static_cast<int32_t>(m_image_create_info.extent.height), 1 };
++   const bool byte_copy = uses_xorg_bgra_transport();
++   VkImageCopy copies[present_damage::MAX_RECTS];
++   VkImageBlit blits[present_damage::MAX_RECTS];
++   uint32_t copy_count = 1;
++   if (!full_copy)
++   {
++      copy_count = 0;
++      for (uint32_t i = 0; i < data.accum_rect_count; i++)
++      {
++         const VkRect2D rect = clamp_damage_rect(data.accum_rects[i], m_image_create_info.extent);
++         if (rect.extent.width == 0 || rect.extent.height == 0)
++            continue;
++         if (byte_copy)
++         {
++            VkImageCopy &copy = copies[copy_count];
++            copy = {};
++            copy.srcSubresource = copy.dstSubresource = blit.srcSubresource;
++            copy.srcOffset = { rect.offset.x, rect.offset.y, 0 };
++            copy.dstOffset = copy.srcOffset;
++            copy.extent = { rect.extent.width, rect.extent.height, 1 };
++         }
++         else
++         {
++            VkImageBlit &partial = blits[copy_count];
++            partial = {};
++            partial.srcSubresource = partial.dstSubresource = blit.srcSubresource;
++            partial.srcOffsets[0] = partial.dstOffsets[0] = { rect.offset.x, rect.offset.y, 0 };
++            partial.srcOffsets[1] = partial.dstOffsets[1] = {
++               rect.offset.x + static_cast<int32_t>(rect.extent.width),
++               rect.offset.y + static_cast<int32_t>(rect.extent.height), 1 };
++         }
++         copy_count++;
++      }
++      if (copy_count == 0)
++      {
++         /* Every claimed rect is degenerate: nothing to refresh. */
++         data.accum_rect_count = 0;
++         data.accum_unknown = false;
++         skip_copy = true;
++         return VK_SUCCESS;
++      }
++   }
++
+    result = m_device_data.disp.ResetCommandBuffer(data.conversion_command, 0);
+    if (result != VK_SUCCESS)
+       return result;
+@@ -738,24 +875,28 @@ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &da
+    };
+    m_device_data.disp.CmdPipelineBarrier(data.conversion_command, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+       VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, before);
+-   VkImageBlit blit{};
+-   blit.srcSubresource = blit.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+-   blit.srcOffsets[1] = blit.dstOffsets[1] = {
+-      static_cast<int32_t>(m_image_create_info.extent.width), static_cast<int32_t>(m_image_create_info.extent.height), 1 };
+-   if (uses_xorg_bgra_transport())
++   if (byte_copy)
+    {
+       // The existing Termux:X11 protocol consumes Xorg BGRA byte order even
+       // when gralloc supplies an RGBA AHB. Preserve the public BGRA image's
+       // bytes; a color-converting blit would be swizzled again by its renderer.
+-      VkImageCopy copy{};
+-      copy.srcSubresource = copy.dstSubresource = blit.srcSubresource;
+-      copy.extent = m_image_create_info.extent;
++      if (full_copy)
++      {
++         VkImageCopy copy{};
++         copy.srcSubresource = copy.dstSubresource = blit.srcSubresource;
++         copy.extent = m_image_create_info.extent;
++         copies[0] = copy;
++      }
+       m_device_data.disp.CmdCopyImage(data.conversion_command, image.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+-         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
++         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_count, copies);
+    }
+    else
++   {
++      if (full_copy)
++         blits[0] = blit;
+       m_device_data.disp.CmdBlitImage(data.conversion_command, image.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+-         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
++         data.presentation_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_count, blits, VK_FILTER_NEAREST);
++   }
+    VkImageMemoryBarrier after[] = {
+       { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, nullptr, VK_ACCESS_TRANSFER_READ_BIT, 0,
+         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+@@ -772,33 +913,56 @@ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &da
+    if (result == VK_SUCCESS)
+    {
+       // First submission acquires an UNDEFINED image; subsequent submissions
+-      // use GENERAL plus FOREIGN ownership. Cache only the latter command.
+-      data.conversion_reusable = data.presentation_initialized;
++      // use GENERAL plus FOREIGN ownership. Cache only the latter command and
++      // only when it is a full copy: partial command buffers depend on the
++      // current rect set and must be re-recorded for the next present.
++      data.conversion_reusable = full_copy && data.presentation_initialized;
++      data.accum_rect_count = 0;
++      data.accum_unknown = false;
+       if (m_diagnostics)
++      {
+          ++m_diagnostics->recordings;
++         if (!full_copy)
++            ++m_diagnostics->partial_recordings;
++      }
+    }
+    return result;
+ }
+ 
+ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue queue,
+-                                              const queue_submit_semaphores &semaphores, const void *submission_pnext)
++                                              const queue_submit_semaphores &semaphores, const void *submission_pnext,
++                                              const present_damage &damage)
+ {
+    auto data = reinterpret_cast<x11_image_data *>(image.data);
+    const auto started = m_diagnostics ? diagnostics::now() : 0;
+    if (m_timeline) m_timeline->record("payload_begin", data->pixmap, data->payload_sequence + 1);
+    VkResult result;
++   data->skip_present = false;
+    if (data->conversion_command != VK_NULL_HANDLE)
+    {
+-      result = record_conversion(image, *data);
++      bool skip_copy = false;
++      result = record_conversion(image, *data, damage, skip_copy);
+       if (result != VK_SUCCESS)
+          return result;
+-      result = data->present_fence.set_payload(queue, semaphores, submission_pnext, data->conversion_command);
+-      if (result == VK_SUCCESS)
++      if (skip_copy)
+       {
+-         data->presentation_initialized = true;
+-         ++data->payload_sequence;
+-         if (m_diagnostics)
+-            ++m_diagnostics->copies;
++         // The presented buffer already shows the claimed content: no GPU copy
++         // and no X11 present. The payload still chains the app's semaphores.
++         data->skip_present = true;
++         result = data->present_fence.set_payload(queue, semaphores, submission_pnext);
++         if (result == VK_SUCCESS && m_diagnostics)
++            ++m_diagnostics->skipped_copies;
++      }
++      else
++      {
++         result = data->present_fence.set_payload(queue, semaphores, submission_pnext, data->conversion_command);
++         if (result == VK_SUCCESS)
++         {
++            data->presentation_initialized = true;
++            ++data->payload_sequence;
++            if (m_diagnostics)
++               ++m_diagnostics->copies;
++         }
+       }
+    }
+    else
+diff --git a/wsi/x11/swapchain.hpp b/wsi/x11/swapchain.hpp
+index 34c81fd..46f08a3 100644
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -120,11 +120,12 @@ protected:
+     * @param     queue       A Vulkan queue that can be used for any Vulkan commands needed.
+     * @param[in] sem_payload Array of Vulkan semaphores that constitute the payload.
+     * @param[in] submission_pnext Chain of pointers to attach to the payload submission.
++    * @param[in] damage      Damage hint for this present request.
+     *
+     * @return VK_SUCCESS on success or an error code otherwise.
+     */
+    VkResult image_set_present_payload(swapchain_image &image, VkQueue queue, const queue_submit_semaphores &semaphores,
+-                                      const void *submission_pnext) override;
++                                      const void *submission_pnext, const present_damage &damage) override;
+ 
+    VkResult image_wait_present(swapchain_image &image, uint64_t timeout) override;
+ 
+@@ -185,7 +186,8 @@ private:
+    xcb_pixmap_t create_pixmap(swapchain_image &image);
+    void release_image_resources(swapchain_image &image, bool destroy_render_image = true);
+    VkResult allocate_image_memory(VkImage image, bool export_ahb, VkDeviceMemory &memory);
+-   VkResult record_conversion(swapchain_image &image, x11_image_data &data);
++   VkResult record_conversion(swapchain_image &image, x11_image_data &data,
++                              const present_damage &damage, bool &skip_copy);
+ 
+    void present_event_thread();
+    bool m_present_event_thread_run{ false };

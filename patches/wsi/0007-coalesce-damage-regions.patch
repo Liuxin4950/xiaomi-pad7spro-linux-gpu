@@ -1,0 +1,148 @@
+diff --git a/wsi/x11/diagnostics.hpp b/wsi/x11/diagnostics.hpp
+index 357d920..c7a0598 100644
+--- a/wsi/x11/diagnostics.hpp
++++ b/wsi/x11/diagnostics.hpp
+@@ -36,7 +36,7 @@ struct diagnostics
+ {
+    diagnostic_metric host_payload, gpu_ready_wait, present_interval;
+    uint64_t recordings{0}, copies{0}, last_present{0};
+-   uint64_t partial_recordings{0};
++   uint64_t partial_recordings{0}, copied_pixels{0}, full_copy_pixels{0}, region_hints{0}, full_hints{0};
+    static uint64_t now()
+    {
+       return std::chrono::duration_cast<std::chrono::nanoseconds>(
+@@ -48,11 +48,20 @@ struct diagnostics
+       if (last_present) present_interval.add(current - last_present);
+       last_present = current;
+    }
++   void report_hints(uint32_t window) const
++   {
++      std::fprintf(stderr, "PAD_WSI_HINTS window=%u copies=%llu region_hints=%llu full_hints=%llu copied_pixels=%llu full_copy_pixels=%llu\n", window,
++         static_cast<unsigned long long>(copies), static_cast<unsigned long long>(region_hints),
++         static_cast<unsigned long long>(full_hints), static_cast<unsigned long long>(copied_pixels),
++         static_cast<unsigned long long>(full_copy_pixels));
++   }
+    void report(uint32_t window, bool reuse) const
+    {
+-      std::fprintf(stderr, "PAD_WSI window=%u reuse=%u recordings=%llu copies=%llu partial_recordings=%llu\n", window, reuse,
++      std::fprintf(stderr, "PAD_WSI window=%u reuse=%u recordings=%llu copies=%llu partial_recordings=%llu copied_pixels=%llu full_copy_pixels=%llu region_hints=%llu full_hints=%llu\n", window, reuse,
+          static_cast<unsigned long long>(recordings), static_cast<unsigned long long>(copies),
+-         static_cast<unsigned long long>(partial_recordings));
++         static_cast<unsigned long long>(partial_recordings), static_cast<unsigned long long>(copied_pixels),
++         static_cast<unsigned long long>(full_copy_pixels), static_cast<unsigned long long>(region_hints),
++         static_cast<unsigned long long>(full_hints));
+       host_payload.report(window, "host_payload");
+       gpu_ready_wait.report(window, "gpu_ready_wait");
+       present_interval.report(window, "x11_submit_interval");
+diff --git a/wsi/x11/swapchain.cpp b/wsi/x11/swapchain.cpp
+index c46892b..65ff2c7 100644
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -86,6 +86,7 @@ struct x11_image_data
+    uint32_t idle_serial{0};
+    VkQueryPool timestamp_pool{};
+    uint64_t payload_sequence{0}, reported_sequence{0};
++   uint64_t conversion_pixels{0};
+    /* Damage accumulated for presentation_image since its last copy caught it up
+     * with the render image. Starts unknown: the first copy is always full. */
+    VkRect2D accum_rects[present_damage::MAX_RECTS]{};
+@@ -709,6 +710,25 @@ void swapchain::release_image_resources(wsi::swapchain_image &image, bool destro
+    }
+ }
+ 
++// Keep a bounded conservative union: copying a bounding box is safe because
++// incremental_present still requires a complete desired source image. Merge
++// overlapping/edge-adjacent rectangles before charging area or the list cap.
++static bool merge_damage_rects(VkRect2D &rect, const VkRect2D &other)
++{
++   const int64_t right = static_cast<int64_t>(rect.offset.x) + rect.extent.width;
++   const int64_t bottom = static_cast<int64_t>(rect.offset.y) + rect.extent.height;
++   const int64_t other_right = static_cast<int64_t>(other.offset.x) + other.extent.width;
++   const int64_t other_bottom = static_cast<int64_t>(other.offset.y) + other.extent.height;
++   if (right < other.offset.x || other_right < rect.offset.x ||
++       bottom < other.offset.y || other_bottom < rect.offset.y)
++      return false;
++   const int32_t left = std::min(rect.offset.x, other.offset.x);
++   const int32_t top = std::min(rect.offset.y, other.offset.y);
++   rect = {{left, top}, {static_cast<uint32_t>(std::max(right, other_right) - left),
++                        static_cast<uint32_t>(std::max(bottom, other_bottom) - top)}};
++   return true;
++}
++
+ void swapchain::accumulate_damage(const present_damage &damage)
+ {
+    const std::lock_guard<std::recursive_mutex> lock(m_image_status_mutex);
+@@ -729,7 +749,7 @@ void swapchain::accumulate_damage(const present_damage &damage)
+       if (!image.data || image.status == swapchain_image::INVALID)
+          continue;
+       auto &data = *reinterpret_cast<x11_image_data *>(image.data);
+-      if (!usable || data.accum_rect_count + damage.rect_count > present_damage::MAX_RECTS)
++      if (!usable)
+          data.accum_unknown = true;
+       if (data.accum_unknown)
+       {
+@@ -737,7 +757,26 @@ void swapchain::accumulate_damage(const present_damage &damage)
+          continue;
+       }
+       for (uint32_t r = 0; r < damage.rect_count; ++r)
+-         data.accum_rects[data.accum_rect_count++] = damage.rects[r];
++      {
++         VkRect2D rect = damage.rects[r];
++         for (uint32_t i = 0; i < data.accum_rect_count;)
++         {
++            if (merge_damage_rects(rect, data.accum_rects[i]))
++            {
++               data.accum_rects[i] = data.accum_rects[--data.accum_rect_count];
++               i = 0; // The larger box may now overlap an earlier rectangle.
++            }
++            else
++               ++i;
++         }
++         if (data.accum_rect_count == present_damage::MAX_RECTS)
++         {
++            data.accum_unknown = true;
++            data.accum_rect_count = 0;
++            break;
++         }
++         data.accum_rects[data.accum_rect_count++] = rect;
++      }
+    }
+ }
+ 
+@@ -759,6 +798,7 @@ VkResult swapchain::record_conversion(swapchain_image &image, x11_image_data &da
+     * re-recording as partial copies. Unknown damage always copies everything. */
+    const bool full_copy = data.accum_unknown || !data.presentation_initialized || data.accum_rect_count == 0 ||
+                           damage_area >= (image_area + 1) / 2;
++   data.conversion_pixels = full_copy ? image_area : damage_area;
+    // Only reuse after the previous producer/copy fence and X11 Idle/acquire
+    // rules have made this image safe. Never remove either lifetime boundary.
+    if (full_copy && m_reuse_conversion && data.conversion_reusable)
+@@ -892,6 +932,11 @@ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue qu
+    const auto started = m_diagnostics ? diagnostics::now() : 0;
+    if (m_timeline) m_timeline->record("payload_begin", data->pixmap, data->payload_sequence + 1);
+    VkResult result;
++   if (m_diagnostics)
++   {
++      if (damage.status == present_damage::RECTS) ++m_diagnostics->region_hints;
++      else ++m_diagnostics->full_hints;
++   }
+    accumulate_damage(damage);
+    if (data->conversion_command != VK_NULL_HANDLE)
+    {
+@@ -906,7 +951,16 @@ VkResult swapchain::image_set_present_payload(swapchain_image &image, VkQueue qu
+          data->accum_unknown = false;
+          ++data->payload_sequence;
+          if (m_diagnostics)
++         {
+             ++m_diagnostics->copies;
++            m_diagnostics->copied_pixels += data->conversion_pixels;
++            m_diagnostics->full_copy_pixels += static_cast<uint64_t>(m_image_create_info.extent.width) *
++                                               m_image_create_info.extent.height;
++            // Browser GPU processes may exit without running C++ destructors.
++            // Bounded live snapshots make damage uptake observable; trace only.
++            if (m_diagnostics->copies == 1 || m_diagnostics->copies % 128 == 0)
++               m_diagnostics->report_hints(m_window);
++         }
+       }
+    }
+    else

@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-13",
+  "version": "r3.4.1",
+  "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+  "deployment": {
+    "state": "upgrade_verification_failed",
+    "start_monotonic_ns": 58241461715736,
+    "authorized_saved_work": true,
+    "default_bridge": "r3.4.1",
+    "apk_changed": false,
+    "xfce_pid": 14659,
+    "error": "regions-window exit 1",
+    "traceback": "Traceback (most recent call last):\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-upgrade-20261013/upgrade-android.py\", line 99, in <module>\n    chroot(['/usr/bin/env','PAD_SCREEN_RESUME_CHECK=1','python3',\n    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n     '/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-upgrade-20261013/check-window.py',\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n     '/opt/pad7spro-gpu-r3.4.2-display',kind],kind+'-window',25)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-upgrade-20261013/upgrade-android.py\", line 50, in chroot\n    run(session_command(['/usr/bin/env','-i',*variables,*args]),label,timeout)\n    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-upgrade-20261013/upgrade-android.py\", line 15, in run\n    if r.returncode:raise RuntimeError(label+' exit '+str(r.returncode))\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: regions-window exit 1\n",
+    "restored_links": {
+      "/data/linux/debian/usr/local/bin/gpu-run": "/opt/pad7spro-gpu-r3.4.1-opt1/bin/gpu-run",
+      "/data/linux/debian/usr/local/bin/gpu-launcher": "/opt/pad7spro-gpu-r3.4.1-opt1/bin/gpu-launcher"
+    },
+    "rollback_restored": true,
+    "recovery_launch_pid": 14716,
+    "end_monotonic_ns": 58318123465976
+  },
+  "runtime": [
+    {
+      "pid": 14576,
+      "comm": "main",
+      "bridge_mapped": false,
+      "mali_mapped": false,
+      "new_apk_mapped": true
+    },
+    {
+      "pid": 14659,
+      "comm": "xfce4-session",
+      "bridge_mapped": true,
+      "mali_mapped": true,
+      "new_apk_mapped": false
+    }
+  ],
+  "power_or_input_latency_improvement_claimed": false,
+  "regions_screen_check": {
+    "screen_width": 3200,
+    "screen_height": 2136,
+    "format": 1,
+    "expected_screen_color": [
+      61,
+      113,
+      210
+    ],
+    "screen_color_space_id": 2,
+    "color_bounds": [
+      1595,
+      1045,
+      1657,
+      1138
+    ],
+    "window_origin": [
+      1476,
+      997
+    ],
+    "checked_pixels": 49152,
+    "pixel_mismatches": 1851,
+    "probe_exit": 0,
+    "bridge_mapped": true,
+    "mali_mapped": true
+  },
+  "diagnosis": {
+    "legacy_same_resume_control": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        61,
+        113,
+        210
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1592,
+        1045,
+        1654,
+        1138
+      ],
+      "window_origin": [
+        1473,
+        997
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 1084,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "pixel_test_not_specific_to_new_version": true,
+    "viewport_or_filtering_not_accounted_for_in_pixel_oracle": true,
+    "locked_xorg_copy_exec_msc_equals_target_msc": true,
+    "candidate_copy_plus_two_based_on_incorrect_target_minus_one_assumption": true,
+    "copy_target_correction_pending": true,
+    "new_performance_or_power_claim": false
+  },
+  "latest_runtime": {
+    "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+    "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+    "xfce_pid": 14659,
+    "gpu_pid": 14854,
+    "xserver_pid": 14576,
+    "mali_mapped": true
+  }
+}

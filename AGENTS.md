@@ -1,6 +1,6 @@
 # GPU 工程接手约定
 
-先读 `docs/CURRENT-STATE.md`、`docs/tablet-handoff.md`。当前默认是 r3.3，实际前缀与 `release.json`、系统链接、APK 和进程共同核对；旧记忆里的 r2/canary 不是当前基线。
+先读 `docs/CURRENT-STATE.md`、`docs/tablet-handoff.md`。当前默认是 r3.4.1（r3.4.2 验收失败后已回退），实际前缀与 `release.json`、系统链接、APK 和进程共同核对；旧记忆里的 r2/canary 不是当前基线。
 
 1. 用户目标是实际 Mali GPU 渲染、流畅和低功耗。优先实施有证据的必要修复，避免反复扩大测试或凭调用链长度猜瓶颈。
 2. 所有正常图形入口用 `/usr/local/bin/gpu-run`，不要在桌面、Widget 或 shell 中写死 r2/旧 canary 库路径。保留现有参数、文件/URL 占位符、用户配置与会话。

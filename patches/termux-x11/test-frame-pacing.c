@@ -52,6 +52,12 @@ int main(void)
     assert(lorieFramePacerAccept(&pacer, 42, 0));
     assert(lorieFramePacerAccept(&pacer, 42, 60));
 
-    puts("frame pacing timing cases passed");
+    // No callback counting loop is needed to resume a ten-second idle MSC.
+    assert(lorieFrameClockMSC(100, 100, 60, 0) == 1);
+    assert(lorieFrameClockMSC(100, UINT64_C(10000000100), 60, 1) == 601);
+    assert(lorieFrameClockMSC(100, 99, 60, 601) == 601);
+    assert(lorieFrameClockMSC(100, 200, 60, 601) == 601);
+    assert(lorieFrameClockMSC(100, 200, 0, 601) == 601);
+    puts("frame pacing timing and idle MSC cases passed");
     return 0;
 }

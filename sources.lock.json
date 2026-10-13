@@ -38,6 +38,22 @@
         {
           "path": "patches/wsi/0004-complete-before-idle.patch",
           "sha256": "56455a6c29588d6300a533b314289ef95146873fee923e07a076485a21edf18c"
+        },
+        {
+          "path": "patches/wsi/0005-damage-aware-copy.patch",
+          "sha256": "1c8f42eb1a7e802678d424b55b76bd688c7cafed37ee3b758719f9b918b61362"
+        },
+        {
+          "path": "patches/wsi/0006-incremental-present-correctness.patch",
+          "sha256": "a6db2bfacd66c916b26eb05c69c1d2dc03b61a4ff22fa6bb60039d5275ed9146"
+        },
+        {
+          "path": "patches/wsi/0007-coalesce-damage-regions.patch",
+          "sha256": "30100b45ecda305561a2ead0b7383c56965e8c5ca3e98ea331eb15c7b6b2a4c3"
+        },
+        {
+          "path": "patches/wsi/0008-display-clock-pacing.patch",
+          "sha256": "19258aba0e09f507963d96c957e3568ae414814cfc6143d281d2f904735ea111"
         }
       ]
     },
@@ -71,6 +87,10 @@
       {
         "path": "patches/termux-x11/0003-ime-cursor-cancellation.patch",
         "sha256": "25e46955ba0ad40585421721ed367de8dcbf4060f2f327672ba1c6c7ffc1db99"
+      },
+      {
+        "path": "patches/termux-x11/0004-demand-driven-display.patch",
+        "sha256": "54c571bed2dfe9b9a0c272662684f0d647f3a3c557a9b81cb42ebf893449dc59"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

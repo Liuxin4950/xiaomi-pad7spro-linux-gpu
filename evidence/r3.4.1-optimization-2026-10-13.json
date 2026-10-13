@@ -1,0 +1,283 @@
+{
+  "date": "2026-10-13",
+  "version": "r3.4.1",
+  "revision": "damage-coalescing-1",
+  "prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "status": "activated_after_targeted_validation",
+  "optimization": {
+    "patch": "patches/wsi/0007-coalesce-damage-regions.patch",
+    "sha256": "30100b45ecda305561a2ead0b7383c56965e8c5ca3e98ea331eb15c7b6b2a4c3",
+    "purpose": "Coalesce overlapping/edge-adjacent damage before area and count fallback; keep conservative full copies for unknown/empty/invalid hints",
+    "diagnostics": "Off by default. PAD_GPU_WSI_TRACE=1 adds bounded snapshots on first and every 128th copy; not per-frame logs"
+  },
+  "build": {
+    "stage": "build/runs/build.m6jaeG7v/stage",
+    "build_exit": 0,
+    "build_marker": "BUILD_OK",
+    "diagnostics_incremental_build_exit": 0,
+    "install_exit": 0,
+    "install_marker": "INSTALL_OK"
+  },
+  "negative_control": {
+    "initial_r341_pixel_correct": true,
+    "initial_r341_regression": "overlapping damage forced unnecessary full copies",
+    "initial_r341_256x192_40_frames": {
+      "copies": 40,
+      "partial_recordings": 0,
+      "recordings": 8,
+      "full_copy_pixel_budget": 1966080
+    }
+  },
+  "verification": {
+    "source_patch_sequence": "0001 through 0007 locked and checked",
+    "wsi_mock_reuse_on_exit": 0,
+    "wsi_mock_reuse_off_exit": 0,
+    "vulkan_probe_exit": 0,
+    "vulkan_probe_device": "Mali-G925-Immortalis api=1.3.278",
+    "ahb_probe_exit": 0,
+    "baseline_real_window_recreate": {
+      "cycles": 30,
+      "frames_per_cycle": 3,
+      "oldSwapchain": true,
+      "exit": 0
+    },
+    "optimized_regions_real_window": {
+      "exit": 0,
+      "marker": "VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK",
+      "counters": {
+        "window": 39845888,
+        "reuse": 1,
+        "recordings": 40,
+        "copies": 40,
+        "partial_recordings": 36,
+        "copied_pixels": 549888,
+        "full_copy_pixels": 1966080,
+        "region_hints": 40,
+        "full_hints": 0
+      },
+      "pixel_work_reduction_percent": 72.03125,
+      "physical_screen_check": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          61,
+          113,
+          210
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1591,
+          1044,
+          1654,
+          1139
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      }
+    },
+    "optimized_empty_regions_real_window": {
+      "exit": 0,
+      "marker": "VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK",
+      "copies": 40,
+      "copy_skips": 0,
+      "present_skips": 0,
+      "physical_screen_check": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          24,
+          63,
+          12
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1472,
+          996,
+          1727,
+          1187
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      }
+    },
+    "applications": [
+      {
+        "app": "trae",
+        "skia": "GaneshVulkan",
+        "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis-49.1.0)",
+        "gpu_crashes": 0,
+        "gpu_pid": 10318,
+        "bridge_mapped": true,
+        "mali_mapped": true,
+        "webgl": null,
+        "updates": null,
+        "local_updates": {
+          "updates": 256,
+          "visibility": "visible"
+        }
+      },
+      {
+        "app": "chromium",
+        "skia": "GaneshVulkan",
+        "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis-49.1.0)",
+        "gpu_crashes": 0,
+        "gpu_pid": 12161,
+        "bridge_mapped": true,
+        "mali_mapped": true,
+        "webgl": {
+          "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis)",
+          "pixel": [
+            26,
+            153,
+            204,
+            255
+          ],
+          "error": 0
+        },
+        "updates": {
+          "updates": 50,
+          "frames": 155,
+          "visibility": "visible"
+        },
+        "local_updates": {
+          "updates": 256,
+          "visibility": "visible"
+        }
+      }
+    ],
+    "controlled_local_ui_updates": {
+      "workload": "Test-owned Chromium and Trae instances; a 64x64 CSS tile moved across 256 requestAnimationFrame updates. Chromium CSS scrolling was stopped before the local phase. These are synthetic UI workloads, not user pages or real editing sessions.",
+      "chromium_snapshots": [
+        {
+          "window": 44040193,
+          "copies": 1,
+          "region_hints": 1,
+          "full_hints": 0,
+          "copied_pixels": 3603901,
+          "full_copy_pixels": 3603901
+        },
+        {
+          "window": 44040193,
+          "copies": 128,
+          "region_hints": 128,
+          "full_hints": 0,
+          "copied_pixels": 461299328,
+          "full_copy_pixels": 461299328
+        },
+        {
+          "window": 44040193,
+          "copies": 256,
+          "region_hints": 256,
+          "full_hints": 0,
+          "copied_pixels": 585756402,
+          "full_copy_pixels": 922598656
+        },
+        {
+          "window": 44040193,
+          "copies": 384,
+          "region_hints": 384,
+          "full_hints": 0,
+          "copied_pixels": 588432522,
+          "full_copy_pixels": 1383897984
+        }
+      ],
+      "chromium_stable_interval": {
+        "start_copies": 256,
+        "end_copies": 384,
+        "submitted_frames": 128,
+        "copied_pixels": 2676120,
+        "full_copy_pixels": 461299328,
+        "pixel_work_reduction_percent": 99.41987342327107,
+        "region_hints": 128,
+        "full_hints": 0
+      },
+      "trae_snapshots": [
+        {
+          "window": 44040193,
+          "copies": 1,
+          "region_hints": 1,
+          "full_hints": 0,
+          "copied_pixels": 2392500,
+          "full_copy_pixels": 2392500
+        },
+        {
+          "window": 44040193,
+          "copies": 128,
+          "region_hints": 128,
+          "full_hints": 0,
+          "copied_pixels": 38650487,
+          "full_copy_pixels": 306240000
+        },
+        {
+          "window": 44040193,
+          "copies": 256,
+          "region_hints": 256,
+          "full_hints": 0,
+          "copied_pixels": 53158307,
+          "full_copy_pixels": 612480000
+        }
+      ],
+      "trae_stable_interval": {
+        "start_copies": 128,
+        "end_copies": 256,
+        "submitted_frames": 128,
+        "copied_pixels": 14507820,
+        "full_copy_pixels": 306240000,
+        "pixel_work_reduction_percent": 95.26259796238244,
+        "region_hints": 128,
+        "full_hints": 0
+      },
+      "full_page_scroll": "Chromium continuous full-page CSS scrolling still copied full images; this is expected and its samples are separate"
+    },
+    "manifest": {
+      "files": 510,
+      "symlinks": 48,
+      "mismatches": 0
+    },
+    "android_entries": {
+      "three_files_match_reference": true,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700"
+    },
+    "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad"
+  },
+  "activation": {
+    "exit": 0,
+    "doctor_via_default_exit": 0,
+    "links": {
+      "gpu-run": "/opt/pad7spro-gpu-r3.4.1-opt1/bin/gpu-run",
+      "gpu-launcher": "/opt/pad7spro-gpu-r3.4.1-opt1/bin/gpu-launcher"
+    },
+    "private_backup": "build/r3.4.1-optimization-20261013/activation-originals",
+    "existing_user_apps_restarted": false,
+    "observed_existing_chatgpt_gpu_maps": "r3.3 /opt/pad7spro-gpu-observe-20261012; unchanged",
+    "x11_server_same_pid": 13153,
+    "apk_changed": false,
+    "rollback_prefix": "/opt/pad7spro-gpu-observe-20261012"
+  },
+  "boundaries": [
+    "Copy pixels quantify GPU transfer work, not measured DRAM bandwidth, application or whole-device power",
+    "Only the final probe frame was read from the physical screen; mock oracle compares each presented frame",
+    "App tests use isolated profiles and synthetic updates, not daily user session acceptance",
+    "No end-to-end zero-copy; X11 GPU copy remains a separate stage",
+    "Long-run stability, real editor/IME/lock-resume behavior and controlled battery life remain pending",
+    "No software fallback, service disabling, system partition or SELinux changes"
+  ]
+}

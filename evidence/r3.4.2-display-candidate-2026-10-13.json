@@ -1,0 +1,262 @@
+{
+  "date": "2026-10-13",
+  "version": "r3.4.2",
+  "revision": "display-clock-candidate-1",
+  "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "stable_rollback": "/opt/pad7spro-gpu-observe-20261012",
+  "candidate_prefix": "/opt/pad7spro-gpu-r3.4.2-display",
+  "linux_build": {
+    "run": "build.UO7yxcEG",
+    "build_ok": true,
+    "install_ok": true,
+    "manifest_files": 510,
+    "manifest_symlinks": 48
+  },
+  "apk": {
+    "original_apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+    "candidate_apk_sha256": "72468d5c5fb9bae685e87cb946d0c3159687f0fb05336c21c96e72b05689e78d",
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "changed_entries": [
+      "lib/arm64-v8a/libXlorie.so",
+      "lib/armeabi-v7a/libXlorie.so",
+      "lib/x86/libXlorie.so",
+      "lib/x86_64/libXlorie.so"
+    ],
+    "java_resources_preserved": true,
+    "zip_alignment_16k": true,
+    "build_method": "four-ABI native incremental build with cached fixed-baseline objects; not clean full Gradle rebuild",
+    "installed": false
+  },
+  "native_build": [
+    {
+      "abi": "arm64-v8a",
+      "compiled_units": 5,
+      "linked": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "compiled_units": 5,
+      "linked": true
+    },
+    {
+      "abi": "x86",
+      "compiled_units": 5,
+      "linked": true
+    },
+    {
+      "abi": "x86_64",
+      "compiled_units": 5,
+      "linked": true
+    }
+  ],
+  "features": [
+    "negotiated-Choreographer-MSC",
+    "mode-aware-COPY-FLIP-targets",
+    "single-outstanding-present-per-swapchain",
+    "SKIP-timer-fallback",
+    "explicit-zero-preserved",
+    "Damage-event-driven-callbacks",
+    "idle-virtual-MSC",
+    "surface-restore-wakeup",
+    "statistics-timer-off-by-default",
+    "bounded-frame-copy-EGL-timestamps"
+  ],
+  "validation": {
+    "wsi_reuse_on": true,
+    "wsi_reuse_off": true,
+    "launcher_tests": 23,
+    "pacing_idle_msc_test": true,
+    "top_level_locked_patches": true,
+    "nested_locked_xserver_patch": true,
+    "mali_readback": true,
+    "ahb_roundtrip": true
+  },
+  "legacy_apk_windows": {
+    "regions": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        61,
+        113,
+        210
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1591,
+        1044,
+        1654,
+        1139
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "empty": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        24,
+        63,
+        12
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1472,
+        996,
+        1727,
+        1187
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    }
+  },
+  "candidate_windows": {
+    "regions": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        61,
+        113,
+        210
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1591,
+        1044,
+        1654,
+        1139
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "empty": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        24,
+        63,
+        12
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1472,
+        996,
+        1727,
+        1187
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    }
+  },
+  "deployment": {
+    "state": "validation_failed",
+    "start_monotonic_ns": 56578536820066,
+    "authorized_saved_work": true,
+    "default_bridge": "r3.4.1",
+    "apk_changed": false,
+    "xfce_pid": 25915,
+    "original-apk_moving_trace_error": "original-apk-moving-probe exit 78",
+    "error": "original-apk-ab exit 1",
+    "traceback": "Traceback (most recent call last):\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-display-20261013/restart-and-verify-android.py\", line 82, in <module>\n    chroot(['python3','/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-display-20261013/verify-live.py'],'original-apk-ab',300,'original-apk')\n    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-display-20261013/restart-and-verify-android.py\", line 40, in chroot\n    run(['/system/bin/chroot',str(root),'/usr/bin/env','-i',*variables,*args],label,timeout)\n    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.4.2-display-20261013/restart-and-verify-android.py\", line 15, in run\n    if r.returncode:raise RuntimeError(label+' exit '+str(r.returncode))\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: original-apk-ab exit 1\n",
+    "rollback_restored": true,
+    "recovery_launch_pid": 25985,
+    "end_monotonic_ns": 56672470681674
+  },
+  "limitations": [
+    "new APK still requires normal restart",
+    "short synthetic diagnostics cannot prove battery gains",
+    "physical screenshot checks final frames only",
+    "input-to-response causality and long-term stability not yet accepted",
+    "no MediaCodec or direct-AHB zero-copy changes",
+    "default bridge unchanged during validation"
+  ],
+  "ab_records": {},
+  "ab_medians": [],
+  "idle_trace_summary": {},
+  "live_apk_error": "Command '['nsenter', '-t', '1', '-m', '--root=/proc/1/root', '--wd=/', '/system/bin/cmd', 'package', 'path', 'com.termux.x11']' returned non-zero exit status 1.",
+  "live_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "conclusions": {
+    "new_display_correctness_passed": false,
+    "performance_accepted": false,
+    "input_latency_measured": false,
+    "power_accepted": false,
+    "long_term_stability_accepted": false,
+    "note": "Short diagnostic synthetic A/B; first-frame/startup and other system activity included. Surface presents are not proof of optical content uniqueness. No automatic bridge promotion."
+  },
+  "post_user_restart": {
+    "date": "2026-10-13",
+    "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+    "scripts": [
+      {
+        "file": "mali-work/desktop-zink.sh",
+        "reference": "reference/termux/desktop-zink.sh",
+        "sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518",
+        "matches_reference": true,
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      },
+      {
+        "file": "debian-desktop.sh",
+        "reference": "reference/termux/debian-desktop.sh",
+        "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "matches_reference": true,
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      },
+      {
+        "file": ".shortcuts/debian-zink.sh",
+        "reference": "reference/termux/debian-zink-widget.sh",
+        "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "matches_reference": true,
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      }
+    ],
+    "xfce_pid": 30789,
+    "gpu_pid": 31252,
+    "xserver_pid": 30703,
+    "mali_mapped_in_desktop_and_gpu_process": true,
+    "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+    "candidate_apk_installed": false,
+    "candidate_bridge_promoted": false,
+    "worker_running": false,
+    "failure_root_cause": "Android PID 1 mount namespace does not contain the proc/dev mounts created by the Termux launcher; worker chroot operations must join the live desktop mount namespace",
+    "worker_namespace_repaired": true,
+    "namespace_doctor_exit": 0,
+    "ab_completed": false
+  }
+}

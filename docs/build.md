@@ -74,3 +74,9 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
 
 2026-10-12 输入法修正包另外采用 Java/资源构建并保留已安装 APK 的四个原生库：锁定 d55f1b7 的源码 + popup 补丁 + `0003-ime-cursor-cancellation.patch`，使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36、buildTools 37.0.0 和 ARM aapt2/aidl；关闭新版 DSL 与 companion 生成，不启用 externalNativeBuild，将原 APK 的 `lib/*/libXlorie.so` 作为 jniLibs 输入，构建 `:lorie-app:assembleStandaloneDebug`。保持 minSdk 24、targetSdk 34、包名和 versionCode 15，用相同上游测试证书签名。原 APK 与修正包 native 内容及证书逐项比较后才安装；原 APK 保留在私有 build 目录。后来安装的 gpu-direct 包已保留 0002 的原生库，并拒绝不可用的光标几何请求。前端已生效；旧 server 的原生节拍要重开桌面才生效。完整状态以 CURRENT-STATE 为准。
+
+### r3.4.2 显示效率候选
+
+Linux 构建增加锁定 WSI 0008，独立目标 `/opt/pad7spro-gpu-r3.4.2-display`。X11 0004 在 popup、0002、0003 后应用；其中嵌套 xserver.patch 也必须应用到 gitlink `65d790bd208ec380b196eb98f144abb0b32e334d`。四 ABI 的 InitOutput.c、InitInput.c、renderer.cpp、present_execute.c、present_scmd.c 使用本地 NDK 28.2.13676358 和既有生成配置增量编译，present archive 使用私有副本，其余固定基线对象保留；cmdentrypoint 使用已有 0002 对象。每个 ABI 重新链接 libXlorie.so。
+
+在当前已核验 gpu-direct APK 中只替换四个 native 库，保持 DEX/资源/manifest，16 KiB ZIP 对齐并使用相同上游测试证书 v2 签名。候选与原件均在 `build/r3.4.2-display-20261013`；该流程是原生增量构建，不是干净全量 Gradle/NDK 构建。顶层补丁和嵌套补丁已经锁定原始源码应用检查。详见 [交付记录](r3.4-display-efficiency.md)。

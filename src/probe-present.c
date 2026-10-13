@@ -60,6 +60,7 @@ int main(int argc, char **argv)
     const char *timings_path = NULL;
     FILE *timings = NULL;
     int replace = 0, bgra = 0, solid_red = 0, resize = 0, motion = 0, fullscreen = 0, prewait = 0;
+    int regions = 0, empty_regions = 0;
     unsigned rate = 0;
     VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
     for (int i = 1; i < argc; ++i) {
@@ -73,6 +74,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--motion")) motion = 1;
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--prewait-render")) prewait = 1;
+        else if (!strcmp(argv[i], "--regions")) regions = 1;
+        else if (!strcmp(argv[i], "--empty-regions") || !strcmp(argv[i], "--zero-damage")) empty_regions = 1;
         else if (!strcmp(argv[i], "--markers")) marker_fd = open("/proc/1/root/sys/kernel/tracing/trace_marker", O_WRONLY | O_CLOEXEC);
         else if (!strcmp(argv[i], "--rate") && i + 1 < argc) rate = number(argv[++i]);
         else if (!strcmp(argv[i], "--width") && i + 1 < argc) width = number(argv[++i]);
@@ -88,8 +91,12 @@ int main(int argc, char **argv)
             if (!idle_ms && strcmp(value, "0")) return 64;
         }
         else if (!strcmp(argv[i], "--timings") && i + 1 < argc) timings_path = argv[++i];
-        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV] [--motion] [--fullscreen] [--rate N] [--prewait-render] [--markers]\n", argv[0]); return 64; }
+        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV] [--motion] [--fullscreen] [--rate N] [--prewait-render] [--markers] [--regions] [--empty-regions]\n", argv[0]); return 64; }
     }
+    /* Damage is relative to the previous swapchain present. An empty list
+     * means a full update, so let the colors keep changing to test it. */
+    if (regions && empty_regions) return 64;
+    if (regions) motion = 1;
     if (!cycles || !frames || !width || !height || width > 10000 || height > 10000 || delay_ms > 10000 ||
         (resize && (width < 32 || height < 32)) || rate > 240 || (motion && (width < 64 || height < 32))) return 64;
     if (rate) delay_ms = 0;
@@ -101,7 +108,7 @@ int main(int argc, char **argv)
             if (fd >= 0) close(fd);
             perror("timings"); return 73;
         }
-        fputs("cycle,frame,start_ns,acquire_us,queue_present_us,host_frame_us,due_ns,render_ready_us\n", timings);
+        fputs("cycle,frame,start_ns,acquire_us,queue_present_us,host_frame_us,due_ns,render_ready_us,image_index,render_image\n", timings);
     }
     int exit_status = 1;
     VkResult status = VK_SUCCESS;
@@ -179,10 +186,30 @@ int main(int argc, char **argv)
     float priority = 1;
     VkDeviceQueueCreateInfo queue_create = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .queueFamilyIndex = family, .queueCount = 1, .pQueuePriorities = &priority};
-    const char *device_extension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    const char *device_extensions_list[2] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+                                             VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME};
+    uint32_t device_extension_count = 1;
+    if (regions || empty_regions) {
+        uint32_t property_count = 0;
+        CHECK(vkEnumerateDeviceExtensionProperties(physical, NULL, &property_count, NULL));
+        if (!property_count || property_count > 4096) goto done;
+        VkExtensionProperties *properties = malloc(property_count * sizeof(*properties));
+        if (!properties) { exit_status = 71; goto done; }
+        status = vkEnumerateDeviceExtensionProperties(physical, NULL, &property_count, properties);
+        int found = 0;
+        for (uint32_t e = 0; e < property_count && status == VK_SUCCESS; ++e)
+            if (!strcmp(properties[e].extensionName, VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME)) found = 1;
+        free(properties);
+        if (status != VK_SUCCESS || !found) {
+            fprintf(stderr, "VK_KHR_incremental_present unavailable: status=%d found=%d\n", status, found);
+            exit_status = 77;
+            goto done;
+        }
+        device_extension_count = 2;
+    }
     VkDeviceCreateInfo device_create = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = 1, .pQueueCreateInfos = &queue_create,
-        .enabledExtensionCount = 1, .ppEnabledExtensionNames = &device_extension};
+        .enabledExtensionCount = device_extension_count, .ppEnabledExtensionNames = device_extensions_list};
     CHECK(vkCreateDevice(physical, &device_create, NULL, &device));
     VkQueue queue;
     vkGetDeviceQueue(device, family, 0, &queue);
@@ -346,9 +373,33 @@ int main(int argc, char **argv)
                 trace_end();
                 render_ready_us = (now_ns()-started)/1000;
             }
+            VkPresentRegionKHR region = {0};
+            VkRectLayerKHR damage_rects[2];
+            VkPresentRegionsKHR regions_info = {.sType = VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR,
+                .swapchainCount = 1, .pRegions = &region};
             VkPresentInfoKHR present = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1, .pWaitSemaphores = &rendered[index],
                 .swapchainCount = 1, .pSwapchains = &swapchain, .pImageIndices = &index};
+            if (regions || empty_regions) {
+                if (empty_regions) {
+                    region.rectangleCount = 0;
+                    region.pRectangles = NULL;
+                } else if (frame == 0) {
+                    damage_rects[0] = (VkRectLayerKHR){{0, 0}, extent, 0};
+                    region.rectangleCount = 1;
+                    region.pRectangles = damage_rects;
+                } else if (regions) {
+                    /* Honest claim: previous and current moving-bar rectangles
+                     * cover every pixel that changed since the last present. */
+                    damage_rects[0] = (VkRectLayerKHR){{(int32_t)(((frame - 1) * 8) % (extent.width - 63)),
+                                                        (int32_t)(extent.height / 4)}, {64, extent.height / 2}, 0};
+                    damage_rects[1] = (VkRectLayerKHR){{(int32_t)((frame * 8) % (extent.width - 63)),
+                                                        (int32_t)(extent.height / 4)}, {64, extent.height / 2}, 0};
+                    region.rectangleCount = 2;
+                    region.pRectangles = damage_rects;
+                }
+                present.pNext = &regions_info;
+            }
             const uint64_t present_started = now_ns();
             trace_stage("Present");
             status = vkQueuePresentKHR(queue, &present);
@@ -363,10 +414,11 @@ int main(int argc, char **argv)
             }
             CHECK(vkResetFences(device, 1, &fence));
             /* Bounded low load; this tool is for correctness, not peak FPS. */
-            if (timings) fprintf(timings, "%u,%u,%llu,%.3f,%.3f,%.3f,%llu,%llu\n", cycle, frame,
+            if (timings) fprintf(timings, "%u,%u,%llu,%.3f,%.3f,%.3f,%llu,%llu,%u,%llu\n", cycle, frame,
                 (unsigned long long)started, (acquired_at - started) / 1000.,
                 (presented_at - present_started) / 1000., (now_ns() - started) / 1000.,
-                (unsigned long long)due, (unsigned long long)render_ready_us);
+                (unsigned long long)due, (unsigned long long)render_ready_us, index,
+                (unsigned long long)(uintptr_t)images[index]);
             ++completed_frames;
             pause_ms(delay_ms);
             if (rate) {

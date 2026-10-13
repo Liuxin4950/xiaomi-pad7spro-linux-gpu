@@ -102,3 +102,9 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 `0003-ime-cursor-cancellation.patch` 返回不支持实际光标几何更新，取消请求不回调；文本/组合/selection/按键路径不变，避免虚构 CursorAnchorInfo 触发搜狗忙循环。依次应用 0001、0002、0003，哈希以 sources.lock.json 为准。
 
 实机构建使用本地 Gradle 9.3.1、AGP 9.1.0、compileSdk 36 / targetSdk 34、buildTools 37 ARM aapt2/aidl、JDK 21，关闭新 DSL 和 companion 生成；保留已校验 0002 的四种 ABI 原生库作为 jniLibs，不执行 externalNativeBuild，构建 `:lorie-app:assembleStandaloneDebug`，同上游测试证书。这个 Java/资源构建 + 既有原生库的方法不是干净全量 NDK 复现。APK 和全量日志在忽略目录 build/native-display-20261012。
+
+## r3.4.2：按需显示时钟候选
+
+新增 [0004-demand-driven-display.patch](0004-demand-driven-display.patch)，顺序为 popup → 0002 → 0003 → 0004。发布协作时钟属性、BlockHandler 按现有 Damage/光标/Present 工作请求 Choreographer、虚拟 MSC 跨空闲连续、关闭默认统计 timer，新增 opt-in atrace/EGL 呈现诊断。与 WSI 0008 协作；旧桥接继续使用原来的限帧，新桥接对旧 APK 使用 timer 回退。
+
+顶层与嵌套 Xserver 补丁对锁定提交均通过；四 ABI 增量编译/链接、16 KiB APK 对齐和原签名核对完成。候选未安装，不能认为空闲唤醒或显示 P99 已改善。原 APK 保存、DEX/资源保持一致，重开桌面需先保存全部 chroot 会话。范围与验证条件见 [显示效率记录](../../docs/r3.4-display-efficiency.md)。

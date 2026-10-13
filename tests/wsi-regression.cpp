@@ -24,13 +24,26 @@ struct wsi::x11::surface::init_parameters
 namespace {
 std::set<VkImage> live_images;
 unsigned image_creates, image_destroys, allocations, frees;
-unsigned pools_created, pools_destroyed, blits_recorded, conversion_submits;
+unsigned pools_created, pools_destroyed, blits_recorded, conversion_submits, blit_rects;
 std::map<VkImage, VkFormat> image_formats;
 std::map<VkCommandBuffer, VkCommandBufferUsageFlags> command_flags;
 std::map<VkCommandBuffer, VkImageLayout> command_initial_layout;
 std::map<VkCommandBuffer, VkImage> command_destination;
 std::set<VkCommandBuffer> submitted_commands;
 std::set<VkImage> initialized_presentation_images;
+using pixels = std::array<uint32_t, 64 * 64>;
+std::map<VkImage, pixels> image_pixels;
+std::map<VkCommandBuffer, VkImage> command_source;
+std::map<VkCommandBuffer, std::vector<VkRect2D>> command_rects;
+std::map<xcb_pixmap_t, VkImage> pixmap_images;
+VkImage exported_image{};
+std::map<VkDeviceMemory, VkImage> memory_images;
+pixels expected_pixels{};
+bool verify_pixels = false;
+std::array<uint32_t, 3> clock_capability{};
+bool malformed_clock = false;
+std::atomic<uint64_t> last_target_msc{0};
+unsigned partial_submits;
 bool fail_command_allocation;
 void *instance_key = reinterpret_cast<void *>(0x1234);
 VkInstance instance_handle = reinterpret_cast<VkInstance>(&instance_key);
@@ -82,13 +95,13 @@ VKAPI_ATTR VkResult VKAPI_CALL create_image(VkDevice, const VkImageCreateInfo *i
               "broken AHB extension chain");
    }
    *image = handle<VkImage>();
-   live_images.insert(*image); image_formats[*image] = info->format; ++image_creates;
+   live_images.insert(*image); image_formats[*image] = info->format; image_pixels[*image] = {}; ++image_creates;
    return VK_SUCCESS;
 }
 VKAPI_ATTR void VKAPI_CALL destroy_image(VkDevice, VkImage image, const VkAllocationCallbacks *)
 {
    require(live_images.erase(image) == 1, "image leaked, replaced or destroyed twice");
-   image_formats.erase(image); ++image_destroys;
+   image_formats.erase(image); image_pixels.erase(image); ++image_destroys;
 }
 VKAPI_ATTR VkResult VKAPI_CALL allocate_memory(VkDevice, const VkMemoryAllocateInfo *info,
                                               const VkAllocationCallbacks *, VkDeviceMemory *memory)
@@ -103,7 +116,13 @@ VKAPI_ATTR VkResult VKAPI_CALL allocate_memory(VkDevice, const VkMemoryAllocateI
    else
       require(info->allocationSize == 16384 && info->pNext == nullptr, "ordinary BGRA memory allocation");
    if (fail_allocation) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-   *memory = handle<VkDeviceMemory>(); ++allocations; return VK_SUCCESS;
+   *memory = handle<VkDeviceMemory>();
+   if (info->allocationSize == 0) {
+      auto export_info = static_cast<const VkExportMemoryAllocateInfo *>(info->pNext);
+      auto dedicated = static_cast<const VkMemoryDedicatedAllocateInfo *>(export_info->pNext);
+      memory_images[*memory] = dedicated->image;
+   }
+   ++allocations; return VK_SUCCESS;
 }
 VKAPI_ATTR void VKAPI_CALL free_memory(VkDevice, VkDeviceMemory, const VkAllocationCallbacks *) { ++frees; }
 VKAPI_ATTR VkResult VKAPI_CALL bind_memory(VkDevice, VkImage image, VkDeviceMemory, VkDeviceSize)
@@ -143,15 +162,44 @@ VKAPI_ATTR void VKAPI_CALL pipeline_barrier(VkCommandBuffer command, VkPipelineS
                barriers[1].dstQueueFamilyIndex == 0), "cached command lost AHB ownership acquisition");
    }
 }
-VKAPI_ATTR void VKAPI_CALL blit_image(VkCommandBuffer, VkImage source, VkImageLayout source_layout,
-   VkImage destination, VkImageLayout destination_layout, uint32_t count, const VkImageBlit *, VkFilter filter)
+VKAPI_ATTR void VKAPI_CALL blit_image(VkCommandBuffer command, VkImage source, VkImageLayout source_layout,
+   VkImage destination, VkImageLayout destination_layout, uint32_t count, const VkImageBlit *blits, VkFilter filter)
 { require(image_formats[source] == VK_FORMAT_B8G8R8A8_UNORM && image_formats[destination] == VK_FORMAT_R8G8B8A8_UNORM &&
           source_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && destination_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-          count == 1 && filter == VK_FILTER_NEAREST, "BGRA conversion lost the real format contract"); ++blits_recorded; }
+          count >= 1 && count <= wsi::present_damage::MAX_RECTS && filter == VK_FILTER_NEAREST,
+          "BGRA conversion lost the real format contract");
+  for (uint32_t i = 0; i < count; ++i)
+     require(blits[i].srcOffsets[0].x == blits[i].dstOffsets[0].x && blits[i].srcOffsets[0].y == blits[i].dstOffsets[0].y &&
+             blits[i].srcOffsets[0].x >= 0 && blits[i].srcOffsets[0].y >= 0 &&
+             blits[i].srcOffsets[1].x <= 64 && blits[i].srcOffsets[1].y <= 64 &&
+             blits[i].srcOffsets[0].x < blits[i].srcOffsets[1].x && blits[i].srcOffsets[0].y < blits[i].srcOffsets[1].y,
+             "copy rect out of image bounds or degenerate");
+  command_source[command] = source;
+  auto &rects = command_rects[command]; rects.clear();
+  for (uint32_t i = 0; i < count; ++i)
+     rects.push_back({{blits[i].srcOffsets[0].x, blits[i].srcOffsets[0].y},
+                     {static_cast<uint32_t>(blits[i].srcOffsets[1].x - blits[i].srcOffsets[0].x),
+                      static_cast<uint32_t>(blits[i].srcOffsets[1].y - blits[i].srcOffsets[0].y)}});
+  blit_rects += count; ++blits_recorded; }
+VKAPI_ATTR void VKAPI_CALL copy_image(VkCommandBuffer command, VkImage source, VkImageLayout source_layout,
+   VkImage destination, VkImageLayout destination_layout, uint32_t count, const VkImageCopy *copies)
+{
+   std::vector<VkImageBlit> blits(count);
+   for (uint32_t i = 0; i < count; ++i) {
+      require(copies[i].extent.depth == 1, "copy depth changed");
+      blits[i].srcOffsets[0] = copies[i].srcOffset;
+      blits[i].dstOffsets[0] = copies[i].dstOffset;
+      blits[i].srcOffsets[1] = {copies[i].srcOffset.x + static_cast<int32_t>(copies[i].extent.width),
+                              copies[i].srcOffset.y + static_cast<int32_t>(copies[i].extent.height), 1};
+      blits[i].dstOffsets[1] = {copies[i].dstOffset.x + static_cast<int32_t>(copies[i].extent.width),
+                              copies[i].dstOffset.y + static_cast<int32_t>(copies[i].extent.height), 1};
+   }
+   blit_image(command, source, source_layout, destination, destination_layout, count, blits.data(), VK_FILTER_NEAREST);
+}
 VKAPI_ATTR void VKAPI_CALL image_layout(VkDevice, VkImage, const VkImageSubresource *, VkSubresourceLayout *layout)
 { *layout = {}; layout->rowPitch = 64 * 4; }
-VKAPI_ATTR VkResult VKAPI_CALL get_ahb(VkDevice, const VkMemoryGetAndroidHardwareBufferInfoANDROID *, AHardwareBuffer **ahb)
-{ *ahb = reinterpret_cast<AHardwareBuffer *>(1); return VK_SUCCESS; }
+VKAPI_ATTR VkResult VKAPI_CALL get_ahb(VkDevice, const VkMemoryGetAndroidHardwareBufferInfoANDROID *info, AHardwareBuffer **ahb)
+{ exported_image = memory_images.at(info->memory); *ahb = reinterpret_cast<AHardwareBuffer *>(1); return VK_SUCCESS; }
 VKAPI_ATTR VkResult VKAPI_CALL create_fence(VkDevice, const VkFenceCreateInfo *, const VkAllocationCallbacks *, VkFence *fence)
 { *fence = handle<VkFence>(); return VK_SUCCESS; }
 VKAPI_ATTR void VKAPI_CALL destroy_fence(VkDevice, VkFence, const VkAllocationCallbacks *) {}
@@ -180,6 +228,13 @@ VKAPI_ATTR VkResult VKAPI_CALL queue_submit(VkQueue, uint32_t count, const VkSub
       initialized_presentation_images.insert(image);
       for (uint32_t i = 0; i < info->waitSemaphoreCount; ++i)
          require(info->pWaitDstStageMask[i] == VK_PIPELINE_STAGE_TRANSFER_BIT, "blit did not wait for client rendering");
+      unsigned pixels_copied = 0;
+      for (const auto &rect : command_rects[command]) pixels_copied += rect.extent.width * rect.extent.height;
+      if (pixels_copied < 64 * 64) ++partial_submits;
+      for (const auto &rect : command_rects[command])
+         for (uint32_t y = rect.offset.y; y < rect.offset.y + rect.extent.height; ++y)
+            for (uint32_t x = rect.offset.x; x < rect.offset.x + rect.extent.width; ++x)
+               image_pixels[image][y * 64 + x] = image_pixels[command_source[command]][y * 64 + x];
       ++conversion_submits;
    }
    std::lock_guard<std::mutex> lock(fence_lock); submitted = true; return VK_SUCCESS;
@@ -206,7 +261,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL device_proc(VkDevice, const char *name)
    PROC(CreateCommandPool, create_pool); PROC(DestroyCommandPool, destroy_pool);
    PROC(AllocateCommandBuffers, allocate_commands); PROC(ResetCommandBuffer, reset_command);
    PROC(BeginCommandBuffer, begin_command); PROC(EndCommandBuffer, end_command);
-   PROC(CmdPipelineBarrier, pipeline_barrier); PROC(CmdBlitImage, blit_image);
+   PROC(CmdPipelineBarrier, pipeline_barrier); PROC(CmdBlitImage, blit_image); PROC(CmdCopyImage, copy_image);
    PROC(GetImageSubresourceLayout, image_layout); PROC(GetMemoryAndroidHardwareBufferANDROID, get_ahb);
    PROC(CreateFence, create_fence); PROC(DestroyFence, destroy_fence); PROC(ResetFences, reset_fences);
    PROC(WaitForFences, wait_fences); PROC(QueueSubmit, queue_submit); PROC(QueueWaitIdle, queue_idle);
@@ -288,18 +343,41 @@ xcb_generic_event_t *xcb_poll_for_special_event(xcb_connection_t *, xcb_special_
    uint64_t wakeup; (void)read(xcb_fd, &wakeup, sizeof(wakeup));
    return event;
 }
+xcb_get_geometry_cookie_t xcb_get_geometry(xcb_connection_t *, xcb_drawable_t) { return {1}; }
+xcb_get_geometry_reply_t *xcb_get_geometry_reply(xcb_connection_t *, xcb_get_geometry_cookie_t, xcb_generic_error_t **) {
+   auto r = static_cast<xcb_get_geometry_reply_t *>(calloc(1, sizeof(xcb_get_geometry_reply_t)));
+   r->root = 99; return r;
+}
+xcb_intern_atom_cookie_t xcb_intern_atom(xcb_connection_t *, uint8_t, uint16_t, const char *) { return {1}; }
+xcb_intern_atom_reply_t *xcb_intern_atom_reply(xcb_connection_t *, xcb_intern_atom_cookie_t, xcb_generic_error_t **) {
+   auto r = static_cast<xcb_intern_atom_reply_t *>(calloc(1, sizeof(xcb_intern_atom_reply_t)));
+   r->atom = clock_capability[0] ? 100 : 0; return r;
+}
+xcb_get_property_cookie_t xcb_get_property(xcb_connection_t *, uint8_t, xcb_window_t root, xcb_atom_t,
+                                         xcb_atom_t, uint32_t, uint32_t) {
+   require(root == 99, "clock queried on wrong root"); return {1};
+}
+xcb_get_property_reply_t *xcb_get_property_reply(xcb_connection_t *, xcb_get_property_cookie_t, xcb_generic_error_t **) {
+   auto r = static_cast<xcb_get_property_reply_t *>(calloc(1, sizeof(xcb_get_property_reply_t) + 12));
+   r->type = XCB_ATOM_CARDINAL; r->format = 32; r->value_len = malformed_clock ? 2 : 3;
+   memcpy(r+1, clock_capability.data(), 12); return r;
+}
 xcb_void_cookie_t xcb_present_select_input(xcb_connection_t *, uint32_t, xcb_window_t, uint32_t) { return {1}; }
 xcb_generic_error_t *xcb_request_check(xcb_connection_t *, xcb_void_cookie_t) { return nullptr; }
 void xcb_discard_reply(xcb_connection_t *, unsigned int) {}
-xcb_void_cookie_t xcb_free_pixmap(xcb_connection_t *, xcb_pixmap_t) { return {1}; }
-xcb_void_cookie_t xcb_dri3_pixmap_from_buffers_checked(xcb_connection_t *, xcb_pixmap_t, xcb_window_t,
+xcb_void_cookie_t xcb_free_pixmap(xcb_connection_t *, xcb_pixmap_t pixmap) { pixmap_images.erase(pixmap); return {1}; }
+xcb_void_cookie_t xcb_dri3_pixmap_from_buffers_checked(xcb_connection_t *, xcb_pixmap_t pixmap, xcb_window_t,
    uint8_t, uint16_t, uint16_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
    uint32_t, uint32_t, uint8_t, uint8_t, uint64_t, const int32_t *buffers)
-{ const char ack = 1; require(write(buffers[0], &ack, 1) == 1, "mock DRI3 handshake"); close(buffers[0]); return {1}; }
+{ pixmap_images[pixmap] = exported_image; const char ack = 1; require(write(buffers[0], &ack, 1) == 1, "mock DRI3 handshake"); close(buffers[0]); return {1}; }
 xcb_void_cookie_t xcb_present_pixmap_checked(xcb_connection_t *, xcb_window_t, xcb_pixmap_t pixmap, uint32_t serial,
    xcb_xfixes_region_t, xcb_xfixes_region_t, int16_t, int16_t, xcb_randr_crtc_t,
-   xcb_sync_fence_t, xcb_sync_fence_t, uint32_t, uint64_t, uint64_t, uint64_t, uint32_t, const xcb_present_notify_t *)
+   xcb_sync_fence_t, xcb_sync_fence_t, uint32_t, uint64_t target, uint64_t, uint64_t, uint32_t, const xcb_present_notify_t *)
 { require(gpu_complete, "X11 consumed an unfinished frame");
+  if (verify_pixels)
+     require(image_pixels.at(pixmap_images.at(pixmap)) == expected_pixels,
+             "rotating-buffer presentation contains stale pixels");
+  last_target_msc = target;
   last_present_pixmap = pixmap; last_present_serial = serial; ++presents; return {1}; }
 }
 
@@ -309,6 +387,92 @@ int main()
       xcb_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
       require(xcb_fd >= 0, "mock XCB fd");
       fixture f;
+      // Negotiation must never mistake a reported RandR rate for an enforced
+      // clock, or remove a user-requested lower cap on an incompatible server.
+      setenv("PAD_GPU_MAX_FPS", "60", 1);
+      for (auto capability : {std::array<uint32_t,3>{0,0,0}, {2,60,3}, {1,241,3}, {1,120,3}, {1,60,1}}) {
+         clock_capability = capability;
+         auto chain = f.create(false);
+         require(chain->m_display_clock_fps == 0, "unsafe display-clock negotiation");
+      }
+      clock_capability = {1,60,7}; malformed_clock = true;
+      require(f.create(false)->m_display_clock_fps == 0, "malformed clock property accepted");
+      malformed_clock = false;
+      setenv("PAD_GPU_MAX_FPS", "0", 1);
+      require(f.create(false)->m_display_clock_fps == 0, "explicit uncapped WSI contract changed");
+      setenv("PAD_GPU_MAX_FPS", "60", 1);
+      setenv("PAD_GPU_PRESENT_CLOCK", "timer", 1);
+      require(f.create(false)->m_display_clock_fps == 0, "timer rollback ignored");
+      unsetenv("PAD_GPU_PRESENT_CLOCK");
+      {
+         auto chain = f.create(false);
+         require(chain->m_display_clock_fps == 60, "cooperating display clock not selected");
+         // A far-future timer must have no effect in negotiated mode.
+         chain->m_next_present = std::chrono::steady_clock::now() + std::chrono::hours(1);
+         VkPresentInfoKHR info{};
+         wsi::swapchain_presentation_parameters params{};
+         params.handle_present_frame_boundary_event = false;
+         require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "first paced present");
+         const auto serial = last_present_serial.load(), pixmap = last_present_pixmap.load();
+         const auto before = presents.load();
+         params.pending_present.image_index = 1;
+         auto next = std::async(std::launch::async, [&] {
+            return chain->queue_present(handle<VkQueue>(), &info, params);
+         });
+         require(next.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout && presents == before,
+                 "paced MAILBOX accumulated downstream requests");
+         auto idle = static_cast<xcb_present_idle_notify_event_t *>(calloc(1, sizeof(xcb_present_idle_notify_event_t)));
+         idle->event_type = XCB_PRESENT_EVENT_IDLE_NOTIFY; idle->pixmap = pixmap; idle->serial = serial;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(idle));
+         require(next.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout,
+                 "Idle incorrectly substituted for display completion");
+         auto complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
+         complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY; complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+         complete->serial = serial; complete->msc = 42;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
+         require(next.wait_for(std::chrono::seconds(1)) == std::future_status::ready && next.get() == VK_SUCCESS &&
+                 presents == before+1 && last_target_msc == 44, "COPY target-1 must still execute on a future tick");
+         params.pending_present.image_index = 2;
+         const auto secondSerial = last_present_serial.load();
+         auto flipNext = std::async(std::launch::async, [&] {
+            return chain->queue_present(handle<VkQueue>(), &info, params);
+         });
+         require(flipNext.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout,
+                 "FLIP did not wait for its completion");
+         complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
+         complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY; complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+         complete->serial = secondSerial; complete->msc = 43; complete->mode = XCB_PRESENT_COMPLETE_MODE_FLIP;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
+         require(flipNext.wait_for(std::chrono::seconds(1)) == std::future_status::ready && flipNext.get() == VK_SUCCESS &&
+                 last_target_msc == 44, "FLIP acquired an unnecessary second display tick");
+         params.pending_present.image_index = 3;
+         auto cancelled = std::async(std::launch::async, [&] {
+            return chain->queue_present(handle<VkQueue>(), &info, params);
+         });
+         require(cancelled.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout, "missing pacing wait");
+         { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock);
+           chain->m_present_event_thread_run = false; chain->m_thread_status_cond.notify_all(); }
+         require(cancelled.wait_for(std::chrono::seconds(1)) == std::future_status::ready, "display wait cannot cancel");
+         cancelled.get(); chain.reset();
+      }
+      {
+         auto chain = f.create(false);
+         VkPresentInfoKHR info{};
+         wsi::swapchain_presentation_parameters params{}; params.handle_present_frame_boundary_event = false;
+         require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "skip fallback present");
+         auto complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
+         complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY; complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+         complete->serial = last_present_serial; complete->msc = 50; complete->mode = XCB_PRESENT_COMPLETE_MODE_SKIP;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
+         auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+         for (;;) {
+            { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock);
+              if (!chain->m_display_clock_fps) break; }
+            require(std::chrono::steady_clock::now() < deadline, "SKIP did not restore bounded timer pacing");
+            std::this_thread::yield();
+         }
+      }
+      clock_capability = {}; unsetenv("PAD_GPU_MAX_FPS");
       // A spurious condition notification must not consume a semaphore token.
       {
          util::timed_semaphore semaphore;
@@ -542,6 +706,106 @@ int main()
          require(blits_recorded == before_blits + expected_recordings && conversion_submits == before_submits + 10,
                  "BGRA caching changed copy submissions or re-recorded steady commands");
       }
+      // The public Vulkan contract: rectangleCount == 0 means full damage.
+      // Exercise the exact parser used by vkQueuePresentKHR, not a test-only flag.
+      {
+         VkPresentRegionKHR region{};
+         require(wsi::present_damage::from_region(region).status == wsi::present_damage::UNKNOWN,
+                 "empty region list must be full damage");
+         VkRectLayerKHR rect{{4, 8}, {1, 1}, 0};
+         region = {1, &rect};
+         require(wsi::present_damage::from_region(region).status == wsi::present_damage::RECTS,
+                 "valid rect was discarded");
+         region.pRectangles = nullptr;
+         require(wsi::present_damage::from_region(region).status == wsi::present_damage::UNKNOWN, "null rect fallback");
+         region = {wsi::present_damage::MAX_RECTS + 1, &rect};
+         require(wsi::present_damage::from_region(region).status == wsi::present_damage::UNKNOWN, "overflow fallback");
+         region = {1, &rect}; rect.layer = 1;
+         require(wsi::present_damage::from_region(region).status == wsi::present_damage::UNKNOWN, "unsupported layer fallback");
+      }
+      // Independent pixel oracle: each source contains the complete desired
+      // frame; damage only covers changes relative to the previous present.
+      // Cycling four AHBs must never resurrect a pixel from an older frame.
+      // Check both the color-converting blit and live Xorg BGRA byte-copy path.
+      for (bool byte_copy : {false, true}) {
+         if (byte_copy) setenv("PAD_GPU_X11_COLOR_MODE", "bgra", 1);
+         else unsetenv("PAD_GPU_X11_COLOR_MODE");
+         auto chain = f.create(false, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);
+         VkPresentInfoKHR info{};
+         wsi::swapchain_presentation_parameters params{};
+         params.handle_present_frame_boundary_event = false;
+         params.use_image_present_semaphore = false;
+         expected_pixels.fill(0); verify_pixels = true;
+         for (unsigned i = 0; i < 4; ++i) {
+            params.pending_present.image_index = i;
+            image_pixels[chain->m_swapchain_images[i].image] = expected_pixels;
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "pixel prime failed");
+         }
+         auto &damage = params.pending_present.damage;
+         const unsigned before_partial = partial_submits;
+         for (unsigned frame = 0; frame < 32; ++frame) {
+            const unsigned index = frame % 4, x = 4 + frame, y = 8;
+            expected_pixels[y * 64 + x] = 0xff000000u | (frame + 1);
+            image_pixels[chain->m_swapchain_images[index].image] = expected_pixels;
+            params.pending_present.image_index = index;
+            damage.status = wsi::present_damage::RECTS;
+            damage.rect_count = 1; damage.rects[0] = {{static_cast<int32_t>(x), static_cast<int32_t>(y)}, {1, 1}};
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "pixel rotation failed");
+         }
+         require(partial_submits >= before_partial + 28, "small updates lost the partial-copy optimization");
+         // A full update on an empty list must copy AND present each new color,
+         // even after all four buffers have been initialized.
+         const unsigned before_full = conversion_submits, before_presents = presents;
+         for (unsigned frame = 0; frame < 8; ++frame) {
+            const unsigned index = frame % 4;
+            params.pending_present.image_index = index;
+            expected_pixels.fill(0xff000100u | frame);
+            image_pixels[chain->m_swapchain_images[index].image] = expected_pixels;
+            damage = wsi::present_damage::from_region(VkPresentRegionKHR{});
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "empty-list present failed");
+         }
+         require(conversion_submits == before_full + 8 && presents == before_presents + 8,
+                 "empty-list full updates were skipped");
+         // Overflow, degenerate and out-of-bounds hints must preserve new pixels.
+         for (unsigned kind = 0; kind < 4; ++kind) {
+            params.pending_present.image_index = kind;
+            expected_pixels.fill(0xff002000u | kind);
+            image_pixels[chain->m_swapchain_images[kind].image] = expected_pixels;
+            damage.status = wsi::present_damage::RECTS;
+            damage.rect_count = kind == 0 ? wsi::present_damage::MAX_RECTS + 1 : 1;
+            damage.rects[0] = kind == 1 ? VkRect2D{{0,0},{0,0}} :
+                             kind == 2 ? VkRect2D{{-1,0},{2,2}} : VkRect2D{{63,0},{2,2}};
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "invalid-hint fallback failed");
+         }
+         // Overlapping old/new moving-bar regions across four AHBs must be
+         // coalesced before measuring area; raw counts would force full copies.
+         expected_pixels.fill(0);
+         for (unsigned y=16; y<48; ++y)
+            for (unsigned x=0; x<16; ++x) expected_pixels[y*64+x] = 0xff112233;
+         for (unsigned index=0; index<4; ++index) {
+            params.pending_present.image_index = index;
+            image_pixels[chain->m_swapchain_images[index].image] = expected_pixels;
+            damage = {};
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "coalescing prime failed");
+         }
+         const unsigned before_coalescing = partial_submits;
+         for (unsigned frame=0; frame<24; ++frame) {
+            const unsigned index=frame%4, old_x=(frame*2)%49, x=((frame+1)*2)%49;
+            expected_pixels.fill(0);
+            for (unsigned y=16; y<48; ++y)
+               for (unsigned px=x; px<x+16; ++px) expected_pixels[y*64+px] = 0xff112233;
+            image_pixels[chain->m_swapchain_images[index].image] = expected_pixels;
+            params.pending_present.image_index = index;
+            damage.status = wsi::present_damage::RECTS; damage.rect_count = 2;
+            damage.rects[0] = {{static_cast<int32_t>(old_x),16},{16,32}};
+            damage.rects[1] = {{static_cast<int32_t>(x),16},{16,32}};
+            require(chain->queue_present(handle<VkQueue>(), &info, params) == VK_SUCCESS, "coalescing motion failed");
+         }
+         require(partial_submits >= before_coalescing + 20,
+                 "overlapping damage forced unnecessary full copies");
+         verify_pixels = false;
+      }
+      unsetenv("PAD_GPU_X11_COLOR_MODE");
       {
          auto chain = f.create(true, VK_PRESENT_MODE_MAILBOX_KHR, VK_NULL_HANDLE, VK_FORMAT_B8G8R8A8_UNORM);
          const unsigned before = image_creates;
@@ -559,7 +823,7 @@ int main()
       for (unsigned i = 0; i < 25; ++i) { auto chain = f.create(true); }
       require(live_images.empty() && image_creates == image_destroys && allocations == frees, "final resource imbalance");
       close(xcb_fd);
-      std::cout << "WSI_REGRESSION_OK: eager/deferred/alias/failure/MAILBOX/FIFO/cancel/disconnect/oldSwapchain/BGRA/immediate-destroy\n";
+      std::cout << "WSI_REGRESSION_OK: eager/deferred/alias/failure/MAILBOX/FIFO/cancel/disconnect/oldSwapchain/BGRA/damage-pixel-rotation/empty-list-full/coalescing/display-clock/immediate-destroy\n";
       return 0;
    } catch (const std::exception &error) {
       std::cerr << "WSI_REGRESSION_FAILED: " << error.what() << '\n'; return 1;
