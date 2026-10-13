@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-13",
+  "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "version": "r3.4.1",
+  "apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+  "deployment": {
+    "state": "r35_acceptance_failed",
+    "start_monotonic_ns": 60864867641748,
+    "authorized_saved_work": true,
+    "default_bridge": "/opt/pad7spro-gpu-r3.4.1-opt1",
+    "apk_changed": false,
+    "xfce_pid": 8021,
+    "original-apk-idle": {
+      "label": "original-apk-idle",
+      "start_monotonic_ns": 60909973317511,
+      "end_monotonic_ns": 60918667527648,
+      "trace_exit": 0,
+      "cpu_s": {
+        "2593": 1.42,
+        "29444": 0.18
+      },
+      "wakeup_events": {
+        "2593": 1734,
+        "29444": 510
+      },
+      "copy_pixels": 0,
+      "copy_entries": 0,
+      "copy_draws": 0,
+      "surface_submits": 0,
+      "ticks": 0,
+      "scene": "desktop with no open user apps",
+      "caveat": "trace overhead included; current and power not attributed to an app; no long-term energy claim"
+    },
+    "candidate-apk-idle": {
+      "label": "candidate-apk-idle",
+      "start_monotonic_ns": 60943663400948,
+      "end_monotonic_ns": 60952497809210,
+      "trace_exit": 0,
+      "cpu_s": {
+        "4392": 0.0,
+        "31111": 0.11
+      },
+      "wakeup_events": {
+        "4392": 16,
+        "31111": 82
+      },
+      "copy_pixels": 0,
+      "copy_entries": 0,
+      "copy_draws": 0,
+      "surface_submits": 0,
+      "ticks": 0,
+      "scene": "desktop with no open user apps",
+      "caveat": "trace overhead included; current and power not attributed to an app; no long-term energy claim"
+    },
+    "error": "regions-window exit 1",
+    "traceback": "Traceback (most recent call last):\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.5-20261013/worker-android.py\", line 152, in <module>\n    chroot(['/usr/bin/env','PAD_SCREEN_RESUME_CHECK=1','python3',inner+'/check-window.py','/opt/pad7spro-gpu-r3.5',kind],kind+'-window',25)\n    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.5-20261013/worker-android.py\", line 50, in chroot\n    run(session_command(['/usr/bin/env','-i',*variables,*args]),label,timeout)\n    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/linux/debian/opt/pad7spro-gpu-release-test/repository/build/r3.5-20261013/worker-android.py\", line 15, in run\n    if r.returncode:raise RuntimeError(label+' exit '+str(r.returncode))\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: regions-window exit 1\n",
+    "rollback_restored": true,
+    "recovery_launch_pid": 8096,
+    "end_monotonic_ns": 60982229187957
+  },
+  "runtime": [
+    {
+      "pid": 7888,
+      "comm": "main",
+      "bridge_mapped": false,
+      "mali_mapped": false,
+      "current_apk_mapped": true
+    },
+    {
+      "pid": 8021,
+      "comm": "xfce4-session",
+      "bridge_mapped": true,
+      "mali_mapped": true,
+      "current_apk_mapped": false
+    },
+    {
+      "pid": 8398,
+      "comm": "ChatGPT",
+      "bridge_mapped": true,
+      "mali_mapped": true,
+      "current_apk_mapped": false
+    }
+  ],
+  "power_improvement_claimed": false,
+  "input_latency_improvement_claimed": false,
+  "long_term_validation_completed": false,
+  "regions_screen_check": {
+    "screen_width": 3200,
+    "screen_height": 2136,
+    "format": 1,
+    "expected_screen_color": [
+      61,
+      113,
+      210
+    ],
+    "screen_color_space_id": 2,
+    "color_bounds": [
+      1613,
+      1139,
+      1613,
+      1139
+    ],
+    "window_origin": [
+      1494,
+      1091
+    ],
+    "checked_pixels": 49152,
+    "pixel_mismatches": 42135,
+    "probe_exit": 0,
+    "bridge_mapped": true,
+    "mali_mapped": true
+  }
+}

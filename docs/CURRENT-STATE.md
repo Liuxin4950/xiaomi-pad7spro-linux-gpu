@@ -2,7 +2,7 @@
 
 更新：2026-10-13。接手先读本页，再核对设备；历史文档、旧记忆和 build 目录名称不能代替运行状态。
 
-- 默认入口：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.4.1-opt1/bin/`。实际安装与重启检查见 [升级结果](r3.4-upgrade-results.md)。r3.4.1 与 r3.3 回退前缀完整保留。
+- 默认入口：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.4.1-opt1/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
 - 原生分辨率；默认 `X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60`、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
 - **r3.4 回归已确认，已撤下默认入口**：用户报告浏览器与 Trae 闪烁/错位。`rectangleCount==0` 实为全图更新，旧实现错误跳帧；damage 只累计当前 AHB，没有跟踪其他轮换缓冲。独立逐像素回归在旧版稳定报出 stale pixels。原件与原前缀保留，历史统计不改值。
@@ -10,8 +10,8 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前 APK：已恢复原 gpu-direct，SHA-256 `c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`。r3.4.2 安装曾成功，新版真实窗口验收失败后已回退 APK 与统一入口。
-- **回退后的实际映射已核对**：XFCE PID 14659、助手 GPU PID 14854 加载 r3.4.1 与原厂 Mali；X server PID 14576 运行恢复后的原 APK。历史 PID 不再代表当前进程。
+- 当前 APK SHA-256：`c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`。最新部署状态：`r35_acceptance_failed`；APK Manifest 版本号保持原值，结合实际哈希和进程映射识别。
+- 当前进程/库/APK 映射见 [r3.5 证据](../evidence/r3.5-integration-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界
 
@@ -52,4 +52,4 @@ gpu-run info GPU_PID
 
 r3.4.2 曾安装并运行，窗口验收失败后恢复原 APK/r3.4.1。原始失败与旧数据保留在 [升级结果](r3.4-upgrade-results.md)。后来同一稳定版本等待前后台动画结束后，逐像素检测通过；0009 已修正 Copy 的错误 MSC+2 计算。不能继续推广历史 0008 候选。
 
-独立 r3.4.3 与 r3.5 已构建/安装，但新 APK 集中验收尚未执行。r3.5 实现下游区域复制、消费端内容修复与矩形批量绘制。各项完成/未完成范围见 [r3.5 迭代](r3.5-efficiency.md)，正式状态以实际链接、APK、进程与集成证据为准。没有新功耗、输入延迟或长期稳定性结论。
+独立 r3.4.3 与 r3.5 已构建/安装。新 APK 集中验收已经运行，在局部更新窗口的颜色检查失败后回退，尚未进入后续应用/A-B 验收。r3.5 实现下游区域复制、消费端内容修复与矩形批量绘制。各项完成/未完成范围见 [r3.5 迭代](r3.5-efficiency.md)，正式状态以实际链接、APK、进程与集成证据为准。没有新功耗、输入延迟或长期稳定性结论。

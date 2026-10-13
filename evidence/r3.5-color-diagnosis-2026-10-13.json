@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-13",
+  "screen_state": "asleep-no-physical-validation",
+  "first_deployment": "r35_acceptance_failed",
+  "rollback_verified": true,
+  "original_failure_preserved": "evidence/r3.5-integration-2026-10-13.json",
+  "diagnosis": {
+    "expected_color_exact_matches": 1,
+    "reported_42135_mismatches_include_incorrect_origin_registration": true,
+    "gray_palette": [
+      50,
+      51
+    ],
+    "blue_display_p3_range": [
+      205,
+      210
+    ],
+    "color_boundary_not_yet_identified": true
+  },
+  "offscreen_hardware": {
+    "renderer": "Mali-G925-Immortalis",
+    "ordinary_texture_color_cases": 8,
+    "ahb_color_cases": 8,
+    "native_resolution_ahb_region_cases": 8,
+    "all_pixel_readback_mismatches": 0,
+    "screen_display_result_proven": false
+  },
+  "next_action": "diagnostic APK source/destination/Surface readbacks; two region/timer cases after screen awake and unlocked; always restore original APK/r3.4.1",
+  "power_or_latency_improvement_claimed": false
+}
