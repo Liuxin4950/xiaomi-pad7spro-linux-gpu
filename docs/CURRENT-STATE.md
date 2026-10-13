@@ -4,16 +4,16 @@
 
 更新：2026-10-13。接手先读本页，再核对设备；历史文档、旧记忆和 build 目录名称不能代替运行状态。
 
-- 默认入口：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.4.1-opt1/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
+- 默认入口：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.5/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
 - 原生分辨率；默认 `X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60`、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
 - **r3.4 回归已确认，已撤下默认入口**：用户报告浏览器与 Trae 闪烁/错位。`rectangleCount==0` 实为全图更新，旧实现错误跳帧；damage 只累计当前 AHB，没有跟踪其他轮换缓冲。独立逐像素回归在旧版稳定报出 stale pixels。原件与原前缀保留，历史统计不改值。
-- r3.4.1 优化版已安装并启用 `/opt/pad7spro-gpu-r3.4.1-opt1`。空列表/缺提示全量拷贝并正常 Present；所有 AHB 累积变化，成功提交后只清当前缓冲；重叠/相邻 damage 先合并再判断面积与超限，保留小区域拷贝和全量命令复用。原始 r3.4.1 候选保留于 `/opt/pad7spro-gpu-r3.4.1`。详见 [r3.4 审查与修复](r3.4-damage-aware-copy.md)。
+- r3.4.1 优化版保留作为稳定回退 `/opt/pad7spro-gpu-r3.4.1-opt1`。空列表/缺提示全量拷贝并正常 Present；所有 AHB 累积变化，成功提交后只清当前缓冲；重叠/相邻 damage 先合并再判断面积与超限，保留小区域拷贝和全量命令复用。原始 r3.4.1 候选保留于 `/opt/pad7spro-gpu-r3.4.1`。详见 [r3.4 审查与修复](r3.4-damage-aware-copy.md)。
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前 APK SHA-256：`c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`。最新部署状态：`r35_acceptance_failed`；APK Manifest 版本号保持原值，结合实际哈希和进程映射识别。
-- 当前进程/库/APK 映射见 [r3.5 收尾证据](../evidence/r3.5-release-2026-10-13.json)，PID 每次重新核对。
+- 当前 APK SHA-256：`7da1ad14adb13ab594ebb58fb6c50368f48748281b544c43bec1f1fe1011464f`。部署状态：`installed-and-active`；versionName 含 gpu-r3.5。
+- 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界
 
@@ -50,10 +50,10 @@ gpu-run info GPU_PID
 
 初版修复证据见 [r3.4.1 correctness](../evidence/r3.4.1-correctness-2026-10-13.json)，其中当时冻结/未激活记录保留为历史。最新状态见 [优化验收](../evidence/r3.4.1-optimization-2026-10-13.json)。
 
-## 显示效率当前迭代
+## 显示效率迭代历史与验收边界
 
 r3.4.2 曾安装并运行，窗口验收失败后恢复原 APK/r3.4.1。原始失败与旧数据保留在 [升级结果](r3.4-upgrade-results.md)。后来同一稳定版本等待前后台动画结束后，逐像素检测通过；0009 已修正 Copy 的错误 MSC+2 计算。不能继续推广历史 0008 候选。
 
 独立 r3.4.3 与 r3.5 已构建/安装。新 APK 集中验收已经运行，在局部更新窗口的颜色检查失败后回退，尚未进入后续应用/A-B 验收。r3.5 实现下游区域复制、消费端内容修复与矩形批量绘制。各项完成/未完成范围见 [r3.5 迭代](r3.5-efficiency.md)，正式状态以实际链接、APK、进程与集成证据为准。没有新功耗、输入延迟或长期稳定性结论。
 
-最终 r3.5 四 ABI/native 与新 Java APK 已完成构建；窗口像素/重建/Chromium 核心验收通过。Trae 工具未等到窗口导致最后自动回退。按用户最新要求停止反复重启并跳过未确认项，当前会话保持 r3.4.1；r3.5 全域替换尚未完成。具体界限见 [r3.5 收尾](r3.5-efficiency.md)。
+全域切换之前的收尾记录：r3.5 四 ABI/native 与新 Java APK 已完成构建；窗口像素/重建/Chromium 核心验收通过。Trae 工具未等到窗口导致最后自动回退。按用户最新要求停止反复重启并跳过未确认项，当前会话保持 r3.4.1；r3.5 全域替换尚未完成。具体界限见 [r3.5 收尾](r3.5-efficiency.md)。

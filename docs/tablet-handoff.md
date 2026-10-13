@@ -2,13 +2,13 @@
 
 更新：2026-10-13。用户明确要求全域替换：r3.5 APK 已安装、gpu-run/gpu-launcher 已切换、桌面已正常重开；实际新 APK 和桥接映射见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。Termux 三种启动入口继续追随统一 gpu-run，Mali / GaneshVulkan / ANGLE Vulkan / Zink 保留。下方 r3.4.1 和失败记录为历史，不代表当前运行版本。功耗、精确输入延迟和长期稳定性仍未确认。
 
-更新：2026-10-13。当前默认 r3.4.1，先读 [CURRENT-STATE](CURRENT-STATE.md)。旧 r2、早期 canary 和历史实验数字不能作为当前启动配置。
+更新：2026-10-13。当前默认 r3.5，先读 [CURRENT-STATE](CURRENT-STATE.md)。旧 r2、早期 canary 和历史实验数字不能作为当前启动配置。
 
 ## 设备入口
 
 工作区 `/opt/pad7spro-gpu-release-test/repository`，别名 `/root/Working/xiaomi-pad7spro-linux-gpu`。容器为 Debian 13，Android rootfs 路径 `/data/linux/debian`；用户可能称其 Ubuntu，不据此另找第二个 rootfs。
 
-- 当前默认前缀 `/opt/pad7spro-gpu-r3.4.1-opt1`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，桌面/助手 GPU 实际映射 r3.4.1；以 CURRENT-STATE 为准。
+- 当前默认前缀 `/opt/pad7spro-gpu-r3.5`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，当前桌面/助手 GPU 实际映射 r3.5；以 CURRENT-STATE 为准。
 - Termux Widget、`~/debian-desktop.sh` 和 `~/mali-work/desktop-zink.sh` 共用 GPU 桌面入口。普通桌面不再默认 llvmpipe。
 - 桌面、菜单、URL、XFCE helper 和 CLI chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch 全部统一到 gpu-run。Office 图标也进入同一环境；MySQL、shell/TUI 不强加图形参数。
 - 二维 Skia 原生 Vulkan；WebGL ANGLE Vulkan；GL Zink；CC Switch 使用 WebKit 适配。
@@ -60,4 +60,4 @@ WSI、rAF、SF 呈现与屏幕实际新帧分开；短时电流不证明长期�
 
 显示链路迭代最新为独立 r3.4.3 / r3.5，技术和交付范围见 [r3.5](r3.5-efficiency.md)。r3.4.2 和 r3.5 均曾安装，新版验收失败后恢复原 APK/r3.4.1；保留所有失败证据。r3.5 的窗口形状存在但颜色检测不通过，正在定向区分 Copy 与 Surface 阶段。关屏的离屏读回不作为实际显示验收；等待亮屏解锁后只做必要的颜色定位，再恢复稳定版本。旧“未安装”、旧 PID 和旧 MSC+2 说明都是历史快照。
 
-最终收尾：r3.5 候选已核心验收、未全域替换，当前仍 r3.4.1/原 APK。用户明确额度不足、不要再反复重启；不要自动重跑 worker。继续前只读 [收尾证据](../evidence/r3.5-release-2026-10-13.json) 与 r3.5 文档，下一次正常切换须 APK/入口一起更新。无法确认项目已按用户要求跳过，不能宣称功耗、延迟和长期稳定性达标。
+全域切换前的历史收尾：r3.5 候选已核心验收、当时未全域替换，当前仍 r3.4.1/原 APK。用户明确额度不足、不要再反复重启；不要自动重跑 worker。继续前只读 [收尾证据](../evidence/r3.5-release-2026-10-13.json) 与 r3.5 文档，下一次正常切换须 APK/入口一起更新。无法确认项目已按用户要求跳过，不能宣称功耗、延迟和长期稳定性达标。
