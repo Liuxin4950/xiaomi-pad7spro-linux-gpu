@@ -108,3 +108,5 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 新增 [0004-demand-driven-display.patch](0004-demand-driven-display.patch)，顺序为 popup → 0002 → 0003 → 0004。发布协作时钟属性、BlockHandler 按现有 Damage/光标/Present 工作请求 Choreographer、虚拟 MSC 跨空闲连续、关闭默认统计 timer，新增 opt-in atrace/EGL 呈现诊断。与 WSI 0008 协作；旧桥接继续使用原来的限帧，新桥接对旧 APK 使用 timer 回退。
 
 顶层与嵌套 Xserver 补丁对锁定提交均通过；四 ABI 增量编译/链接、16 KiB APK 对齐和原签名核对完成。候选未安装，不能认为空闲唤醒或显示 P99 已改善。原 APK 保存、DEX/资源保持一致，重开桌面需先保存全部 chroot 会话。范围与验证条件见 [显示效率记录](../../docs/r3.4-display-efficiency.md)。
+
+0007-copy-failure-feedback.patch 在 0006 后应用，区分安全完成与成功复制，失败清除消费端历史并报告 SKIP；共享头变更必须同步重编四 ABI 的全部引用单元。最新构建/安装范围以 CURRENT-STATE 与 r3.5 收尾证据为准。

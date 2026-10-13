@@ -11,7 +11,7 @@
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
 - 当前 APK SHA-256：`c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad`。最新部署状态：`r35_acceptance_failed`；APK Manifest 版本号保持原值，结合实际哈希和进程映射识别。
-- 当前进程/库/APK 映射见 [r3.5 证据](../evidence/r3.5-integration-2026-10-13.json)，PID 每次重新核对。
+- 当前进程/库/APK 映射见 [r3.5 收尾证据](../evidence/r3.5-release-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界
 
@@ -53,3 +53,5 @@ gpu-run info GPU_PID
 r3.4.2 曾安装并运行，窗口验收失败后恢复原 APK/r3.4.1。原始失败与旧数据保留在 [升级结果](r3.4-upgrade-results.md)。后来同一稳定版本等待前后台动画结束后，逐像素检测通过；0009 已修正 Copy 的错误 MSC+2 计算。不能继续推广历史 0008 候选。
 
 独立 r3.4.3 与 r3.5 已构建/安装。新 APK 集中验收已经运行，在局部更新窗口的颜色检查失败后回退，尚未进入后续应用/A-B 验收。r3.5 实现下游区域复制、消费端内容修复与矩形批量绘制。各项完成/未完成范围见 [r3.5 迭代](r3.5-efficiency.md)，正式状态以实际链接、APK、进程与集成证据为准。没有新功耗、输入延迟或长期稳定性结论。
+
+最终 r3.5 四 ABI/native 与新 Java APK 已完成构建；窗口像素/重建/Chromium 核心验收通过。Trae 工具未等到窗口导致最后自动回退。按用户最新要求停止反复重启并跳过未确认项，当前会话保持 r3.4.1；r3.5 全域替换尚未完成。具体界限见 [r3.5 收尾](r3.5-efficiency.md)。

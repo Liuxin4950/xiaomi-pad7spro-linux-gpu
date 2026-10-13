@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-13",
+  "status": "built-and-core-verified-awaiting-session-switch",
+  "default_prefix": "/opt/pad7spro-gpu-r3.4.1-opt1",
+  "installed_apk_sha256": "c451d41fc1424147ae4dc07db4d062985f9d10d20084bd7facfe805bfe2bc6ad",
+  "candidate_prefix": "/opt/pad7spro-gpu-r3.5",
+  "candidate_apk_sha256": "7da1ad14adb13ab594ebb58fb6c50368f48748281b544c43bec1f1fe1011464f",
+  "native_build": [
+    {
+      "abi": "arm64-v8a",
+      "compiled_units": 16,
+      "linked": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "compiled_units": 16,
+      "linked": true
+    },
+    {
+      "abi": "x86",
+      "compiled_units": 16,
+      "linked": true
+    },
+    {
+      "abi": "x86_64",
+      "compiled_units": 16,
+      "linked": true
+    }
+  ],
+  "top_and_nested_patch_series_match_build_inputs": true,
+  "regions_screen": {
+    "screen_width": 3200,
+    "screen_height": 2136,
+    "format": 1,
+    "expected_screen_color": [
+      61,
+      113,
+      210
+    ],
+    "screen_color_space_id": 2,
+    "color_bounds": [
+      1591,
+      1044,
+      1654,
+      1139
+    ],
+    "window_origin": [
+      1472,
+      996
+    ],
+    "checked_pixels": 49152,
+    "pixel_mismatches": 0,
+    "android_overlay_wait_s": 0.6530971619940829,
+    "android_overlay_seen": false,
+    "probe_exit": 0,
+    "bridge_mapped": true,
+    "mali_mapped": true
+  },
+  "empty_screen": {
+    "screen_width": 3200,
+    "screen_height": 2136,
+    "format": 1,
+    "expected_screen_color": [
+      24,
+      63,
+      12
+    ],
+    "screen_color_space_id": 2,
+    "color_bounds": [
+      1472,
+      996,
+      1727,
+      1187
+    ],
+    "window_origin": [
+      1472,
+      996
+    ],
+    "checked_pixels": 49152,
+    "pixel_mismatches": 0,
+    "android_overlay_wait_s": 0.6223383600008674,
+    "android_overlay_seen": false,
+    "probe_exit": 0,
+    "bridge_mapped": true,
+    "mali_mapped": true
+  },
+  "lifecycle": {
+    "cycles": 30,
+    "frames_per_cycle": 3,
+    "resize": true,
+    "oldSwapchain": true,
+    "result": "VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK"
+  },
+  "chromium": {
+    "skia": "GaneshVulkan",
+    "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis-49.1.0)",
+    "gpu_crashes": 0,
+    "bridge_mapped": true,
+    "mali_mapped": true,
+    "elapsed_s": 52.741,
+    "memory_verdict": "bounded sample only; long-term resource stability deferred",
+    "pending": [
+      {
+        "phase": "initial",
+        "key": "physical_screen_text-scroll",
+        "reason": "Error: spawn /usr/sbin/nsenter ENOENT"
+      },
+      {
+        "phase": "initial",
+        "key": "physical_screen_popup-open",
+        "reason": "Error: spawn /usr/sbin/nsenter ENOENT"
+      },
+      {
+        "phase": "initial",
+        "key": "physical_screen_native-menu",
+        "reason": "Error: spawn /usr/sbin/nsenter ENOENT"
+      },
+      {
+        "phase": "initial",
+        "key": "window_resize_maximize_multiwindow",
+        "reason": "Error: WM did not honor requested resize"
+      }
+    ],
+    "exit": {
+      "group": 13660,
+      "group_leftovers": [],
+      "tracked_live": [],
+      "launcher_exit": 0,
+      "process_resources_released": true,
+      "driver_resource_release": "process exit only; kernel allocation accounting not measured"
+    }
+  },
+  "trae": {
+    "result": "unverified",
+    "reason": "CDP target requested before private application window became available; no GPU regression established"
+  },
+  "idle": {
+    "label": "candidate-apk-idle",
+    "start_monotonic_ns": 68890126380709,
+    "end_monotonic_ns": 68899081586992,
+    "trace_exit": 0,
+    "cpu_s": {
+      "12771": 0.0,
+      "24290": 0.1
+    },
+    "wakeup_events": {
+      "12771": 16,
+      "24290": 84
+    },
+    "copy_pixels": 0,
+    "copy_entries": 0,
+    "copy_draws": 0,
+    "surface_submits": 0,
+    "ticks": 0,
+    "scene": "desktop with no open user apps",
+    "caveat": "trace overhead included; current and power not attributed to an app; no long-term energy claim"
+  },
+  "runtime": [
+    {
+      "pid": 21121,
+      "comm": "xfce4-session",
+      "default_bridge_mapped": true,
+      "mali_mapped": true
+    },
+    {
+      "pid": 21585,
+      "comm": "ChatGPT",
+      "default_bridge_mapped": true,
+      "mali_mapped": true
+    },
+    {
+      "pid": 24820,
+      "comm": "bash",
+      "default_bridge_mapped": false,
+      "mali_mapped": false
+    }
+  ],
+  "automatic_worker_result": "r35_acceptance_failed-and-restored-r341",
+  "user_requested_no_more_restarts": true,
+  "deferred_by_user": [
+    "front/background physical screenshot",
+    "precise input latency",
+    "whole-device power/temperature",
+    "long-term stability",
+    "manual IME/touch/panel mode acceptance",
+    "Trae current candidate validation",
+    "controlled repeated A/B final presentation",
+    "window cancellation fault path"
+  ],
+  "power_improvement_claimed": false,
+  "input_latency_improvement_claimed": false
+}

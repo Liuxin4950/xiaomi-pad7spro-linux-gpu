@@ -111,6 +111,10 @@
       {
         "path": "patches/termux-x11/0006-resume-demand-render.patch",
         "sha256": "24b947a4956c08c62cde52c2cf630b3d487dad67831877b3b7b5b16ff740e0c5"
+      },
+      {
+        "path": "patches/termux-x11/0007-copy-failure-feedback.patch",
+        "sha256": "77fcd0a15280c0b68a0676f73e5efbc233e337e626775c28329d41bfe1e61332"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

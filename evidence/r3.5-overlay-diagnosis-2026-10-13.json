@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-13",
+  "kind": "display-overlay-diagnosis",
+  "candidate_apk_sha256": "d3774d8e940da34369d66c6ffe746dfae0a3b9003fd6c74ee63c9e16f5a0da20",
+  "foreground_pixel_palette": [
+    [
+      [
+        51,
+        51,
+        51,
+        255
+      ],
+      43008
+    ],
+    [
+      [
+        61,
+        113,
+        210,
+        255
+      ],
+      6144
+    ]
+  ],
+  "foreground_crop_sha256": "fd59761af3e38b9297728016db4115a4418725329d76e8c3a75666271cfe8c22",
+  "resumed_crop_sha256": "bf8a208b3d83c485bf94b87ceea53a59af38fd60a18048c58322adea50f253d1",
+  "cursor_crop_sha256": "bf8a208b3d83c485bf94b87ceea53a59af38fd60a18048c58322adea50f253d1",
+  "surface_frame_numbers": [
+    158,
+    161,
+    162
+  ],
+  "surface_format_dataspace": "RGBX8888 / V0_SRGB; alpha=1; identity color transform; no scaling",
+  "android_overlay": {
+    "name": "SplitScreen-RecommendView",
+    "shadow_radius_px": 875,
+    "shadow_offset": [
+      0,
+      50
+    ],
+    "shadow_alpha": 0.45098,
+    "shadow_clip": false,
+    "composition_extent": [
+      477,
+      0,
+      2723,
+      1167
+    ]
+  },
+  "conclusion": "Foreground final probe pixels are exact. Android recommendation overlay shadow covers the expected probe after resume; Surface frame advances. Preserve old failure numbers, wait for normal overlay dismissal before comparing unobscured colors.",
+  "new_default_installed": false,
+  "power_improvement_claimed": false
+}

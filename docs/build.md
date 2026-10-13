@@ -82,3 +82,5 @@ Linux 构建增加锁定 WSI 0008，独立目标 `/opt/pad7spro-gpu-r3.4.2-displ
 在当前已核验 gpu-direct APK 中只替换四个 native 库，保持 DEX/资源/manifest，16 KiB ZIP 对齐并使用相同上游测试证书 v2 签名。候选与原件均在 `build/r3.4.2-display-20261013`；该流程是原生增量构建，不是干净全量 Gradle/NDK 构建。顶层补丁和嵌套补丁已经锁定原始源码应用检查。详见 [交付记录](r3.4-display-efficiency.md)。
 
 最新独立 r3.4.3 使用 WSI 0001–0009；r3.5 增加 0010。X11 0005 包含规范化的完整 gitlink patch，需整体应用到锁定 65d790b，再编译所有 Present 单元与三个 lorie 修改单元（四 ABI 各 13 个），不能混用旧私有结构的 archive。构建与安装路径及验收边界见 [r3.5](r3.5-efficiency.md)。
+
+最终 r3.5 0007 改变共享状态布局，因此四 ABI 各重编全部六个 lorie.h 引用单元（InitOutput、InitInput、renderer、activity、clipboard、cmdentrypoint）及十个 Present 单元，共 16 个；禁止复用旧 cmdentrypoint 对象。Java/资源使用已重建 0006 的 Gradle APK，叠加校验后的四个新原生库，同签名与 16 KiB 对齐。完整补丁用独立导出目录的标准 patch --fuzz=0 验证，避免 git apply 在仓库子目录继承父仓库而跳过 diff--git 文件。
