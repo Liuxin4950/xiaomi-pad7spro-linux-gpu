@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-13",
+  "deployment": {
+    "state": "r35_global_switch_completed",
+    "start_monotonic_ns": 77296643185013,
+    "authorized_saved_work": true,
+    "default_bridge": "/opt/pad7spro-gpu-r3.5",
+    "apk_changed": true,
+    "xfce_pid": 31698,
+    "recovery_launch_pid": 31795,
+    "installed_apk_path": "/data/app/~~JlL9-bsLlfGLa2TUlJn9bg==/com.termux.x11-Lxy10fcUcHO_v6i8cGBpmw==/base.apk",
+    "installed_apk_sha256": "7da1ad14adb13ab594ebb58fb6c50368f48748281b544c43bec1f1fe1011464f",
+    "runtime": [
+      {
+        "pid": 22417,
+        "comm": "com.termux.x11",
+        "new_apk_mapped": true,
+        "r35_bridge_mapped": false,
+        "mali_mapped": false,
+        "chatgpt_gpu": false
+      },
+      {
+        "pid": 31606,
+        "comm": "main",
+        "new_apk_mapped": true,
+        "r35_bridge_mapped": false,
+        "mali_mapped": false,
+        "chatgpt_gpu": false
+      },
+      {
+        "pid": 31698,
+        "comm": "xfce4-session",
+        "new_apk_mapped": false,
+        "r35_bridge_mapped": true,
+        "mali_mapped": true,
+        "chatgpt_gpu": false
+      },
+      {
+        "pid": 31906,
+        "comm": "ChatGPT",
+        "new_apk_mapped": false,
+        "r35_bridge_mapped": true,
+        "mali_mapped": true,
+        "chatgpt_gpu": true
+      }
+    ],
+    "end_monotonic_ns": 77325513193915
+  },
+  "entry_scripts_follow_unified_gpu_run": true,
+  "original_mali_preserved": true,
+  "stable_r33_and_r341_preserved": true,
+  "full_performance_acceptance_deferred_by_user": true
+}

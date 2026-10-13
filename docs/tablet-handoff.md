@@ -1,5 +1,7 @@
 # 平板 / 后续 AI 接手
 
+更新：2026-10-13。用户明确要求全域替换：r3.5 APK 已安装、gpu-run/gpu-launcher 已切换、桌面已正常重开；实际新 APK 和桥接映射见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。Termux 三种启动入口继续追随统一 gpu-run，Mali / GaneshVulkan / ANGLE Vulkan / Zink 保留。下方 r3.4.1 和失败记录为历史，不代表当前运行版本。功耗、精确输入延迟和长期稳定性仍未确认。
+
 更新：2026-10-13。当前默认 r3.4.1，先读 [CURRENT-STATE](CURRENT-STATE.md)。旧 r2、早期 canary 和历史实验数字不能作为当前启动配置。
 
 ## 设备入口
