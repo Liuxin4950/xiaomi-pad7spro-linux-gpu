@@ -1,0 +1,61 @@
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -45,6 +45,7 @@
+         state->drawRequested = true; \
+     pthread_cond_signal(stateCond); \
+     pthread_mutex_unlock(&stateLock); \
++    notifyGpuCopyDone(); \
+ } while (0)
+ 
+ static GLuint createProgram(const char* p_vertex_source, const char* p_fragment_source);
+@@ -623,8 +624,8 @@
+ 
+ void Renderer::releaseWinAndSurface(ANativeWindow** anw, EGLSurface *esfc) {
+     if (esfc && *esfc && *esfc != defaultSfc) {
+-        // Requeue the dequeued buffer, causes flickering during window reconfiguring
+-        eglSwapBuffers(egl_display, *esfc);
++        // Unbind before destruction. Queuing the partially cleared next buffer
++        // would expose stale content during resize/background transitions.
+         if (eglMakeCurrent(egl_display, defaultSfc, defaultSfc, ctx) != EGL_TRUE)
+             return vprintEglError("eglMakeCurrent failed (EGL_NO_SURFACE)", __LINE__);
+         if (eglDestroySurface(egl_display, *esfc) != EGL_TRUE)
+@@ -1102,15 +1103,9 @@
+     if (swapResult != EGL_TRUE)
+         printEglError("Failed to swap buffers", __LINE__);
+ 
+-    // Perform a little drawing operation to make sure the next buffer is ready on the next invocation of drawing
+-    glEnable(GL_SCISSOR_TEST);
+-    glScissor(0, 0, 1, 1);
+-    glClearColor(0, 0, 0, 0);
+-    glClear(GL_COLOR_BUFFER_BIT);
+-    glDisable(GL_SCISSOR_TEST);
+-    fence = eglCreateSyncKHR(egl_display, EGL_SYNC_FENCE_KHR, nullptr);
+-    eglClientWaitSyncKHR(egl_display, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER);
+-    eglDestroySyncKHR(egl_display, fence);
++    // Leave the next Surface buffer untouched until the next complete redraw.
++    // Swap supplies the window queue boundary; the shared-root Copy/read fence
++    // above still protects X11 ownership. No prefetch clear/fence is required.
+ 
+     state->renderedFrames++;
+ }
+--- a/lorie/src/main/java/com/termux/x11/MainActivity.java
++++ b/lorie/src/main/java/com/termux/x11/MainActivity.java
+@@ -655,7 +655,9 @@
+ 
+         orientationListener.enable();
+         setTerminalToolbarView();
+-        getLorieView().requestFocus();
++        // A retained Surface can return without surfaceChanged or new X Damage.
++        // Submit its current content once through the existing viewport/wakeup path.
++        getLorieView().triggerCallback();
+     }
+ 
+     @Override
+@@ -841,6 +843,7 @@
+         // The system bars come back when the window loses focus.
+         if (hasFocus) {
+             applyImmersiveMode();
++            getLorieView().triggerCallback();
+             LorieView.markUserActivity();
+             handler.removeCallbacks(screenIdleTimeoutCheck);
+             checkScreenIdleTimeout();
