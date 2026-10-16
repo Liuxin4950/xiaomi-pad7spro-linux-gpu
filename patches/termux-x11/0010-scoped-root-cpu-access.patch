@@ -1,0 +1,107 @@
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -146,6 +146,19 @@
+ #define LORIE_PIXMAP_PRIV_FROM_PIXMAP(pixmap) (pixmap ? ((LoriePixmapPriv*) exaGetPixmapDriverPrivate(pixmap)) : NULL)
+ #define LORIE_BUFFER_FROM_PIXMAP(pixmap) (pixmap ? ((LoriePixmapPriv*) exaGetPixmapDriverPrivate(pixmap))->buffer : NULL)
+ 
++/* End a CPU mapping before publishing GPU work. EXA PrepareAccess/FinishAccess already
++ * provide scoped CPU mappings; retaining and cycling a root AHB mapping on GPU-only frames
++ * needlessly cleans/invalidates the entire screen and can stall the display-clock thread. */
++static void lorieReleaseCpuMapping(LoriePixmapPriv *priv) {
++    if (!priv || !priv->buffer || !priv->locked)
++        return;
++    int status = LorieBuffer_unlock(priv->buffer);
++    priv->locked = NULL;
++    priv->wasLocked = FALSE;
++    if (status)
++        FatalError("Failed to release CPU mapping before GPU access: %d\n", status);
++}
++
+ static LorieBuffer *lorieEnsureGpuSampleable(PixmapPtr pixmap, int8_t type) {
+     LoriePixmapPriv *priv = LORIE_PIXMAP_PRIV_FROM_PIXMAP(pixmap);
+     const LorieBuffer_Desc *desc;
+@@ -582,16 +595,18 @@
+         return TRUE;
+ 
+     if (nonEmpty && priv->buffer) {
+-        // We should unlock and lock buffer in order to update texture content on some devices
+-        // In most cases AHardwareBuffer uses DMA memory which is shared between CPU and GPU
+-        // and this is not needed. But according to docs we should do it for any case.
+-        // Also according to AHardwareBuffer docs simultaneous reading in rendering thread and
+-        // locking for writing in other thread is fine.
++        /* Flush any initial CPU writes once, then leave AHB unmapped for GPU-only frames.
++         * Later CPU painting maps it in PrepareAccess and flushes in FinishAccess, under the
++         * GPU ownership lock. Retain the legacy FD path's existing mapping behavior. */
+         if (priv->locked) {
+-            LorieBuffer_unlock(priv->buffer);
+-            status = LorieBuffer_lock(priv->buffer, &priv->locked);
+-            if (status)
+-                FatalError("Failed to lock the surface: %d\n", status);
++            if (LorieBuffer_description(priv->buffer)->type == LORIEBUFFER_AHARDWAREBUFFER)
++                lorieReleaseCpuMapping(priv);
++            else {
++                LorieBuffer_unlock(priv->buffer);
++                status = LorieBuffer_lock(priv->buffer, &priv->locked);
++                if (status)
++                    FatalError("Failed to lock the surface: %d\n", status);
++            }
+         }
+ 
+         DamageEmpty(pvfb->damage);
+@@ -663,13 +678,12 @@
+     if (isRoot) {
+         old = LORIE_PIXMAP_PRIV_FROM_PIXMAP(oldPixmap);
+         new = LORIE_PIXMAP_PRIV_FROM_PIXMAP(newPixmap);
+-        if (old && old->buffer && old->locked) {
+-            LorieBuffer_unlock(old->buffer);
+-            old->locked = NULL;
+-            old->wasLocked = false;
+-        }
++        lorieReleaseCpuMapping(old);
+         if (new && new->buffer && !new->locked) {
+-            LorieBuffer_lock(new->buffer, &new->locked);
++            /* A flipped AHB was produced by the GPU; importing it as root is not a CPU
++             * access. CPU cursor/painting operations will map it through EXA as needed. */
++            if (LorieBuffer_description(new->buffer)->type != LORIEBUFFER_AHARDWAREBUFFER)
++                LorieBuffer_lock(new->buffer, &new->locked);
+             new->wasLocked = false;
+         }
+     }
+@@ -1326,13 +1340,16 @@
+ 
+ Bool loriePrepareAccess(PixmapPtr pPix, int index) {
+     LoriePixmapPriv *priv = exaGetPixmapDriverPrivate(pPix);
+-    if (lorieNeedsGpuLock(pPix, priv, index))
++    Bool gpuLock = lorieNeedsGpuLock(pPix, priv, index);
++    if (gpuLock)
+         lorie_mutex_lock(&pvfb->state->lock, &pvfb->state->lockingPid);
+ 
+     if (!priv->locked && !priv->mem) {
+         int err = LorieBuffer_lock(priv->buffer, &priv->locked);
+         if (err) {
+             dprintf(2, "Failed to lock buffer, err %d\n", err);
++            if (gpuLock)
++                lorie_mutex_unlock(&pvfb->state->lock, &pvfb->state->lockingPid);
+             return FALSE;
+         }
+         priv->wasLocked = FALSE;
+@@ -1345,14 +1362,12 @@
+ 
+ void lorieFinishAccess(PixmapPtr pPix, int index) {
+     LoriePixmapPriv *priv = exaGetPixmapDriverPrivate(pPix);
+-    if (lorieNeedsGpuLock(pPix, priv, index))
++    Bool gpuLock = lorieNeedsGpuLock(pPix, priv, index);
++    /* CPU writes and their cache flush must finish before the renderer can take ownership. */
++    if (!priv->wasLocked)
++        lorieReleaseCpuMapping(priv);
++    if (gpuLock)
+         lorie_mutex_unlock(&pvfb->state->lock, &pvfb->state->lockingPid);
+-
+-    if (!priv->wasLocked) {
+-        LorieBuffer_unlock(priv->buffer);
+-        priv->locked = NULL;
+-        priv->wasLocked = FALSE;
+-    }
+ }
+ 
+ static ExaDriverRec lorieExa = {

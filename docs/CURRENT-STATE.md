@@ -1,6 +1,8 @@
 # 当前运行基线：r3.5 可复现构建版（2026-10-15）
 
-2026-10-17（0009 分批候选安装后）：针对已确认的 25 矩形回退，新增 0009：撤掉 0008 全可见区放宽，保留精确裁剪，将 25 块拆成 16+9 两项，一次发布、共用一个 Present serial 和所有权/完成栅栏。共享布局不变，现有 8 项队列可原子接收最多 128 块，容量不足仍安全回退。干净 arm64 构建、签名/对齐/包内库校验、生产函数主机回归及旧版负向对照通过。已直接安装并打开 APK `88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`，未运行 zink、未停止桌面；**当前服务端仍映射旧 `7f13f30e…`，0009 尚未在服务端生效，性能目标仍未完成**。用户保存工作后的重启正在协调，不能据构建或安装结果声称帧率修复。见 [分批候选证据](../evidence/present-copy-chunks-2026-10-17.json)。
+2026-10-17（0009 实测与 0010 候选安装）：用户重启后，分批版 `88ce7f61…` 已在两端实际加载；完整无追踪 600 帧、640×480 探针 **81.98 次提交/秒，P95 20.87 ms**，X server CPU 282.34 ms/s。独立诊断中 822 个 Present 已卸载 GPU，其中 240 个 25 矩形 Present 各用两项；**没有 CopyFallback 事件，pixman 软件拷贝热点未再采到**。相较此前约 43.73/s 已有改善，但桌面负载不同，不是严格 A/B，尚未达到预期 110～120。带调用链的独立采样证明剩余热点在 `lorieRedraw` 的整屏 AHB CPU lock/unlock（children 73%，缓存清理/失效占 self 样本约 63%）。据此增加 0010：AHB 根缓冲发布后不立即重新 CPU 映射，真实 CPU 绘制仍按 EXA access 映射并在释放 GPU 锁前刷新；GPU flip 不新建 CPU 映射，保留 legacy FD 路径及 GPU 栅栏。生产函数 UBSan 回归、故意错误的刷新顺序负向对照、干净 arm64 构建与包校验通过。已直接安装/打开 `804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39`，未停桌面、未运行 zink；**服务端仍是 `88ce7f61…`，0010 尚待用户保存工作后重启及实机验收，目标仍未完成**。见 [根缓冲 CPU 访问证据](../evidence/scoped-root-cpu-access-2026-10-17.json)。
+
+2026-10-17（0009 安装后的历史快照，已由上方重启实测及 0010 状态取代）：针对已确认的 25 矩形回退，新增 0009：撤掉 0008 全可见区放宽，保留精确裁剪，将 25 块拆成 16+9 两项，一次发布、共用一个 Present serial 和所有权/完成栅栏。共享布局不变，现有 8 项队列可原子接收最多 128 块，容量不足仍安全回退。干净 arm64 构建、签名/对齐/包内库校验、生产函数主机回归及旧版负向对照通过。已直接安装并打开 APK `88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`，未运行 zink、未停止桌面；**当前服务端仍映射旧 `7f13f30e…`，0009 尚未在服务端生效，性能目标仍未完成**。用户保存工作后的重启正在协调，不能据构建或安装结果声称帧率修复。见 [分批候选证据](../evidence/present-copy-chunks-2026-10-17.json)。
 
 2026-10-17（用户重启后）：**新版 APK 已在 X server 与 renderer 两端实际加载，但卡顿修复未达标**。X server 新 PID 28829 / start_ticks 40999047，Android renderer PID 852；两端从可执行映射对应 APK 读出的 SHA-256 均为 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`，Mali 映射与 `[1,120,15]` 正常，物理显示 mode 1 / 120.00001 Hz。无 atrace/simpleperf/dumpsys 轮询的完整 600 帧、640×480 探针为 **43.73 次提交/秒**，帧间隔 P50 25.07 ms / P95 38.04 ms，退出 0、Mali renderer 与成功标记通过。此前 3000 帧尝试在 65 秒超时，已落盘 2703 帧的内部速率约 41.79/s，保留为中断记录，不冒充完整测量。独立 6 秒诊断抓到 **214 次 `CopyFallback.4.25.0`**：最终区域 25 块仍超过 GPU 队列单项的 16 块限制；pixman 占 X server CPU 周期样本 81.65%。本场景的矩形数拒绝原因现已证实，不能继续宣称 0008 已消除软件拷贝。历史约 80.1/s 来自旧桌面负载，不构成严格同条件 A/B，不能直接把差值全归于补丁。未继续扩张视觉验收，未测屏幕新内容 FPS、功耗或输入延迟；保留当前会话，未再次重启，追踪已关闭。见 [重启后验收证据](../evidence/present-fragmented-post-restart-2026-10-17.json)。
 
@@ -26,7 +28,7 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装 APK SHA-256：`88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`；状态 `installed-server-restart-pending`，renderer 已更新，X server 仍映射 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0008 服务端性能验收失败，0009 服务端尚待加载验收。
+- 当前已安装 APK SHA-256：`804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39`；状态 `installed-server-restart-pending`，renderer 已更新，X server 仍映射 `88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009 已实测消除本场景矩形回退，帧率约 82/s；0010 服务端尚待加载验收。
 - 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界

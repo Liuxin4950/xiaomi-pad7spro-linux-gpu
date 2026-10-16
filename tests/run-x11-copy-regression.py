@@ -9,7 +9,8 @@ import tempfile
 
 
 def function(source, name):
-    match = re.search(r'^(?:Bool|void)\s+' + name + r'\([^;{]*\)\s*\{', source, re.M)
+    match = re.search(r'^(?:static\s+(?:inline\s+)?(?:__always_inline\s+)?)?(?:Bool|void)\s+'
+                      + name + r'\([^;{]*\)\s*\{', source, re.M)
     if not match:
         raise ValueError('production function not found: ' + name)
     start, body = match.start(), match.end() - 1
@@ -33,11 +34,16 @@ def main():
     types = header[start:header.index('struct lorie_shared_server_state', start)]
     end = header.index('    } gpuCopyQueue;') + len('    } gpuCopyQueue;')
     start = header.rfind('    struct {', 0, end)
-    queue = 'struct test_server_state {\n' + header[start:end] + '\n};\n'
-    names = ('lorieTryScheduleGpuCopy', 'lorieGpuCopyIsDone', 'lorieGpuCopyFailed', 'lorieGpuCopyAck')
+    queue = 'struct test_server_state { int lock, lockingPid;\n' + header[start:end] + '\n};\n'
+    names = ['lorieTryScheduleGpuCopy', 'lorieGpuCopyIsDone', 'lorieGpuCopyFailed', 'lorieGpuCopyAck']
+    scoped = 'static void lorieReleaseCpuMapping(' in implementation
+    if scoped:
+        names = ['lorieReleaseCpuMapping', 'lorieNeedsGpuLock',
+                 'loriePrepareAccess', 'lorieFinishAccess', *names]
     with tempfile.TemporaryDirectory(prefix='x11-copy-regression-') as directory:
         out = Path(directory)
-        (out / 'production-types.h').write_text(types + queue)
+        (out / 'production-types.h').write_text(('#define TEST_SCOPED_CPU_ACCESS 1\n' if scoped else '')
+                                               + types + queue)
         (out / 'production-copy.h').write_text('\n'.join(function(implementation, name) for name in names))
         binary = out / 'regression'
         subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',

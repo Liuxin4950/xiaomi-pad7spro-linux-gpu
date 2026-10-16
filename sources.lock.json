@@ -123,6 +123,10 @@
       {
         "path": "patches/termux-x11/0009-atomic-clipped-copy-chunks.patch",
         "sha256": "7f30833935093a42ef202e93191a1e0546228d9640a39f39852b10486a2e981d"
+      },
+      {
+        "path": "patches/termux-x11/0010-scoped-root-cpu-access.patch",
+        "sha256": "8984d9f88984866c00ea1c5ddbbd91038afe38731e03633b4b18e90ff75c35ec"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

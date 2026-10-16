@@ -1,4 +1,5 @@
 /* Exercise production queue publication, exact clipping, ownership and failure grouping. */
+#define _GNU_SOURCE
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -15,10 +16,11 @@ typedef struct { int16_t x1, y1, x2, y2; } BoxRec, *BoxPtr;
 typedef struct { int count; BoxPtr rects; } RegionRec, *RegionPtr;
 #define RegionNumRects(r) ((r)->count)
 #define RegionRects(r) ((r)->rects)
-typedef struct { uint64_t id; } LorieBuffer_Desc;
-typedef struct { LorieBuffer_Desc desc; int refs, pending, sampleable; } LorieBuffer;
-typedef struct { LorieBuffer *buffer; void *mem, *locked; } LoriePixmapPriv;
-typedef struct { struct { unsigned width, height; } drawable; LoriePixmapPriv priv; } PixmapRec, *PixmapPtr;
+typedef struct { uint64_t id; int type; } LorieBuffer_Desc;
+typedef struct { LorieBuffer_Desc desc; int refs, pending, sampleable, cpu_locked; } LorieBuffer;
+typedef struct { LorieBuffer *buffer; void *mem, *locked; int wasLocked; } LoriePixmapPriv;
+typedef struct { struct { unsigned width, height; } drawable; LoriePixmapPriv priv;
+                 struct { void *ptr; } devPrivate; } PixmapRec, *PixmapPtr;
 #define LORIE_PIXMAP_PRIV_FROM_PIXMAP(p) (&(p)->priv)
 static struct test_server_state state;
 static struct {
@@ -28,9 +30,13 @@ static struct {
     uint64_t gpuCopySerialCounter;
     int rootGpuCopyPending;
 } server, *pvfb = &server;
-static struct { PixmapPtr devPrivate; } screen, *pScreenPtr = &screen;
+static struct TestScreen { PixmapPtr devPrivate;
+    PixmapPtr (*GetScreenPixmap)(struct TestScreen *);
+} screen, *pScreenPtr = &screen;
 static unsigned gpuCopyAttempts, gpuCopyOffloads, signals, registrations;
 static unsigned fallback_reason;
+static unsigned map_begins, map_ends;
+static int gpu_lock_depth, flush_requires_gpu_lock, fail_next_mapping;
 static void *rendererCond;
 static int lorieConnectionAlive(void) { return 1; }
 static int lorieRendererAvailable(void) { return 1; }
@@ -39,8 +45,15 @@ static LorieBuffer *lorieEnsureGpuSampleable(PixmapPtr p, int type) {
     return p->priv.buffer->sampleable ? p->priv.buffer : NULL;
 }
 static const LorieBuffer_Desc *LorieBuffer_description(LorieBuffer *b) { return &b->desc; }
-static void LorieBuffer_unlock(LorieBuffer *b) { (void)b; }
-static int LorieBuffer_lock(LorieBuffer *b, void **locked) { *locked = b; return 0; }
+static int LorieBuffer_unlock(LorieBuffer *b) {
+    assert(b->cpu_locked);
+    if (flush_requires_gpu_lock) assert(gpu_lock_depth==1);
+    b->cpu_locked=0; ++map_ends; return 0;
+}
+static int LorieBuffer_lock(LorieBuffer *b, void **locked) {
+    if (fail_next_mapping) { fail_next_mapping=0; *locked=NULL; return -1; }
+    assert(!b->cpu_locked); b->cpu_locked=1; ++map_begins; *locked=b; return 0;
+}
 static void LorieBuffer_acquire(LorieBuffer *b) { ++b->refs; }
 static void LorieBuffer_release(LorieBuffer *b) { assert(b->refs > 1); --b->refs; }
 static void LorieBuffer_gpuCopyPendingInc(LorieBuffer *b) { ++b->pending; }
@@ -53,6 +66,19 @@ static void lorieTraceEvent(const char *stage, uint64_t a, uint64_t b) {
 static void FatalError(const char *format, int status) { (void)format; (void)status; abort(); }
 static int signal_renderer(void *condition) { (void)condition; ++signals; return 0; }
 #define pthread_cond_signal signal_renderer
+#ifdef TEST_SCOPED_CPU_ACCESS
+#define EXA_PREPARE_DEST 1
+#define EXA_PREPARE_SRC 0
+static LoriePixmapPriv *exaGetPixmapDriverPrivate(PixmapPtr p) { return &p->priv; }
+static int LorieBuffer_hasGpuCopyPending(LorieBuffer *b) { return b->pending!=0; }
+static PixmapPtr get_screen_pixmap(struct TestScreen *s) { return s->devPrivate; }
+static void lorie_mutex_lock(void *lock, void *owner) {
+    (void)lock; (void)owner; assert(!gpu_lock_depth); ++gpu_lock_depth;
+}
+static void lorie_mutex_unlock(void *lock, void *owner) {
+    (void)lock; (void)owner; assert(gpu_lock_depth==1); --gpu_lock_depth;
+}
+#endif
 #include "production-copy.h"
 
 static BoxRec boxes[129];
@@ -66,11 +92,13 @@ static void reset(uint32_t read, uint32_t write, int redirected) {
     memset(&server, 0, sizeof(server));
     server.state = &state;
     server.gpuCopySerialCounter = 50;
-    src = (LorieBuffer){{7},1,0,1}; dst = (LorieBuffer){{8},1,0,1};
-    source = (PixmapRec){{96,96},{&src,NULL,NULL}};
-    destination = (PixmapRec){{96,96},{&dst,NULL,NULL}};
+    src = (LorieBuffer){{7,1},1,0,1,0}; dst = (LorieBuffer){{8,1},1,0,1,0};
+    source = (PixmapRec){.drawable={96,96},.priv={.buffer=&src}};
+    destination = (PixmapRec){.drawable={96,96},.priv={.buffer=&dst}};
     screen.devPrivate = redirected ? &source : &destination;
     signals = registrations = gpuCopyAttempts = gpuCopyOffloads = fallback_reason = 0;
+    map_begins=map_ends=0;
+    gpu_lock_depth=flush_requires_gpu_lock=fail_next_mapping=0;
     /* Disjoint tiles leave protected holes that must never become a bounding-box copy. */
     for (unsigned i=0; i<129; ++i)
         boxes[i] = (BoxRec){(i%16)*4,(i/16)*4,(i%16)*4+2,(i/16)*4+2};
@@ -130,12 +158,54 @@ static void capacity(void) {
     assert(fallback_reason==4 && state.gpuCopyQueue.writeIndex==0 && src.refs==1);
 }
 
+#ifdef TEST_SCOPED_CPU_ACCESS
+static void scoped_cpu_access(void) {
+    reset(0,0,0); screen.GetScreenPixmap=get_screen_pixmap;
+    /* Publish initial CPU content once; pure GPU frames must not remap the root. */
+    assert(!LorieBuffer_lock(&dst,&destination.priv.locked));
+    lorieReleaseCpuMapping(&destination.priv);
+    assert(!destination.priv.locked && !dst.cpu_locked && map_begins==1 && map_ends==1);
+    for (int i=0;i<100;++i) lorieReleaseCpuMapping(&destination.priv);
+    assert(map_begins==1 && map_ends==1);
+    /* A real CPU write still maps the root and flushes it before releasing GPU ownership. */
+    assert(loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+    assert(gpu_lock_depth==1 && dst.cpu_locked && !destination.priv.wasLocked);
+    assert(destination.devPrivate.ptr==destination.priv.locked);
+    flush_requires_gpu_lock=1;
+    lorieFinishAccess(&destination,EXA_PREPARE_DEST);
+    assert(!gpu_lock_depth && !dst.cpu_locked && !destination.priv.locked);
+    /* CPU reads while a root/redirected GPU write is pending use the same ownership lock. */
+    server.rootGpuCopyPending=1;
+    assert(loriePrepareAccess(&destination,EXA_PREPARE_SRC));
+    assert(gpu_lock_depth==1); lorieFinishAccess(&destination,EXA_PREPARE_SRC);
+    server.rootGpuCopyPending=0; src.pending=1;
+    assert(loriePrepareAccess(&source,EXA_PREPARE_SRC));
+    assert(gpu_lock_depth==1); lorieFinishAccess(&source,EXA_PREPARE_SRC);
+    src.pending=0; flush_requires_gpu_lock=0;
+    /* A failed CPU mapping must not strand the shared GPU lock. */
+    fail_next_mapping=1;
+    assert(!loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+    assert(!gpu_lock_depth && !dst.cpu_locked);
+    /* Existing persistent regular/FD CPU mappings retain their old ownership policy. */
+    src.desc.type=0;
+    assert(!LorieBuffer_lock(&src,&source.priv.locked));
+    assert(loriePrepareAccess(&source,EXA_PREPARE_SRC) && source.priv.wasLocked);
+    lorieFinishAccess(&source,EXA_PREPARE_SRC);
+    assert(src.cpu_locked && source.priv.locked && !gpu_lock_depth);
+    lorieReleaseCpuMapping(&source.priv);
+}
+#endif
+
 int main(void) {
     const unsigned counts[]={1,16,17,25,32,127,128};
     for (unsigned i=0;i<sizeof(counts)/sizeof(counts[0]);++i)
         for (int redirected=0;redirected<2;++redirected) accepted(counts[i],0,redirected);
     accepted(25,UINT32_MAX-1,0); accepted(128,UINT32_MAX-3,1);
     capacity();
+#ifdef TEST_SCOPED_CPU_ACCESS
+    scoped_cpu_access();
+    puts("X11_SCOPED_CPU_ACCESS_OK: lazy root mapping, CPU writes/reads, flush before GPU release, mapping failure unlock");
+#endif
     puts("X11_COPY_CHUNKS_REGRESSION_OK: exact clipping, wrap, atomic capacity, grouped failure, root/redirected ownership");
     return 0;
 }

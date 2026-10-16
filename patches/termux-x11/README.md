@@ -133,3 +133,12 @@ python3 tests/run-x11-copy-regression.py build/x11-rect-chunks-20261017/source
 ```
 
 候选已直接覆盖安装并打开 Activity，未运行 zink 脚本；服务端尚待保存工作后的重启及实机验收。状态与哈希见 [分批候选证据](../../evidence/present-copy-chunks-2026-10-17.json)。
+
+
+## 根缓冲的按需 CPU 映射候选
+
+[0010-scoped-root-cpu-access.patch](0010-scoped-root-cpu-access.patch) 在 0009 后应用，SHA-256 `8984d9f88984866c00ea1c5ddbbd91038afe38731e03633b4b18e90ff75c35ec`。0009 的真实采样已消除矩形数回退，帧率约 82/s；剩余 X server CPU 成本主要在 `lorieRedraw` 对整屏 AHB 做不必要的 CPU lock/unlock 缓存维护。
+
+0010 发布根缓冲时结束已有 CPU 映射，纯 GPU 帧不立即重新映射；切到 GPU 生产的 AHB root 也不开始 CPU 访问。真实 CPU 绘制仍由 EXA PrepareAccess/FinishAccess 映射，缓存刷新发生在释放 GPU 所有权锁之前；映射失败时不遗留该锁。legacy FD 映射周期、共享 ABI、队列、GPU fence 和厂商 Mali 不变。
+
+扩展 `tests/run-x11-copy-regression.py PATCHED_SOURCE` 检查按需 root 映射、真实 CPU 写入/读回、先刷新后释放 GPU 锁、失败解锁与持久 regular/FD 映射；故意恢复错误释放顺序的负向对照会失败。主机回归和干净 arm64 构建、签名/对齐/包内库校验通过，候选已直接安装；服务端尚待切换，不能宣称已取得帧率或功耗收益。完整范围见 [证据](../../evidence/scoped-root-cpu-access-2026-10-17.json)。

@@ -1,0 +1,217 @@
+{
+  "date": "2026-10-17",
+  "state": "installed-server-restart-pending",
+  "scope": "0009 runtime result and evidenced next bottleneck; 0010 scoped-root-CPU-access candidate built, host-tested and directly installed.",
+  "chunk_candidate_post_restart": {
+    "runtime": {
+      "date": "2026-10-17",
+      "state": "new-chunk-apk-active",
+      "runtime": {
+        "android_app": {
+          "pid": 3663,
+          "start_ticks": 41025709,
+          "cmdline": "com.termux.x11",
+          "mapped_apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+          "mali_egl_mapped": true
+        },
+        "server": {
+          "pid": 16977,
+          "start_ticks": 41121395,
+          "cmdline": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+          "mapped_apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+          "mali_egl_mapped": true
+        }
+      },
+      "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+      "display_clock": "_TERMUX_X11_DISPLAY_CLOCK(CARDINAL) = 1, 120, 15",
+      "tracing_on": "0",
+      "atrace_tags": "0"
+    },
+    "untraced_600_frames": {
+      "frames": 600,
+      "fps": 81.98465651213252,
+      "frame_interval_ms": {
+        "p50": 11.368516,
+        "mean": 12.197404277128548,
+        "p95": 20.872091,
+        "p99": 27.336887379999943,
+        "max": 36.912604
+      },
+      "interval_buckets": {
+        "lt_9.5ms": 174,
+        "9.5_15ms": 299,
+        "15_21ms": 97,
+        "21_30ms": 23,
+        "gt_30ms": 6
+      },
+      "cpu_ms_per_second": {
+        "android_app": 380.43488341598123,
+        "server": 282.34365912057143
+      },
+      "exit_code": 0,
+      "success_marker": true,
+      "wall_seconds": 7.543998000997817,
+      "command": [
+        "/usr/local/bin/gpu-run",
+        "vulkan",
+        "/opt/pad7spro-gpu-r3.5-repro-20261015/bin/probe-present",
+        "--bgra",
+        "--motion",
+        "--cycles",
+        "1",
+        "--frames",
+        "600",
+        "--delay-ms",
+        "0",
+        "--width",
+        "640",
+        "--height",
+        "480",
+        "--timings",
+        "/opt/pad7spro-gpu-release-test/repository/build/present-rect-batches-20261017/acceptance/short-untraced.timings.csv"
+      ],
+      "instrumentation": "No atrace/simpleperf/dumpsys during measurement; only endpoint CPU counters."
+    },
+    "diagnostic": {
+      "probe_exit_code": 0,
+      "simpleperf_exit_code": 0,
+      "server_pid": 16977,
+      "trace_stage_counts": {
+        "Tick": 777,
+        "CopyEnqueue": 822,
+        "CopyChunks": 822,
+        "CopyRects": 822,
+        "PresentCopy": 822,
+        "CopyBatchIssue": 611,
+        "CopyDraws": 1062,
+        "CopyPixels": 1062,
+        "CopyIssued": 1062,
+        "CopyAndRootFenceWait": 945,
+        "CopyDone": 611,
+        "SurfaceTime": 4229,
+        "SurfaceSubmit": 617,
+        "eglSwapBuffers": 617
+      },
+      "fallback_counts": {},
+      "chunks_per_present_histogram": {
+        "1": 582,
+        "2": 240
+      },
+      "rectangles_per_present_histogram": {
+        "3": 4,
+        "25": 240,
+        "1": 578
+      },
+      "note": "Diagnostic only: trace and simpleperf are separate from the untraced throughput sample.",
+      "tracing_on_after": "0",
+      "atrace_tags_after": "0"
+    },
+    "traced_durations": {
+      "CopyBatchIssue": {
+        "count": 611,
+        "p50_ms": 0.13800000306218863,
+        "p95_ms": 0.30800001695752144,
+        "max_ms": 5.668000027071685
+      },
+      "CopyAndRootFenceWait": {
+        "count": 944,
+        "p50_ms": 3.5444999812170863,
+        "p95_ms": 5.975000036414713,
+        "max_ms": 13.65600002463907
+      },
+      "eglSwapBuffers": {
+        "count": 617,
+        "p50_ms": 0.7530000293627381,
+        "p95_ms": 1.0730000212788582,
+        "max_ms": 3.911999985575676
+      },
+      "tick_interval": {
+        "p50_ms": 8.34000000031665,
+        "p95_ms": 9.682999982032925
+      }
+    },
+    "pixman_composite_src_self_samples": "not observed in this diagnostic report",
+    "comparison": "Previous 0008 sample was 43.73 submissions/s and P95 38.04 ms; 0009 measured 81.98/s and P95 20.87 ms. Same probe arguments, different restarted desktop/client load, not strict old/new controlled A/B.",
+    "result": "25-rectangle fallback removed in this trace: 240 such Presents used 2 GPU queue entries; 822 total Presents offloaded, no sampled fallback. Frame-rate objective still not met."
+  },
+  "remaining_bottleneck_evidence": {
+    "record_command": "simpleperf record -g -p 16977 --duration 6 -f 250",
+    "samples": 329,
+    "callgraph_children_percent": {
+      "lorieRedraw": 73.0,
+      "AHardwareBuffer_lock": 36.54,
+      "LorieBuffer_unlock": 31.32
+    },
+    "self_cpu_samples_percent": {
+      "dcache_inval_poc": 34.63,
+      "dcache_clean_poc": 28.28
+    },
+    "interpretation": "Sampled X server CPU time is dominated by full-root AHB CPU-access cache synchronization inside lorieRedraw; this is not whole-device power and child shares overlap.",
+    "source": "build/present-rect-batches-20261017/acceptance/cache-attribution.callgraph.txt"
+  },
+  "patch": {
+    "path": "patches/termux-x11/0010-scoped-root-cpu-access.patch",
+    "sha256": "8984d9f88984866c00ea1c5ddbbd91038afe38731e03633b4b18e90ff75c35ec"
+  },
+  "implementation": {
+    "root_redraw": "Release an existing AHB CPU mapping once before publishing root damage; do not immediately map it again on GPU-only frames. Keep legacy FD mapping cycle.",
+    "root_flip": "Switching to a GPU-produced AHB root does not begin CPU access; later CPU drawing uses existing EXA access hooks.",
+    "cpu_access": "Existing PrepareAccess/FinishAccess map real CPU work; finish CPU writes/cache flush before releasing shared GPU ownership lock. Release that lock on failed PrepareAccess mapping.",
+    "preserved": "No queue/shared ABI, Mali driver, system service, software fallback or renderer fence changes."
+  },
+  "validation": {
+    "state": "apk-built-not-installed",
+    "apk_sha256": "804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39",
+    "apk_bytes": 22528319,
+    "native_sha256": "df6196b9d936dc5fbcf655fe9f1e375e309cdd35a3c1bebdc30b91ca94be8369",
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "signature_verified": true,
+    "zip_crc_verified": true,
+    "zipalign_16k_verified": true,
+    "production_copy_and_cpu_mapping_regression": "passed with UBSan",
+    "flush_after_GPU_unlock_negative_control": "failed as expected: CPU flush must occur under GPU ownership lock",
+    "shared_abi": "lorie.h unchanged from 0009",
+    "build_report_sha256": "29f2e9821d9a765c6d090ec66ea1d7d4ecbaee2ff17b128692117d205ebcb723"
+  },
+  "deployment": {
+    "date": "2026-10-17",
+    "state": "installed-server-restart-pending",
+    "installed_apk_sha256": "804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39",
+    "install_output": "Success",
+    "activity_open_output": "Starting: Intent { cmp=com.termux.x11/.MainActivity }",
+    "rollback_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+    "desktop_stop_invoked": false,
+    "zink_script_invoked": false,
+    "runtime_after_install": {
+      "android_app": {
+        "pid": 13299,
+        "start_ticks": 41095283,
+        "mapped_apk_sha256": "804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39"
+      },
+      "server": {
+        "pid": 16977,
+        "start_ticks": 41121395,
+        "mapped_apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7"
+      }
+    }
+  },
+  "candidate": "build/x11-scoped-cpu-20261017/candidate.apk",
+  "rollback": "build/root-cpu-access-20261017/rollback/pre-scoped.apk",
+  "runtime_acceptance": "0010 has not loaded in X server yet. No 0010 FPS gain, cache reduction or physical-screen correctness claim.",
+  "next_step": "User saved-work server restart pending; do not run zink scripts. Verify both mapped hashes are 804ecfc9..., then untraced 600/3000-frame throughput, separate fallback/cache attribution, protected clip-hole screen pixels and incremental/resize/flip checks. Physical clip test is prepared in build/root-cpu-access-20261017/check-clip-screen.py and refuses an old server.",
+  "artifacts": {
+    "directory": "build/root-cpu-access-20261017",
+    "sha256": {
+      "copy-and-cpu-access-regression.log": "10304fe2bc7192f0824b91e0f8d7c6463ff5ec7f6337961efbcfa1c1ba596886",
+      "flush-order-negative-control.log": "60f30bf4757fa188613b81e6913745bc43ce444065f26a927f314a572b6dbe46",
+      "candidate-signature.txt": "bbe4ea3885dc2b5b20fa141377332b5779ed69080b7f33a11af63b769622f544",
+      "verification.json": "9248884e10e06cddd531f38a8dd2d4f9833df124486e0a3910be4ae4bcd2190d",
+      "deployment.json": "4b8b4eeb5e8757c1a9c8412ccfb020c223bf241d5038ff777209d506bf9caeb8",
+      "build.log": "5adfd5ad60707e8fb0827581b02cf7bf025ffca7d61cc7050d99ad1709377aa8",
+      "clip-overlay.c": "bcbd41c98d9b0d233a1f0344c75a2b458cd22831634717df19fe109dbbb8f750",
+      "check-clip-screen.py": "e59f122fea542004db64b126c2f7a02bad8bd47ad62789d3e67b7f5612c02881"
+    },
+    "chunk_measurements_directory": "build/present-rect-batches-20261017/acceptance",
+    "cache_callgraph_sha256": "1f473142bf8e682a0ca552fdbdfa3e4db3f5042adf8d611b50408924bd58b6a9"
+  }
+}
