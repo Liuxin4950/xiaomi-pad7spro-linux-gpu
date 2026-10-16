@@ -118,3 +118,18 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 原实现拒绝超过 `LORIE_GPU_COPY_MAX_RECTS`（16）块的 GPU 拷贝。候选在裁剪后区域超过 `LORIE_GPU_COPY_WIDEN_RECTS`（8）块时，改用“完整可见源”超集拷贝；写入真实 screen pixmap 时仍与 clipList 求交，保留弹窗/IME 遮挡。若完整可见区本身仍超过 16 块，仍会安全回退 CPU；阈值 8 不保证最终矩形数低于 16。区域放大不收窄 damage 提示，不改动消费端历史与失败修复语义。
 
 新增 `PAD_X11.CopyFallback.<reason>.<rects>` 埋点：1=禁用/legacy，2=无渲染器，3=缓冲不可采样，4=矩形数为零或超限，5=队列满。已有采样证明卡顿期间大量时间用于 tick 线程的 pixman 拷贝；**具体拒绝原因仍待新版埋点确认**，不能把“超过 16 块”写成已证实根因，也不能据此直接扩展缓冲或队列实现。构建、部署及验收状态见 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
+
+
+## 精确裁剪区域的原子 GPU 分批候选
+
+[0009-atomic-clipped-copy-chunks.patch](0009-atomic-clipped-copy-chunks.patch) 在 0008 后应用，SHA-256 `7f30833935093a42ef202e93191a1e0546228d9640a39f39852b10486a2e981d`。0008 的实际验收抓到最终区域仍为 25 块，超过单项 16 块限制；其全可见源放宽未消除 CPU 回退。
+
+0009 撤掉放宽，保留精确 damage/clipList，把一个 Present 分成多项（每项最多 16 块）后一次发布，沿用现有 8 项共享队列。所有分块共用一个 Present serial、一次源/目标引用和同一完成栅栏；首块失败也会使该 Present 报告失败，不能提前 Idle。容量不足时不发布部分工作、不取得引用。队列 ABI 和字段布局不变；最多 128 块，超量/容量不足保留安全 CPU 回退。
+
+干净 arm64 构建与签名、16 KiB ZIP 对齐、原生库哈希通过。以下定向回归直接提取已打补丁的生产 C 函数与共享队列类型，用主机缓冲 stub + UBSan 检查精确裁剪、边界/回绕、原子容量、分组失败和 root/redirected 引用；旧实现负向对照在 17 块失败。这不是物理屏幕验收。
+
+```sh
+python3 tests/run-x11-copy-regression.py build/x11-rect-chunks-20261017/source
+```
+
+候选已直接覆盖安装并打开 Activity，未运行 zink 脚本；服务端尚待保存工作后的重启及实机验收。状态与哈希见 [分批候选证据](../../evidence/present-copy-chunks-2026-10-17.json)。

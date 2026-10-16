@@ -119,6 +119,10 @@
       {
         "path": "patches/termux-x11/0008-present-fragmented-damage-gpu-copy.patch",
         "sha256": "016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399"
+      },
+      {
+        "path": "patches/termux-x11/0009-atomic-clipped-copy-chunks.patch",
+        "sha256": "7f30833935093a42ef202e93191a1e0546228d9640a39f39852b10486a2e981d"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

@@ -1,5 +1,7 @@
 # 当前运行基线：r3.5 可复现构建版（2026-10-15）
 
+2026-10-17（0009 分批候选安装后）：针对已确认的 25 矩形回退，新增 0009：撤掉 0008 全可见区放宽，保留精确裁剪，将 25 块拆成 16+9 两项，一次发布、共用一个 Present serial 和所有权/完成栅栏。共享布局不变，现有 8 项队列可原子接收最多 128 块，容量不足仍安全回退。干净 arm64 构建、签名/对齐/包内库校验、生产函数主机回归及旧版负向对照通过。已直接安装并打开 APK `88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`，未运行 zink、未停止桌面；**当前服务端仍映射旧 `7f13f30e…`，0009 尚未在服务端生效，性能目标仍未完成**。用户保存工作后的重启正在协调，不能据构建或安装结果声称帧率修复。见 [分批候选证据](../evidence/present-copy-chunks-2026-10-17.json)。
+
 2026-10-17（用户重启后）：**新版 APK 已在 X server 与 renderer 两端实际加载，但卡顿修复未达标**。X server 新 PID 28829 / start_ticks 40999047，Android renderer PID 852；两端从可执行映射对应 APK 读出的 SHA-256 均为 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`，Mali 映射与 `[1,120,15]` 正常，物理显示 mode 1 / 120.00001 Hz。无 atrace/simpleperf/dumpsys 轮询的完整 600 帧、640×480 探针为 **43.73 次提交/秒**，帧间隔 P50 25.07 ms / P95 38.04 ms，退出 0、Mali renderer 与成功标记通过。此前 3000 帧尝试在 65 秒超时，已落盘 2703 帧的内部速率约 41.79/s，保留为中断记录，不冒充完整测量。独立 6 秒诊断抓到 **214 次 `CopyFallback.4.25.0`**：最终区域 25 块仍超过 GPU 队列单项的 16 块限制；pixman 占 X server CPU 周期样本 81.65%。本场景的矩形数拒绝原因现已证实，不能继续宣称 0008 已消除软件拷贝。历史约 80.1/s 来自旧桌面负载，不构成严格同条件 A/B，不能直接把差值全归于补丁。未继续扩张视觉验收，未测屏幕新内容 FPS、功耗或输入延迟；保留当前会话，未再次重启，追踪已关闭。见 [重启后验收证据](../evidence/present-fragmented-post-restart-2026-10-17.json)。
 
 2026-10-17（直接安装后历史快照，已由上方用户重启后状态取代）：按用户最新指示，已覆盖安装候选 APK 并直接打开 Termux:X11，未运行 zink 脚本、未停止桌面，Linux 前缀与链接未改。已安装 APK SHA-256 为 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`。**当前为新 renderer / 旧 X server 的混合运行态，0008 服务端修复尚未生效**：Android 应用新 PID 20995 映射 APK 哈希为 `7f13f30e…`；独立 `termux-x11` 仍为 PID 20493 / start_ticks 39126354，从其已删除映射对应的 `map_files` 读出 APK 哈希仍为原 `e5aa6b77…`。直接打开 Activity 不会热换独立 X server 的 Present 实现。现有 X11 连接及 `[1,120,15]` 保持可用；未进行新版服务端的 A/B 或视觉验收。保持当前会话，另行安排 X server 重启后须重新核对映射；不得据安装成功声称卡顿已修复。见 [直接安装证据](../evidence/present-fragmented-install-2026-10-17.json)。
@@ -24,7 +26,7 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装 APK SHA-256：`7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`；状态 `new-apk-active-performance-target-not-met`，X server 与 renderer 均已映射新包。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；新版服务端已完成运行核对和定向帧率测试，性能验收失败。
+- 当前已安装 APK SHA-256：`88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`；状态 `installed-server-restart-pending`，renderer 已更新，X server 仍映射 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0008 服务端性能验收失败，0009 服务端尚待加载验收。
 - 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界

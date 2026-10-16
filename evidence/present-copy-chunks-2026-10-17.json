@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-17",
+  "state": "installed-server-restart-pending",
+  "scope": "Atomic exact-clipped GPU copy chunks, replacing ineffective whole-visible-source widening; candidate built, host-validated and directly installed, current server not restarted.",
+  "patch": {
+    "path": "patches/termux-x11/0009-atomic-clipped-copy-chunks.patch",
+    "sha256": "7f30833935093a42ef202e93191a1e0546228d9640a39f39852b10486a2e981d"
+  },
+  "implementation": {
+    "clipping": "Removed 0008 widening. Keep original damage intersected with clipList; no bounding-box overwrite across popup/IME holes.",
+    "queue": "Reserve enough of the existing 8 slots for all 16-rectangle chunks before taking references or changing payload. Write all entries, then release-publish writeIndex once.",
+    "completion": "All chunks share one monotonically allocated Present serial and one set of ownership references. Existing renderer fence covers the entire group; failure of any chunk marks that same serial failed.",
+    "memory_order": "Producer acquires consumer read watermark; renderer releases each slot after reading its entry.",
+    "shared_abi": "No field or constant changes; lorie.h identical after removing comments and whitespace.",
+    "limits": "At most 8 chunks / 128 rectangles per Present, subject to free slots. Larger regions, queue pressure and unsupported-buffer cases retain safe CPU fallback. Actual failing region was 25 rectangles (2 chunks)."
+  },
+  "validation": {
+    "state": "apk-built-not-installed",
+    "apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+    "apk_bytes": 22527191,
+    "native_sha256": "3f6e28e822b28198052c197860e5c9e468e9d214990362204ffc344aa38e27e2",
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "zipalign_16k_verified": true,
+    "zip_crc_verified": true,
+    "signature_verified": true,
+    "host_copy_regression": "passed with UBSan",
+    "old_16_rect_negative_control": "failed as expected at 17 rectangles",
+    "shared_abi": "lorie.h identical after removing comments and whitespace; original entry and shared state layout preserved",
+    "build_report_sha256": "e24dad19c2a199cbf44d8db6bdb075c2997be3401bf94a64aa4135ea6f647319",
+    "native_build": "Fresh locked source and all arm64 objects; all top-level/nested patches applied with --fuzz=0.",
+    "host_test_command": "python3 tests/run-x11-copy-regression.py build/x11-rect-chunks-20261017/source",
+    "host_test_scope": "Production enqueue/is-done/failed/ack C functions and actual shared queue types compiled with host buffer stubs and UBSan. Cases: 1/16/17/25/32/127/128 rectangles, exact sparse clips, root and redirected ownership, unsigned index wrap, insufficient capacity with no partial publication/references, first-chunk failure observable via final serial.",
+    "negative_control": "The same host test fails on the prior 16-rectangle implementation at the first 17-rectangle case.",
+    "physical_window_acceptance": "Not yet run with the new server; pending saved-work restart. Host pixel masks do not establish physical screen correctness."
+  },
+  "deployment": {
+    "date": "2026-10-17",
+    "timestamp_utc": "2026-10-16T18:12:15.051812+00:00",
+    "rollback_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+    "desktop_stop_invoked": false,
+    "zink_script_invoked": false,
+    "install_output": "Success",
+    "installed_apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+    "open_output": "Starting: Intent { cmp=com.termux.x11/.MainActivity }",
+    "state": "installed-server-restart-pending",
+    "runtime_after_direct_install": {
+      "server": {
+        "pid": 28829,
+        "start_ticks": 40999047,
+        "cmdline": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+        "mapped_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+        "mali_egl_mapped": true
+      },
+      "android_app": {
+        "pid": 29736,
+        "start_ticks": 40999419,
+        "cmdline": "com.termux.x11",
+        "mapped_apk_sha256": "88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7",
+        "mali_egl_mapped": true
+      }
+    }
+  },
+  "candidate": "build/x11-rect-chunks-20261017/candidate.apk",
+  "build_report_sha256": "e24dad19c2a199cbf44d8db6bdb075c2997be3401bf94a64aa4135ea6f647319",
+  "baseline_for_comparison": "evidence/present-fragmented-post-restart-2026-10-17.json",
+  "rollback": "build/present-rect-batches-20261017/rollback/pre-chunks.apk",
+  "next_step": "Saved-work X server restart pending user coordination. Do not run zink scripts or stop the desktop automatically. Confirm new server mapping, then measure the same untraced 640x480 workload; separately sample fallback/pixman and physical pixels/occlusion. Goal remains unproven."
+}

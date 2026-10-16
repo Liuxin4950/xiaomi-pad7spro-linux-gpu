@@ -1,0 +1,185 @@
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -1064,7 +1064,8 @@
+     BoxRec fullBox;
+     BoxPtr box;
+     int numRects, i;
+-    uint32_t writeIndex, readIndex;
++    uint32_t writeIndex, readIndex, chunks, chunk;
++    uint64_t serial;
+ 
+     if (pvfb->gpuPresentDisabled || pvfb->root.legacyDrawing) {
+         lorieTraceEvent("CopyFallback", 1, 0);
+@@ -1105,15 +1106,20 @@
+         box = &fullBox;
+     }
+ 
+-    if (numRects <= 0 || numRects > LORIE_GPU_COPY_MAX_RECTS) {
++    if (numRects <= 0 || numRects > LORIE_GPU_COPY_MAX_RECTS * LORIE_GPU_COPY_QUEUE_CAPACITY) {
+         lorieTraceEvent("CopyFallback", 4, (uint64_t) numRects);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
+ 
+-    writeIndex = pvfb->state->gpuCopyQueue.writeIndex;
+-    readIndex = pvfb->state->gpuCopyQueue.readIndex;
+-    if (writeIndex - readIndex >= LORIE_GPU_COPY_QUEUE_CAPACITY) {
++    /* Reserve the entire clipped region before publishing anything or taking references.
++     * All chunks share one Present serial and ownership fence: a failed chunk must fail the
++     * whole Present, and Idle must wait until every chunk has drained. No shared ABI change. */
++    chunks = (numRects + LORIE_GPU_COPY_MAX_RECTS - 1) / LORIE_GPU_COPY_MAX_RECTS;
++    writeIndex = __atomic_load_n(&pvfb->state->gpuCopyQueue.writeIndex, __ATOMIC_RELAXED);
++    readIndex = __atomic_load_n(&pvfb->state->gpuCopyQueue.readIndex, __ATOMIC_ACQUIRE);
++    if (writeIndex - readIndex > LORIE_GPU_COPY_QUEUE_CAPACITY ||
++        chunks > LORIE_GPU_COPY_QUEUE_CAPACITY - (writeIndex - readIndex)) {
+         lorieTraceEvent("CopyFallback", 5, (uint64_t) numRects);
+         gpuCopyAttempts++;
+         return FALSE;
+@@ -1146,21 +1152,31 @@
+     }
+     *out_dst_buffer = dstIsRoot ? NULL : dstBuffer;
+ 
+-    entry = &pvfb->state->gpuCopyQueue.entries[writeIndex % LORIE_GPU_COPY_QUEUE_CAPACITY];
+-    entry->serial = ++pvfb->gpuCopySerialCounter;
+-    entry->srcBufferId = desc->id;
+-    entry->dstBufferId = dstDesc->id;
+-    entry->xOff = x_off;
+-    entry->yOff = y_off;
+-    entry->numRects = (uint16_t) numRects;
+-    for (i = 0; i < numRects; i++)
+-        entry->rects[i] = (LorieGpuCopyRect) { box[i].x1, box[i].y1, box[i].x2, box[i].y2 };
+-
+-    __atomic_store_n(&pvfb->state->gpuCopyQueue.writeIndex, writeIndex + 1, __ATOMIC_RELEASE); // release-publish entry writes above
++    serial = ++pvfb->gpuCopySerialCounter;
++    for (chunk = 0; chunk < chunks; chunk++) {
++        const int first = (int) chunk * LORIE_GPU_COPY_MAX_RECTS;
++        const int count = min(numRects - first, LORIE_GPU_COPY_MAX_RECTS);
++        entry = &pvfb->state->gpuCopyQueue.entries[(writeIndex + chunk) % LORIE_GPU_COPY_QUEUE_CAPACITY];
++        entry->serial = serial;
++        entry->srcBufferId = desc->id;
++        entry->dstBufferId = dstDesc->id;
++        entry->xOff = x_off;
++        entry->yOff = y_off;
++        entry->numRects = (uint16_t) count;
++        for (i = 0; i < count; i++)
++            entry->rects[i] = (LorieGpuCopyRect) { box[first + i].x1, box[first + i].y1,
++                                               box[first + i].x2, box[first + i].y2 };
++    }
++
++    /* One release publishes every chunk; the renderer can never consume a partial Present.
++     * Its final fence covers all chunks, including any failed chunk carrying the same serial. */
++    __atomic_store_n(&pvfb->state->gpuCopyQueue.writeIndex, writeIndex + chunks, __ATOMIC_RELEASE);
+     pthread_cond_signal(rendererCond);
+ 
+-    lorieTraceEvent("CopyEnqueue", entry->serial, desc->id);
+-    *out_serial = entry->serial;
++    lorieTraceEvent("CopyEnqueue", serial, desc->id);
++    lorieTraceEvent("CopyChunks", serial, chunks);
++    lorieTraceEvent("CopyRects", serial, (uint64_t) numRects);
++    *out_serial = serial;
+     gpuCopyAttempts++;
+     gpuCopyOffloads++;
+     return TRUE;
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -913,7 +913,8 @@
+         // This is a drain watermark, not proof of a successful copy. failedSerial preserves
+         // that distinction until Present consumes it after the shared ownership fence.
+         lastSerial = entry.serial;
+-        state->gpuCopyQueue.readIndex++;
++        // Release the consumed slot only after all reads of its payload are complete.
++        __atomic_add_fetch(&state->gpuCopyQueue.readIndex, 1, __ATOMIC_RELEASE);
+     }
+ 
+     if (fboSetUp) {
+--- a/lorie/src/main/cpp/lorie/lorie.h
++++ b/lorie/src/main/cpp/lorie/lorie.h
+@@ -203,6 +203,8 @@
+      * Single-producer (X server, present_execute_copy)/single-consumer (renderer) ring buffer
+      * of deferred GPU copies to be applied to the root window texture before it is drawn to screen.
+      * X server only advances writeIndex; renderer advances readIndex, completedSerial and failedSerial.
++     * One Present may occupy multiple entries, atomically published with a shared serial.
++     * References and completion belong to that whole Present, not to individual chunks.
+      */
+     struct {
+         volatile uint32_t writeIndex;
+--- a/lorie/src/main/cpp/patches/xserver.patch
++++ b/lorie/src/main/cpp/patches/xserver.patch
+@@ -329,7 +329,7 @@
+  
+      screen_priv->re_execute(vblank);
+  }
+-@@ -67,6 +69,81 @@
++@@ -67,6 +69,57 @@
+      WindowPtr                   window = vblank->window;
+      ScreenPtr                   screen = window->drawable.pScreen;
+      present_screen_priv_ptr screen_priv = present_screen_priv(screen);
+@@ -383,35 +383,11 @@
+ +            RegionUninit(&visible);
+ +        }
+ +
+-+        /* lorie: damage split into many pieces (tiled clients, or a sibling window punching holes
+-+         * in clipList) exceeds the renderer's per-batch rect budget and would fall back to a CPU
+-+         * CopyArea on the tick thread, where it starves the frame clock.  Copy the complete
+-+         * visible source instead - the same superset repair the history-invalidation path above
+-+         * uses - so the work stays on the GPU.  Still clipped against clipList, so popups and IME
+-+         * windows above us are never overwritten. */
+-+        if (gpuCopyRegion && RegionNumRects(gpuCopyRegion) > LORIE_GPU_COPY_WIDEN_RECTS) {
+-+            BoxRec full = { 0, 0, (short) vblank->pixmap->drawable.width,
+-+                            (short) vblank->pixmap->drawable.height };
+-+            RegionPtr repair = RegionCreate(&full, 1);
+-+            if (repair && gpuCopyDst == screen->GetScreenPixmap(screen)) {
+-+                RegionRec visible;
+-+                RegionInit(&visible, NULL, 1);
+-+                RegionCopy(&visible, &window->clipList);
+-+                RegionTranslate(&visible, -(window->drawable.x + vblank->x_off),
+-+                                 -(window->drawable.y + vblank->y_off));
+-+                RegionIntersect(repair, repair, &visible);
+-+                RegionUninit(&visible);
+-+            }
+-+            if (repair) {
+-+                RegionDestroy(gpuCopyRegion);
+-+                gpuCopyRegion = repair;
+-+            }
+-+        }
+ +    }
+  
+      /* If present_flip failed, we may have to requeue for the next MSC */
+      if (vblank->exec_msc == crtc_msc + 1 &&
+-@@ -76,15 +153,82 @@
++@@ -76,15 +129,82 @@
+                                               vblank->event_id,
+                                               vblank->exec_msc)) {
+          vblank->queued = TRUE;
+@@ -510,7 +486,7 @@
+  #include <X11/X.h>
+  #include "scrnintstr.h"
+  #include "misc.h"
+-@@ -90,7 +91,40 @@
++@@ -90,7 +91,33 @@
+      Bool                abort_flip;     /* aborting this flip */
+      PresentFlipReason   reason;         /* reason for which flip is not possible */
+      Bool                has_suboptimal; /* whether client can support SuboptimalCopy mode */
+@@ -521,13 +497,6 @@
+ +    uint64_t            gpu_copy_serial;
+ +    void                *gpu_copy_dst_buffer; /* opaque LorieBuffer*, held for lorieGpuCopyAck */
+  };
+-+
+-+/* lorie: the renderer applies one deferred GPU copy entry as a single vertex batch carrying at
+-+ * most LORIE_GPU_COPY_MAX_RECTS (lorie/lorie.h) quads.  Present damage arriving in more pieces
+-+ * than that would fall back to a CPU CopyArea on the tick thread, so present_execute_copy()
+-+ * widens such regions to the complete visible source first.  Visibility clipping can still
+-+ * exceed the renderer limit; keep the existing safe CPU fallback for that case. */
+-+#define LORIE_GPU_COPY_WIDEN_RECTS 8
+ +
+ +/* lorie: hooks implemented in lorie/InitOutput.c, used by present_execute_copy() to offload the
+ + * pixmap->dst copy (dst being whatever GetWindowPixmap(window) is - root, or a Composite-redirected
+@@ -551,7 +520,7 @@
+  
+  typedef struct present_screen_priv present_screen_priv_rec, *present_screen_priv_ptr;
+  typedef struct present_window_priv present_window_priv_rec, *present_window_priv_ptr;
+-@@ -222,6 +256,8 @@
++@@ -222,6 +249,8 @@
+      uint64_t               msc;         /* Last reported MSC from the current crtc */
+      struct xorg_list       vblank;
+      struct xorg_list       notifies;
