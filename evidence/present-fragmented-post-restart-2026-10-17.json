@@ -1,0 +1,157 @@
+{
+  "date": "2026-10-17",
+  "state": "new-apk-active-performance-target-not-met",
+  "scope": "Post-user-restart verification of fragmented Present candidate; runtime activation succeeded, targeted throughput acceptance failed.",
+  "runtime": {
+    "date": "2026-10-17",
+    "timestamp_utc": "2026-10-16T18:00:06.529718+00:00",
+    "state": "new-apk-active-server-and-renderer",
+    "installed_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+    "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+    "display_clock": "_TERMUX_X11_DISPLAY_CLOCK(CARDINAL) = 1, 120, 15",
+    "runtime": {
+      "android_app": {
+        "pid": 852,
+        "start_ticks": 39234515,
+        "cmdline": "com.termux.x11",
+        "mapped_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+        "apk_executable_mapping": "765ea2c000-765ed4f000 r-xp 000e0000 fe:44 1395417                        /data/app/~~nNfPsoYmWPX6ydYMkGNHyg==/com.termux.x11-g3y9iRCzLB9ZU3yFjCD1xw==/base.apk",
+        "mali_egl_mapped": true
+      },
+      "server": {
+        "pid": 28829,
+        "start_ticks": 40999047,
+        "cmdline": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+        "mapped_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+        "apk_executable_mapping": "7cc1c31000-7cc1f54000 r-xp 000e0000 fe:44 1395417                        /data/app/~~nNfPsoYmWPX6ydYMkGNHyg==/com.termux.x11-g3y9iRCzLB9ZU3yFjCD1xw==/base.apk",
+        "mali_egl_mapped": true
+      }
+    }
+  },
+  "physical_display_after_measurement": {
+    "mode_id": 1,
+    "render_frame_rate_hz": 120.00001,
+    "state": "ON"
+  },
+  "completed_untraced_probe": {
+    "frames": 600,
+    "fps": 43.729916106584824,
+    "frame_interval_ms": {
+      "p50": 25.069401,
+      "mean": 22.867640485809684,
+      "p95": 38.03704210000001,
+      "p99": 59.82926209999993,
+      "max": 71.831536
+    },
+    "interval_buckets": {
+      "lt_9.5ms": 126,
+      "9.5_15ms": 45,
+      "15_21ms": 28,
+      "21_30ms": 252,
+      "gt_30ms": 148
+    },
+    "cpu_ms_per_second": {
+      "android_app": 194.85976929723086,
+      "server": 698.3660344886157
+    },
+    "exit_code": 0,
+    "success_marker": true,
+    "wall_seconds": 14.061394047021167,
+    "command": [
+      "/usr/local/bin/gpu-run",
+      "vulkan",
+      "/opt/pad7spro-gpu-r3.5-repro-20261015/bin/probe-present",
+      "--bgra",
+      "--motion",
+      "--cycles",
+      "1",
+      "--frames",
+      "600",
+      "--delay-ms",
+      "0",
+      "--width",
+      "640",
+      "--height",
+      "480",
+      "--timings",
+      "/opt/pad7spro-gpu-release-test/repository/build/present-fix-20261017/post-restart/short-untraced.timings.csv"
+    ],
+    "instrumentation": "No atrace/simpleperf/dumpsys during measurement; only endpoint CPU counters."
+  },
+  "interrupted_long_probe": {
+    "state": "interrupted-at-65-second-timeout",
+    "complete_buffered_frames": 2703,
+    "buffered_frame_span_seconds": 64.651375674,
+    "buffered_frame_rate": 41.79338756261962,
+    "interval_ms": {
+      "p50": 25.830872499999998,
+      "p95": 47.086094,
+      "p99": 64.971979,
+      "max": 94.121823
+    },
+    "note": "Incomplete 3000-frame attempt, interrupted by subprocess timeout. Interior buffered timestamps are retained; no success marker and no complete-run throughput claim."
+  },
+  "prior_reference": {
+    "source": "evidence/fps120-runtime-diagnosis-2026-10-16.json",
+    "untraced_frames": 3000,
+    "fps": 80.1,
+    "frame_interval_ms_p50": 9.17,
+    "frame_interval_ms_p95": 30.69,
+    "comparison_limit": "Historical reference only: background desktop/window composition and client load differ after restart. This is not a controlled old/new APK A/B and does not establish that this patch caused the lower observed throughput."
+  },
+  "diagnostic": {
+    "probe_exit_code": 0,
+    "simpleperf_exit_code": 0,
+    "server_pid": 28829,
+    "server_trace_markers": 1088,
+    "trace_stage_counts": {
+      "Tick": 348,
+      "CopyEnqueue": 263,
+      "PresentCopy": 263,
+      "CopyBatchIssue": 263,
+      "CopyDraws": 263,
+      "CopyPixels": 263,
+      "CopyIssued": 263,
+      "CopyAndRootFenceWait": 460,
+      "CopyDone": 263,
+      "SurfaceTime": 1278,
+      "SurfaceSubmit": 281,
+      "eglSwapBuffers": 281,
+      "CopyFallback": 214
+    },
+    "fallback_counts": {
+      "CopyFallback.4.25.0": 214
+    },
+    "note": "Diagnostic only. Trace and simpleperf were enabled together for attribution; its probe throughput is not a normal-use FPS sample.",
+    "tracing_on_after": "0",
+    "atrace_tags_after": "0",
+    "pixman_self_cpu_samples_percent": 81.65,
+    "simpleperf_duration_seconds": 6
+  },
+  "conclusion": {
+    "activation": "Both independent X server and Android renderer executable APK mappings hash to the installed candidate 7f13f30e...; the old mixed state is resolved.",
+    "hardware": "Probe reported Mali-G925-Immortalis, completed 600 frames with the success marker and exit 0; both server and renderer map vendor Mali EGL.",
+    "target": "Not met: the complete untraced 600-frame probe averaged 43.73 submissions/s, median frame interval 25.07 ms, P95 38.04 ms. These are client probe timestamps, not physical screen new-content FPS.",
+    "fallback": "214 CopyFallback.4.25.0 events were captured from the new server; all sampled fallback events rejected a final region with 25 rectangles, exceeding LORIE_GPU_COPY_MAX_RECTS=16. No reason 1/2/3/5 fallback events were observed in this bounded trace.",
+    "patch_limit": "Widening damage to the complete visible source does not bound the clipList intersection to 16 rectangles. The retained safe CPU fallback is still exercised in the observed window configuration.",
+    "cpu": "In the separate diagnostic recording, pixman_composite_src_8888_8888_asm_neon accounted for 81.65 percent of sampled X server CPU cycles. This is a CPU sample share, not CPU utilization or whole-device power.",
+    "safety": "No desktop/server restart, zink launch, software fallback, cursor movement or system service changes were performed. Tracing was stopped; tracing_on=0 and atrace tags=0 were verified.",
+    "unverified": "Popup/IME/pixel/resize acceptance was not expanded after throughput failure. No power, input latency or long-term stability conclusions."
+  },
+  "next_step": "Correct support for visible regions larger than 16 rectangles while preserving all clip holes, buffer ownership/fences and queue semantics. Do not use an unclipped bounding box over popup/IME windows. Build and test any further change separately; no further deployment/restart was performed in this check.",
+  "artifacts": {
+    "directory": "build/present-fix-20261017/post-restart",
+    "sha256": {
+      "runtime.json": "574bdb75fe2abf35fb2b40ddd52914f57a0a47dd443090004e990798bf9546ba",
+      "untraced.timings.csv": "809642301084aedfbdeb15a32dd6ee2d32ca87d1953ee014933f67cfd4c262a5",
+      "untraced-interrupted.summary.json": "62b7103a71073df166bc998c8d387701863a60994aaf2fd86943a24a2b52ae89",
+      "short-untraced.timings.csv": "152e68e60c645ebedca45507ad651d2dca7b6fa9ee71638e2272801aeaee92cb",
+      "short-untraced.probe.log": "6b065817f534620f8a85ec579f4276358d79a3b62b6807a88bf173a69e6fa2e5",
+      "short-untraced.summary.json": "ff79fd69e8ba951fc3e9cd4513fa54ec83b85c99571afed2d5559d4c0242833c",
+      "atrace.txt": "f54d2d97dfa545c86a984a97835f5df95339a3cc69846c960cfc69c33cff0eef",
+      "diagnostic.summary.json": "a39a4d9fafaa0df582a4bb22b321b017b9aa54d33d44e3371617612e5db35183",
+      "simpleperf-symbols.txt": "347387f8f490a11930f6e4b9f84cf06fb9d496b98afa3d556502849b0f9b49c9",
+      "display.txt": "164ff6db7c3454001c257fcf1559b44ee3d189a260bd71c01a795ea9c018b7c3"
+    }
+  }
+}

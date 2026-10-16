@@ -1,5 +1,7 @@
 # 验证记录
 
+- [2026-10-17 重启后定向验收](present-fragmented-post-restart-2026-10-17.json)：两端新版映射通过，性能未达标；完整 600 帧约 43.73 次提交/秒，独立追踪确认最终 25 矩形超出 16 块限制、214 次 reason=4 回退，pixman 仍占 CPU 周期样本 81.65%。
+
 - [2026-10-17 直接安装 APK](present-fragmented-install-2026-10-17.json)：覆盖安装并打开 Activity 成功；新 renderer / 旧 X server 的映射 APK 哈希已分别核实。未停桌面、未运行 zink 脚本，0008 服务端改动尚未生效。
 
 - [2026-10-17 碎片化 Present 候选构建](present-fragmented-candidate-2026-10-17.json)：修正嵌套补丁封装，干净 arm64 原生/APK 构建及签名/对齐/CRC/库哈希通过；未安装，具体回退原因与实机收益待确认。

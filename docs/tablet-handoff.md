@@ -1,6 +1,8 @@
 # 平板 / 后续 AI 接手
 
-2026-10-17（直接安装后）：用户要求直接覆盖安装候选 APK 后打开 Termux:X11，不运行 zink 脚本；已执行成功，未停止桌面。已安装与 Android renderer 映射哈希为 `7f13f30e…`，但独立 X server 保留旧 PID/starttime，已删除映射对应 APK 实测哈希仍为 `e5aa6b77…`。**0008 的服务端 Present 修复尚未生效**，直接打开 Activity 不会热换 X server。保持当前会话；后续经安排重启 X server，再核对新映射并做验收。见 [直接安装证据](../evidence/present-fragmented-install-2026-10-17.json)。
+2026-10-17（用户重启后）：两端 APK 映射已确认都是新 `7f13f30e…`，X server PID 28829、Android renderer PID 852，120 配置和 Mali 正常。**性能验收失败**：完整无追踪 600 帧小窗口约 43.73 次提交/秒，帧间隔 P95 38.04 ms；另一个 3000 帧任务在 65 秒超时，保留中断数据。独立诊断抓到 214 次 `CopyFallback.4.25.0`，pixman 占 X server CPU 周期样本 81.65%。最终 25 块仍超出单项 16 块限制，0008 的完整可见源放宽不足以消除本场景回退。下一步要支持更多可见矩形，保留弹窗/IME 的 clip 洞和 fence/所有权语义；不以未裁剪包围盒代替。未再次重启/运行 zink，追踪已关闭。详见 [重启后证据](../evidence/present-fragmented-post-restart-2026-10-17.json)。
+
+2026-10-17（直接安装后历史快照，已由上方重启后状态取代）：用户要求直接覆盖安装候选 APK 后打开 Termux:X11，不运行 zink 脚本；已执行成功，未停止桌面。已安装与 Android renderer 映射哈希为 `7f13f30e…`，但独立 X server 保留旧 PID/starttime，已删除映射对应 APK 实测哈希仍为 `e5aa6b77…`。**0008 的服务端 Present 修复尚未生效**，直接打开 Activity 不会热换 X server。保持当前会话；后续经安排重启 X server，再核对新映射并做验收。见 [直接安装证据](../evidence/present-fragmented-install-2026-10-17.json)。
 
 2026-10-17（构建完成时快照，后续见上）：0008 碎片化 Present damage 候选已构建并完成静态包校验，当时尚未安装；线上仍是 r3.5 可复现 APK，前缀/链接未改。候选及旧 APK 回退文件、SHA-256、构建封装修复与验收边界见 [候选证据](../evidence/present-fragmented-candidate-2026-10-17.json) 和 [CURRENT-STATE](CURRENT-STATE.md)。不得把构建通过当作卡顿已修复；具体回退原因仍待 CopyFallback 埋点确认。完整可见区本身也可能超过 16 块。停桌面会结束承载当前对话的客户端，仍须用户保存全部工作并明确授权。
 
