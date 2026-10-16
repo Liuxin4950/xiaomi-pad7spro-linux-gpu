@@ -2,7 +2,7 @@
 
 该目录包含作者设备的会话/迁移入口。`debian-shell.sh`、`debian-stop.sh` 保留 2026-10-01 快照；`desktop-zink.sh` 与 `chroot/gpu-app.sh` 已于 2026-10-07 更新并部署，来源和哈希见 [reference-manifest.json](../evidence/reference-manifest.json)。
 
-- `desktop-zink.sh` 经统一 `gpu-run` 启动 XFCE，新会话默认继承 GPU 环境和 60 FPS/BGRA 配置。
+- `desktop-zink.sh` 经统一 `gpu-run` 启动 XFCE，新会话默认继承 GPU 环境和 120 FPS/BGRA 配置。
 - `gpu-app.sh` 是旧路径的兼容转发；当前正常图标直接使用 `/usr/local/bin/gpu-run`。
 - `gpu-launcher.desktop` 是可选菜单工具，不是启用 GPU 的必经步骤；作者桌面已移除该额外图标。
 

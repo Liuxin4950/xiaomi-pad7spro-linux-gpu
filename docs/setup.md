@@ -86,3 +86,9 @@ python3 scripts/activate-desktop.py --apply
 回退时将系统链接指回保留的、已核对的完整前缀，并在保存工作后正常重新建立会话。不要覆盖运行中库、强行替换活跃 mount namespace，或用全局进程清理代替应用回退。安装器目前不提供自动升级/卸载；`debian-stop.sh` 停止的是整个 chroot，不是桥接卸载器。
 
 当前已完成作者设备构建/安装、四类应用短验收和 Widget 重启确认；干净同机型 rootfs 的端到端复现、长时导航/休眠恢复、同条件功耗和候选 APK 验收仍需独立记录。
+
+## 2026-10-15：可恢复的入口切换
+
+先用 `python3 scripts/activate-release.py /opt/候选前缀` 只读核验清单和迁移计划。实际应用需显式 `--apply --backup build/独立备份目录`；备份目录必须不存在，包含原链接、文件内容、mode/owner/xattrs 和恢复状态。`--termux-home` 可指定实际设备入口位置。该脚本只切换文件入口，不安装 APK，也不重启现有程序。
+
+切换中链接或桌面迁移失败会尝试恢复原件；进程中断后，可先 `python3 scripts/activate-release.py --restore build/独立备份目录` 检查，再加 `--apply` 恢复。若备份损坏或用户后来修改了入口，恢复会拒绝覆盖并报告冲突。恢复报告中的 `desktop_database_refresh_errors` 需另行处理。APK 切换与链接更新不是同一个原子操作，必须另存原 APK 并在保存用户工作后统一安排正常会话切换。

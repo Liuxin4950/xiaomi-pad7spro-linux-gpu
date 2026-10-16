@@ -1,18 +1,24 @@
-# 当前运行基线：r3.5
+# 当前运行基线：r3.5 可复现构建版（2026-10-15）
+
+2026-10-16：按用户要求，将统一 gpu-run、Termux 桌面入口及当前 profile-display 工具默认值同步为 **120 FPS**；普通桌面、GPU 桌面和 Widget 共用同一入口。Android 实际显示模式约 120 Hz、peak_refresh_rate=120，保留系统动态降频能力。配置和安装清单已更新；**当前 X11 仍以 -max-fps 60 运行，旧桌面/应用继承的 60 不会热更新**。本次保留当前会话，不停止桌面；保存工作并正常停止/从 Widget 重开后才完整生效。重复点击已有 Widget/单实例不会重载。配置上限不是已测得 120 张新内容/秒。证据见 [120 FPS 配置](../evidence/fps120-2026-10-16.json)，后续计划见 [鼠标与功耗专项](gpu-optimization-plan.md#2026-10-16-鼠标交互与-120-fps-专项)。
+
+2026-10-15：已切换并实际运行 `/opt/pad7spro-gpu-r3.5-repro-20261015`，APK SHA-256 `e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c`。Linux 与 arm64 X11 从固定源码/新对象目录重建；Mali/AHB、两个最终屏幕图案各 49152 像素零差异、10×3 帧 oldSwapchain 重建通过。重开的助手 GPU 实际映射新前缀和原厂 Mali。首批测量/恢复工具已修正，未宣称新增帧率、功耗或延迟收益。[实施与切换证据](../evidence/optimization-2026-10-15.json)。
+
+本次桌面切换中断了承载对话的客户端；用户随后明确不要再为测试结束当前对话会话。后续使用独立进程/窗口，不主动停止当前桌面。旧 `/opt/pad7spro-gpu-r3.5` 与原 APK 已保留作为回退，不能将旧进程/PID 或旧默认路径继续当当前状态。以下 2026-10-13 内容为 r3.5 交付历史。
 
 更新：2026-10-13。用户明确要求全域替换：r3.5 APK 已安装、gpu-run/gpu-launcher 已切换、桌面已正常重开；实际新 APK 和桥接映射见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。Termux 三种启动入口继续追随统一 gpu-run，Mali / GaneshVulkan / ANGLE Vulkan / Zink 保留。下方 r3.4.1 和失败记录为历史，不代表当前运行版本。功耗、精确输入延迟和长期稳定性仍未确认。
 
 更新：2026-10-13。接手先读本页，再核对设备；历史文档、旧记忆和 build 目录名称不能代替运行状态。
 
-- 默认入口：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.5/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
+- 默认入口（2026-10-15）：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.5-repro-20261015/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
-- 原生分辨率；默认 `X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60`、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
+- 原生分辨率；新会话默认 `X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120`（2026-10-16 配置更新；当前保留会话仍为 60）、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
 - **r3.4 回归已确认，已撤下默认入口**：用户报告浏览器与 Trae 闪烁/错位。`rectangleCount==0` 实为全图更新，旧实现错误跳帧；damage 只累计当前 AHB，没有跟踪其他轮换缓冲。独立逐像素回归在旧版稳定报出 stale pixels。原件与原前缀保留，历史统计不改值。
 - r3.4.1 优化版保留作为稳定回退 `/opt/pad7spro-gpu-r3.4.1-opt1`。空列表/缺提示全量拷贝并正常 Present；所有 AHB 累积变化，成功提交后只清当前缓冲；重叠/相邻 damage 先合并再判断面积与超限，保留小区域拷贝和全量命令复用。原始 r3.4.1 候选保留于 `/opt/pad7spro-gpu-r3.4.1`。详见 [r3.4 审查与修复](r3.4-damage-aware-copy.md)。
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前 APK SHA-256：`7da1ad14adb13ab594ebb58fb6c50368f48748281b544c43bec1f1fe1011464f`。部署状态：`installed-and-active`；versionName 含 gpu-r3.5。
+- 当前 APK SHA-256：`e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c`。部署状态：`installed-and-active`；versionName 为 `1.03.01-d55f1b7-gpu-r3.5-repro`。仅本机 arm64 ABI 已重建验收。
 - 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界

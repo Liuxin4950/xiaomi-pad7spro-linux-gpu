@@ -1,5 +1,9 @@
 # 平板 / 后续 AI 接手
 
+2026-10-16：按用户要求，将统一 gpu-run、Termux 桌面入口及当前 profile-display 工具默认值同步为 **120 FPS**；普通桌面、GPU 桌面和 Widget 共用同一入口。Android 实际显示模式约 120 Hz、peak_refresh_rate=120，保留系统动态降频能力。配置和安装清单已更新；**当前 X11 仍以 -max-fps 60 运行，旧桌面/应用继承的 60 不会热更新**。本次保留当前会话，不停止桌面；保存工作并正常停止/从 Widget 重开后才完整生效。重复点击已有 Widget/单实例不会重载。配置上限不是已测得 120 张新内容/秒。证据见 [120 FPS 配置](../evidence/fps120-2026-10-16.json)，后续计划见 [鼠标与功耗专项](gpu-optimization-plan.md#2026-10-16-鼠标交互与-120-fps-专项)。
+
+2026-10-15：当前为 r3.5 可复现构建版，默认前缀 `/opt/pad7spro-gpu-r3.5-repro-20261015` 与新 arm64 APK 已实际加载，核心验收通过；最新哈希/范围见 [CURRENT-STATE](CURRENT-STATE.md) 和 [实施证据](../evidence/optimization-2026-10-15.json)。用户明确不要测试时结束承载当前对话的桌面；不再主动停止该 chroot 会话，使用独立进程和窗口继续。下文 r3.5 原前缀与 APK 为历史/回退信息。
+
 更新：2026-10-13。用户明确要求全域替换：r3.5 APK 已安装、gpu-run/gpu-launcher 已切换、桌面已正常重开；实际新 APK 和桥接映射见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。Termux 三种启动入口继续追随统一 gpu-run，Mali / GaneshVulkan / ANGLE Vulkan / Zink 保留。下方 r3.4.1 和失败记录为历史，不代表当前运行版本。功耗、精确输入延迟和长期稳定性仍未确认。
 
 更新：2026-10-13。当前默认 r3.5，先读 [CURRENT-STATE](CURRENT-STATE.md)。旧 r2、早期 canary 和历史实验数字不能作为当前启动配置。
@@ -8,11 +12,11 @@
 
 工作区 `/opt/pad7spro-gpu-release-test/repository`，别名 `/root/Working/xiaomi-pad7spro-linux-gpu`。容器为 Debian 13，Android rootfs 路径 `/data/linux/debian`；用户可能称其 Ubuntu，不据此另找第二个 rootfs。
 
-- 当前默认前缀 `/opt/pad7spro-gpu-r3.5`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，当前桌面/助手 GPU 实际映射 r3.5；以 CURRENT-STATE 为准。
+- 当前默认前缀 `/opt/pad7spro-gpu-r3.5-repro-20261015`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，当前桌面/助手 GPU 实际映射 r3.5；以 CURRENT-STATE 为准。
 - Termux Widget、`~/debian-desktop.sh` 和 `~/mali-work/desktop-zink.sh` 共用 GPU 桌面入口。普通桌面不再默认 llvmpipe。
 - 桌面、菜单、URL、XFCE helper 和 CLI chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch 全部统一到 gpu-run。Office 图标也进入同一环境；MySQL、shell/TUI 不强加图形参数。
 - 二维 Skia 原生 Vulkan；WebGL ANGLE Vulkan；GL Zink；CC Switch 使用 WebKit 适配。
-- 原生分辨率，60 fps 请求与 WSI 上限；BGRA 字节契约，不设置 vblank_mode=0，不自动软件回退。
+- 原生分辨率，新会话默认 120 fps 请求与 WSI 上限（2026-10-16；当前保留会话仍为 60）；BGRA 字节契约，不设置 vblank_mode=0，不自动软件回退。
 
 ## Android 实际文件同步
 

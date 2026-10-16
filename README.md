@@ -46,7 +46,7 @@ Linux Vulkan loader → sysvk → libhybris → Android Vulkan HAL → Mali-G925
 
 WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到端零拷贝。当前 X11 协议模式公开真实 BGRA 渲染图像，将其字节用 GPU 复制到私有 RGBA AHardwareBuffer，匹配 Xorg 的 BGRA 字节契约，避免红蓝交换。
 
-新栈将 ICD、libhybris、AHB wrapper、WSI 与私有 bionic override 放在同一个安装前缀中。应用级 WSI 呈现默认上限为 60 FPS；它不是整个 Android 的 GPU 工作上限，也没有实现静止内容去重。详见 [架构](docs/architecture.md)和 [实现说明](docs/implementation.md)。
+新栈将 ICD、libhybris、AHB wrapper、WSI 与私有 bionic override 放在同一个安装前缀中。应用级 WSI 呈现默认上限为 120 FPS（2026-10-16 更新；已有会话需正常重开）；它不是整个 Android 的 GPU 工作上限，也没有实现静止内容去重。详见 [架构](docs/architecture.md)和 [实现说明](docs/implementation.md)。
 
 ## 适用环境与验证范围
 
@@ -59,7 +59,7 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
 | 当前 Termux:X11 APK | `1.03.01-d55f1b7-29.09.26`，含已有 Present 裁剪补丁 |
-| 当前启动默认 | 原生分辨率，`X11_MAX_FPS=60`、`PAD_GPU_MAX_FPS=60` |
+| 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
 设备版本基线来自 2026-10-01，新增软件验证和用户会话重启反馈来自 2026-10-07。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
 

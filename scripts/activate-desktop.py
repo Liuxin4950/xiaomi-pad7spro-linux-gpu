@@ -67,6 +67,8 @@ def atomic_write(path, data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--expected-plan', type=Path,
+                        help='refuse drift from the activation transaction snapshot')
     parser.add_argument('--termux-home', type=Path, default=Path('/proc/1/root/data/data/com.termux/files/home'))
     args = parser.parse_args()
     runner = Path(RUNNER)
@@ -111,10 +113,15 @@ def main():
     report = []
     for path, data in changes.items():
         before = hashlib.sha256(path.read_bytes()).hexdigest()
-        if args.apply:
-            atomic_write(path, data)
         report.append({'path': str(path), 'before_sha256': before,
                        'after_sha256': hashlib.sha256(data).hexdigest()})
+    if args.expected_plan:
+        expected = json.loads(args.expected_plan.read_text())['desktop']['entries']
+        if report != expected:
+            raise SystemExit('Device entries changed since activation planning; refusing migration')
+    if args.apply:
+        for path, data in changes.items():
+            atomic_write(path, data)
     print(json.dumps({'applied': args.apply, 'entries': report}, ensure_ascii=False, indent=2))
     if args.apply:
         for directory in ('/usr/share/applications', '/root/.local/share/applications'):

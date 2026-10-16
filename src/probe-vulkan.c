@@ -118,6 +118,11 @@ static void ahb_formats(VkPhysicalDevice physical)
         VkExternalImageFormatProperties properties = {.sType=VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES,.pNext=&usage};
         VkImageFormatProperties2 output = {.sType=VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,.pNext=&properties};
         VkResult result=vkGetPhysicalDeviceImageFormatProperties2(physical,&info,&output);
+        if (result != VK_SUCCESS) {
+            printf("AHB_COLOR_ATTACHMENT format=%s tiling=%s result=%d properties=unavailable\n",
+                f ? "BGRA8" : "RGBA8", t ? "optimal" : "linear", result);
+            continue;
+        }
         printf("AHB_COLOR_ATTACHMENT format=%s tiling=%s result=%d external_features=0x%x usage=0x%llx max=%ux%u\n",
             f ? "BGRA8" : "RGBA8", t ? "optimal" : "linear", result,
             properties.externalMemoryProperties.externalMemoryFeatures,

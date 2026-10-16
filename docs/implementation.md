@@ -52,7 +52,7 @@ libhybris 补丁将 Android caller-owned 内存保留在 bionic 分配器，补�
 - 事件等待用 eventfd 取消，并始终 join。事件线程、旧链退役与释放统一锁序；condition wait 后重新获取数据指针，防止 Idle 先于 Complete 时访问已释放对象。
 - 跨线程取消/错误状态使用原子变量；分配失败清理私有资源，保留已公开图像到析构。
 
-当前应用级限帧在 X11 Present 之前使用 `steady_clock` 和 condition variable；取消能唤醒等待，暂停后不补发突发帧。默认每个 swapchain 60 FPS，可选择 120 或 0（不限制）。它不等于 WebKit 离屏渲染、所有 GPU copy 或整机工作的硬上限。
+当前应用级限帧在 X11 Present 之前使用 `steady_clock` 和 condition variable；取消能唤醒等待，暂停后不补发突发帧。默认每个 swapchain 120 FPS（2026-10-16 配置更新，已有会话正常重开后生效），可显式选择 60 或 0（不限制）。它不等于 WebKit 离屏渲染、所有 GPU copy 或整机工作的硬上限。
 
 ## 5. 两个应用专用处理
 

@@ -50,11 +50,11 @@ if root "chroot '$ROOTFS' /usr/bin/pgrep -x xfce4-session >/dev/null 2>&1"; then
 fi
 
 # Only a new session adopts these settings; an existing desktop stays intact.
-X11_MAX_FPS=${X11_MAX_FPS:-60}
+X11_MAX_FPS=${X11_MAX_FPS:-120}
 [[ "$X11_MAX_FPS" =~ ^[0-9]{1,3}$ ]] && ((10#$X11_MAX_FPS >= 1 && 10#$X11_MAX_FPS <= 240)) \
   || die 'X11_MAX_FPS must be 1-240'
 X11_MAX_FPS=$((10#$X11_MAX_FPS))
-PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-60}
+PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-120}
 [[ "$PAD_GPU_MAX_FPS" =~ ^[0-9]{1,3}$ ]] && ((10#$PAD_GPU_MAX_FPS <= 240)) \
   || die 'PAD_GPU_MAX_FPS must be 0 (uncapped) or 1-240'
 PAD_GPU_MAX_FPS=$((10#$PAD_GPU_MAX_FPS))

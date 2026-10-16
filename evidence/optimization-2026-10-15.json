@@ -1,0 +1,273 @@
+{
+  "date": "2026-10-15",
+  "scope": "T0/T1/T2/T11 first implementation; no default release switch",
+  "baseline": {
+    "prefix": "/opt/pad7spro-gpu-r3.5",
+    "release": {
+      "version": "r3.5",
+      "revision": "copy-failure-feedback-3",
+      "status": "installed-and-active",
+      "default": true,
+      "prefix": "/opt/pad7spro-gpu-r3.5",
+      "replaces": "r3.4.1",
+      "features": [
+        "native_skia_vulkan_2d",
+        "angle_vulkan_webgl",
+        "zink",
+        "correct_rotating_ahb_damage",
+        "coalesced_damage_copy",
+        "demand_driven_choreographer",
+        "complete_bounded_queue",
+        "correct_copy_target_msc",
+        "bounded_downstream_damage_history",
+        "consumer_repair_on_clip_destination_change",
+        "one_draw_per_copy_entry",
+        "on_resume_focus_and_viewport_wake",
+        "no_partial_surface_release_swap_or_prefetch_clear",
+        "recover_clock_after_successful_drain",
+        "failed_copy_skip_feedback",
+        "fence_checked_before_idle",
+        "surface_loss_preserves_copy_ownership"
+      ],
+      "diagnostics_default": false
+    },
+    "runtime": [
+      {
+        "pid": 16862,
+        "comm": "main",
+        "start_ticks": 28927520,
+        "r35_mapped": false,
+        "mali_mapped": true
+      },
+      {
+        "pid": 20141,
+        "comm": "ChatGPT",
+        "start_ticks": 28949406,
+        "r35_mapped": true,
+        "mali_mapped": true
+      }
+    ],
+    "installed_apk_sha256": "7da1ad14adb13ab594ebb58fb6c50368f48748281b544c43bec1f1fe1011464f"
+  },
+  "candidate": {
+    "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+    "default": false,
+    "installed": true,
+    "apk_installed": false,
+    "apk": {
+      "apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+      "base_commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+      "abis": [
+        "arm64-v8a"
+      ],
+      "compiler_sha256": "a62e4c8cb8dc8189a9ae91324798ee22590baa6ab4cd970304ff388a8d7c68f7",
+      "toolchain_sha256": "055aaea7a9cebbd0fe45ba32571d1a722ee6be3b14c278072892a88d42f287d4",
+      "script_sha256": "378563d9121eb5780a422718cd92a2f02508e8cfa0d42a9a56bac16d423122ac",
+      "dependency_manifest_sha256": "24fc11f1681fd0f358efd311eb88048bc735fed1d68d31537adbb6412c52b98c",
+      "state": "apk-built-not-installed",
+      "native_objects": "verified reuse of prior declared build",
+      "native": [
+        {
+          "abi": "arm64-v8a",
+          "sha256": "100d3cb6d5722579831779aba51dcf15c60ca41c0692e515f45eae1597aa1eb3",
+          "size": 20856776
+        }
+      ]
+    }
+  },
+  "linux_build": {
+    "fresh_source_export": true,
+    "fresh_object_directory": true,
+    "result": "BUILD_OK",
+    "installed_dedicated_prefix": true,
+    "build_info_sha256": "a6dd48758f96877fd2b5731a119e8b967bfe7bc8fa662370a055eb825a4224f2"
+  },
+  "apk_build": {
+    "first_native_build_fresh": true,
+    "first_native_sha256": "100d3cb6d5722579831779aba51dcf15c60ca41c0692e515f45eae1597aa1eb3",
+    "final_native_sha256": "100d3cb6d5722579831779aba51dcf15c60ca41c0692e515f45eae1597aa1eb3",
+    "final_packaging_native_reuse": "source/toolchain/patch/library hashes checked; no native changes",
+    "gradle": "9.3.1",
+    "agp": "9.1.0",
+    "compile_sdk": 36,
+    "target_sdk": 34,
+    "min_sdk": 24,
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "alignment_16k_verified": true,
+    "dependency_artifact_scope": "cache files of resolved external modules, may include unused classifiers",
+    "byte_reproducibility_asserted": false
+  },
+  "checks": {
+    "launcher_stub_tests": 23,
+    "gpu_launcher_tests": 7,
+    "measurement_tests": 6,
+    "recovery_tests": 5,
+    "x11_build_tool_tests": 3,
+    "total_python_tests": 44,
+    "wsi_reuse_on": "passed",
+    "wsi_reuse_off": "passed",
+    "mali_submit_readback_exit": 0,
+    "ahb_roundtrip_exit": 0,
+    "window_recreate": {
+      "cycles": 10,
+      "frames_per_cycle": 3,
+      "bgra": true,
+      "old_swapchain": true,
+      "exit": 0,
+      "final_pixel_oracle_run": false
+    }
+  },
+  "display_samples": {
+    "first_static_sample_valid": true,
+    "static_sf_polling": false,
+    "client_frames": 1,
+    "moving_samples": "invalid; first ambiguous Surface layer, then Surface unavailable during front/background change; no FPS conclusion"
+  },
+  "egl_capability_probe": {
+    "context": "separate Android EGL pbuffer; NOT the live window Surface",
+    "renderer": "Mali-G925-Immortalis",
+    "EGL_KHR_partial_update": true,
+    "EGL_KHR_swap_buffers_with_damage": true,
+    "EGL_EXT_buffer_age": false,
+    "EGL_ANDROID_get_frame_timestamps": true,
+    "active_window_buffer_age": "unverified",
+    "optimized_partial_surface_rendering": "not implemented"
+  },
+  "improvements": [
+    "explicit version identities and candidate selection",
+    "no SF polling for normal static scene",
+    "invalid and incomplete samples retained as failures",
+    "fresh-source APK build and declared native reuse",
+    "recoverable link/desktop transaction with metadata backups",
+    "failed AHB query outputs marked unavailable"
+  ],
+  "limitations": [
+    "new APK not installed or runtime-validated",
+    "fresh rootfs and second device not tested",
+    "host custom SDK artifact acquisition not fully locked",
+    "only arm64 ABI rebuilt",
+    "no measured power, frame-rate or input-latency improvement",
+    "full T3 and T4-T10 still pending"
+  ],
+  "history_preserved": true,
+  "deployment_state": "prepared; waiting for user confirmation that work is saved before ending chroot session",
+  "initial_record_scope": "Pre-deployment snapshot; original fields above retained.",
+  "deployment_after_authorized_restart": {
+    "state": "candidate-core-accepted",
+    "authorized_saved_work": true,
+    "start_monotonic_ns": 114323707053211,
+    "candidate_prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+    "baseline_prefix": "/opt/pad7spro-gpu-r3.5",
+    "xfce_pid": 32641,
+    "activation-dry-run_exit": 0,
+    "activate_exit": 0,
+    "activation_applied": true,
+    "normal-stop_exit": 0,
+    "install-candidate_exit": 0,
+    "installed_apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+    "normal-start_exit": 0,
+    "doctor_exit": 0,
+    "clock_exit": 0,
+    "mali-probe_exit": 0,
+    "ahb-probe_exit": 0,
+    "pixels-regions_exit": 0,
+    "regions_pixels": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        61,
+        113,
+        210
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1591,
+        1044,
+        1654,
+        1139
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "android_overlay_wait_s": 0.6466950790054398,
+      "android_overlay_seen": false,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "pixels-empty_exit": 0,
+    "empty_pixels": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        24,
+        63,
+        12
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1472,
+        996,
+        1727,
+        1187
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "android_overlay_wait_s": 0.5734120839915704,
+      "android_overlay_seen": false,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "recreate_exit": 0,
+    "app_launch_pid": 850,
+    "runtime": [
+      {
+        "pid": 11259,
+        "gpu_process": false,
+        "candidate_mapped": false,
+        "baseline_mapped": false,
+        "mali_mapped": true
+      },
+      {
+        "pid": 32506,
+        "gpu_process": false,
+        "candidate_mapped": false,
+        "baseline_mapped": false,
+        "mali_mapped": true
+      }
+    ],
+    "end_monotonic_ns": 114395966551052,
+    "post_recovery_runtime_verified": {
+      "gpu_pid": 896,
+      "candidate_bridge_mapped": true,
+      "original_mali_mapped": true,
+      "x11_server_pid": 32506,
+      "x11_frontend_pid": 11259,
+      "actual_apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+      "display_clock": [
+        1,
+        60,
+        15
+      ]
+    },
+    "future_session_policy": "Do not stop the desktop hosting the current conversation for routine testing; use isolated processes/windows. No further restart authorized by this acceptance."
+  },
+  "current_state": "r3.5-repro-20261015 installed and active; core acceptance passed; broader optimization incomplete",
+  "current_pending": [
+    "controlled FPS/power/input-latency comparison",
+    "long-term stability",
+    "remaining T3/T4-T10 work",
+    "fresh rootfs and other hardware",
+    "four ABI build"
+  ]
+}

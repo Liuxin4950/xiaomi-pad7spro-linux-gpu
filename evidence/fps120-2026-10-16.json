@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-16",
+  "scope": "120 FPS defaults installed; running desktop preserved; focused optimization plan",
+  "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+  "configuration_defaults": {
+    "X11_MAX_FPS": 120,
+    "PAD_GPU_MAX_FPS": 120,
+    "profile_display_fps": 120
+  },
+  "entries": [
+    {
+      "source": "scripts/gpu-run.sh",
+      "target": "/opt/pad7spro-gpu-r3.5-repro-20261015/bin/gpu-run",
+      "sha256": "bfa46b62411fc96132e097d1346b82ea74e2dc142c5ed59129e05ea2fd7180fe",
+      "mode": "0o755",
+      "uid": 0,
+      "gid": 0
+    },
+    {
+      "source": "reference/termux/desktop-zink.sh",
+      "target": "/proc/1/root/data/data/com.termux/files/home/mali-work/desktop-zink.sh",
+      "sha256": "883367057cbb66fcf4a7004ffc9be0a541b06b6652b56abaf1e361b88c6383d9",
+      "mode": "0o700",
+      "uid": 10305,
+      "gid": 10305
+    },
+    {
+      "source": "reference/termux/debian-desktop.sh",
+      "target": "/proc/1/root/data/data/com.termux/files/home/debian-desktop.sh",
+      "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+      "mode": "0o700",
+      "uid": 10305,
+      "gid": 10305
+    },
+    {
+      "source": "reference/termux/debian-zink-widget.sh",
+      "target": "/proc/1/root/data/data/com.termux/files/home/.shortcuts/debian-zink.sh",
+      "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+      "mode": "0o700",
+      "uid": 10305,
+      "gid": 10305
+    }
+  ],
+  "install_manifest_all_files_verified": 511,
+  "install_manifest_sha256": "eef19d5f0cb0c0f38e054817acdebe039dc781926e9abc0b77f489127bfd372b",
+  "backup_directory": "/opt/pad7spro-gpu-release-test/repository/build/fps120-20261016",
+  "backup_index_sha256": "e4a3212f3107cf8df355dc2d830054dd45580bc146ae00f5ca040969517e88c5",
+  "runtime": [
+    {
+      "pid": 510,
+      "start_ticks": 38922983,
+      "gpu_process": true,
+      "x11_server": false,
+      "max_fps_arg": null,
+      "current_bridge_mapped": true,
+      "mali_mapped": true
+    },
+    {
+      "pid": 25653,
+      "start_ticks": 38901151,
+      "gpu_process": false,
+      "x11_server": false,
+      "max_fps_arg": null,
+      "current_bridge_mapped": false,
+      "mali_mapped": true
+    },
+    {
+      "pid": 30371,
+      "start_ticks": 38907951,
+      "gpu_process": false,
+      "x11_server": true,
+      "max_fps_arg": 60,
+      "current_bridge_mapped": false,
+      "mali_mapped": true
+    }
+  ],
+  "apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+  "android": {
+    "peak_refresh_rate": 120,
+    "min_refresh_rate": null,
+    "active_refresh_rate": 120.00001,
+    "settings_changed": false
+  },
+  "live_x11": {
+    "display": ":1",
+    "max_fps": 60,
+    "display_clock": [
+      1,
+      60,
+      15
+    ],
+    "randr_hz": 59.96
+  },
+  "activation": {
+    "state": "configuration-installed-runtime-restart-pending",
+    "reason": "maxFramerate is read at X11 startup; preserve conversation desktop",
+    "old_session_inherited_pad_gpu_max_fps": 60,
+    "new_runner_with_fps_unset": 120,
+    "explicit_environment_overrides_preserved": true,
+    "libraries_apk_or_links_replaced": false
+  },
+  "checks": {
+    "launcher_tests": 24,
+    "gpu_launcher_tests": 7,
+    "profile_tests": 6,
+    "bash_syntax": "passed",
+    "diff_whitespace": "passed",
+    "installed_runner_executable": true,
+    "termux_entries_byte_equal": true
+  },
+  "sample_scope": "small isolated window; requested WSI 120 on still-running X11 cap 60; other apps active; not a 120Hz acceptance or power comparison",
+  "samples": {
+    "moving": {
+      "valid": true,
+      "client_frames": 360,
+      "mali_mapped": true,
+      "actual_sf_presents": 454,
+      "actual_sf_interval_ms": {
+        "p50": 24.993281,
+        "p95": 41.647214,
+        "p99": 41.710495
+      },
+      "actual_sf_hz": 40.029699523923895,
+      "host_frame_us": {
+        "p50": 32543.203,
+        "p95": 40763.49,
+        "p99": 49953.073
+      },
+      "conditions_unchanged": true,
+      "sf_measurement": "whole Termux:X11 Surface; unrelated apps may contribute; not unique content FPS"
+    },
+    "static": {
+      "valid": true,
+      "client_frames": 1,
+      "mali_mapped": true,
+      "steady_cpu_ms_per_s": 0.0,
+      "sf_sampling_enabled": false
+    }
+  },
+  "optimization": {
+    "confirmed": "cursor moved/updated triggers whole Surface clear/root draw/cursor draw/eglSwapBuffers",
+    "source": "build/optimization-20261015/x11-repro-labelled/source/lorie/src/main/cpp/lorie/renderer.cpp",
+    "source_sha256": "ce711bff3b1161dd400c69af5e2b6c83357c1c4ca5f20c48a19388d9e75dc91d",
+    "proposed": "measure at 120; conditional actual-window buffer-age/partial-update candidate; idle wake audit",
+    "power_improvement_measured": false
+  },
+  "limitations": [
+    "Current X11 and existing applications have not adopted 120 FPS",
+    "No measured unique-content FPS or input-to-display latency",
+    "No new power or battery-life claim",
+    "No Surface optimization implemented or deployed"
+  ]
+}

@@ -1,8 +1,16 @@
 # 当前验证状态
 
-更新：2026-10-13，默认 r3.4.1 优化版（damage-coalescing-1）。唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)。
+更新：2026-10-15。当前已部署 **r3.5-repro-20261015 / clean-linux-build-and-probe-diagnostics**，唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)，集成范围见 [r3.5](r3.5-efficiency.md)。
 
-已实施：Mali 真正硬件渲染；Skia 原生 Vulkan 二维后端；WebGL ANGLE Vulkan；WSI 指令复用、FIFO 空闲休眠、Complete-before-Idle 释放修复、固定节奏 60 fps 上限；Termux 前端 Copy/绘制合并；拒绝不存在的真实 Linux 光标几何请求；全部正常桌面/菜单/Widget/CLI 入口统一；r3.4.1 修正增量呈现语义与所有轮换 AHB 的 damage 历史，保留局部拷贝并移除空列表跳帧，新增重叠矩形合并与默认关闭的有界实时计数（[r3.4 交付](r3.4-damage-aware-copy.md)）。
+r3.5 已全域切换；桥接、X11 APK 与运行进程核对见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。受控像素/Chromium 核心验收已取得，真实输入延迟、长期能耗、全部应用与恢复场景仍不作完成承诺。
+
+后续按 [优化计划](gpu-optimization-plan.md) 执行。2026-10-15 已完成首批独立构建、版本明确的测量与可恢复部署，并通过新 APK/前缀的核心像素与设备验收；不能把工具修复计为 GPU 帧率或省电收益。
+
+## 历史：2026-10-13 r3.4.1 与候选阶段
+
+以下运行版本与未安装描述均为当时快照，不能代替当前 r3.5 实装状态。
+
+已实施：Mali 真正硬件渲染；Skia 原生 Vulkan 二维后端；WebGL ANGLE Vulkan；WSI 指令复用、FIFO 空闲休眠、Complete-before-Idle 释放修复、可配置呈现上限（2026-10-16 新会话默认 120 fps，已有会话仍为 60）；Termux 前端 Copy/绘制合并；拒绝不存在的真实 Linux 光标几何请求；全部正常桌面/菜单/Widget/CLI 入口统一；r3.4.1 修正增量呈现语义与所有轮换 AHB 的 damage 历史，保留局部拷贝并移除空列表跳帧，新增重叠矩形合并与默认关闭的有界实时计数（[r3.4 交付](r3.4-damage-aware-copy.md)）。
 
 已取得运行证据：Chromium/Trae GaneshVulkan + Mali + 0 GPU 崩溃，WebGL 颜色回读正确；同一滚动页 rAF 35.83→58.86/s，CPU/页面帧 10.43→8.39 ms。r3.4 的旧测试沿用错误语义，计数保留为历史，不能证明画面正确。r3.4.1 核心探针通过，独立逐像素回归（原版失败、修版通过）覆盖 BGRA copy/blit 与两种命令复用；随后恢复桌面并完成真实窗口、最终帧屏幕像素和 Chromium/Trae GaneshVulkan + Mali + 0 GPU 崩溃验收。小动画 WSI 复制像素少 72.03%；受控局部 UI 的稳定 128 帧窗口，Chromium/Trae 少 99.42% / 95.26%，均为复制工作量而非功耗。数据/范围见 [r3.4 审查](r3.4-damage-aware-copy.md)、[r3.3 交付](r3.3-native-rendering.md)。
 

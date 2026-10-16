@@ -1,6 +1,6 @@
 # GPU 与显示验证
 
-当前版本 r3.4.1，最新配置及范围见 [CURRENT-STATE](CURRENT-STATE.md)，原生二维实测见 [交付报告](r3.3-native-rendering.md)。下文早期数据保留其日期，不作为新版本功耗结论。
+当前已部署 r3.5，最新配置及范围见 [CURRENT-STATE](CURRENT-STATE.md)，原生二维实测见 [交付报告](r3.3-native-rendering.md)。下文早期数据保留其日期，不作为新版本功耗结论。
 
 窗口能显示、命令行有 Vulkan 参数、进程打开了 `/dev/mali0`，都不能单独证明目标应用稳定使用 GPU。验证时组合渲染器、进程、日志、实际负载和画面证据。
 
@@ -64,3 +64,17 @@ WSI mock 回归入口为 `tests/run-wsi-regression.sh PATCHED_WSI_SOURCE WSI_CMA
 ## r3.4.2 显示链路候选验收
 
 源码/构建通过与实际显示效果分开。候选 APK 必须在保存工作后安装并正常重开桌面，核对 APK/server 映射、`_TERMUX_X11_DISPLAY_CLOCK` 和 WSI 实际协商结果，再进行 r3.3 / candidate timer / candidate auto 交替对照。APK 自身空闲变化需与原 APK 独立 A/B，不能归入仅切换桥接的成绩。统一的工具、Perfetto 配置、帧 ID 关联与缺失数据规则见 [显示效率技术交付](r3.4-display-efficiency.md)。
+
+
+## 当前显示测量工具
+
+2026-10-15 起，profile-display 默认基线从当前 gpu-run 解析；必须显式选择候选或只测当前基线，不再默认 r3.3/r3.4.2。默认尺寸取实际 X11，runtime 跟随用户环境；`--fullscreen` 必须显式请求。
+
+```sh
+python3 scripts/profile-display.py --baseline-only --runs 1 --seconds 8 --output build/current-display
+python3 scripts/profile-display.py --candidate /opt/my-installed-candidate --runs 3 --seconds 8 --output build/candidate-display
+```
+
+可指定 `--android-root`、`--server-pid`、`--surface-layer`、尺寸和 FPS。动态采样优先识别唯一 BLAST 内容层，多个内容层则拒绝猜测；静止场景默认不轮询 SurfaceFlinger，避免干扰 CPU/空闲结果。`--trace` 才启用有界诊断。当前工具仍依赖 Android dumpsys 输出，未知格式会明确作废样本，不保证跨固件解析兼容。
+
+结果保存实际前缀/release、探针与入口哈希、条件前后快照、有效性及无效原因。所有数据都不是整机功耗测量；Surface 时间是整个 X11 层，可能包含其他应用的提交，不能当成探针独占 FPS。前后台切换或 Surface 重建期间缺少呈现数据时保留无效记录，不据此判断 GPU 回归。窗口最终像素、每帧新内容、输入因果与长期稳定需单独验收。

@@ -191,10 +191,10 @@ configure_hardware() {
   # Installed Termux:X11 uses Xorg BGRA bytes inside RGBA gralloc buffers.
   case "${PAD_GPU_X11_COLOR_MODE:-bgra}" in bgra|native) ;; *) fail 'invalid X11 color mode'; return ;; esac
   export PAD_GPU_X11_COLOR_MODE=${PAD_GPU_X11_COLOR_MODE:-bgra}
-  [[ "${PAD_GPU_MAX_FPS:-60}" =~ ^[0-9]{1,3}$ ]] && ((10#${PAD_GPU_MAX_FPS:-60} <= 240)) || {
+  [[ "${PAD_GPU_MAX_FPS:-120}" =~ ^[0-9]{1,3}$ ]] && ((10#${PAD_GPU_MAX_FPS:-120} <= 240)) || {
     fail 'PAD_GPU_MAX_FPS must be 0 (uncapped) or 1-240'; return;
   }
-  export PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-60}
+  export PAD_GPU_MAX_FPS=${PAD_GPU_MAX_FPS:-120}
   case "${PAD_GPU_PRESENT_CLOCK:-auto}" in auto|timer) ;; *) fail 'PAD_GPU_PRESENT_CLOCK must be auto or timer'; return ;; esac
   export PAD_GPU_PRESENT_CLOCK=${PAD_GPU_PRESENT_CLOCK:-auto}
   # RandR's advertised refresh is not proof of an MSC/scanout cap. The old
@@ -280,7 +280,13 @@ main() {
   done
   mode=${1:-}; [[ -n "$mode" ]] || { usage; return; }; shift
   resolve_prefix || return
-  export TMPDIR=/tmp LANG=C.UTF-8
+  export TMPDIR=/tmp
+  # Preserve the session's UTF-8 locale so applications (e.g. Chromium) keep the
+  # user's UI language; fall back to a C locale only when none is configured.
+  case ${LC_ALL:-${LANG:-}} in
+    *UTF-8|*utf8|*UTF8|*utf-8) ;;
+    *) export LANG=C.UTF-8 ;;
+  esac
   export DISPLAY=${DISPLAY:-:1} XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$EUID}
   case "$mode" in
     info) (($# <= 1 && !software && !headless)) || { usage; return; }; show_info "${1:-}"; return ;;

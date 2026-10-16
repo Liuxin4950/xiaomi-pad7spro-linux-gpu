@@ -2,7 +2,7 @@
 
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
-更新：2026-10-12。构建入口为 `scripts/build.sh`，安装入口为 `scripts/install.sh`。作者设备已部署完整前缀 `/opt/pad7spro-gpu-observe-20261012`，并完成核心探针、真实呈现及应用短验收；构建成功仍不等同于所有应用或长期功耗达标。
+更新：2026-10-15。构建入口为 `scripts/build.sh`，安装入口为 `scripts/install.sh`。当前实装版本及前缀统一读 [CURRENT-STATE](CURRENT-STATE.md)。新构建在独立源码/对象目录执行，并在 stage 内保存 `build-info.json`，包含工具版本、源码文件哈希、锁定依赖和目标前缀；输入文件构建期间变化会失败。构建成功不等同于所有应用或长期功耗达标。
 
 ## 环境与依赖
 
@@ -31,7 +31,7 @@ apt-get install -y libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri \
 在仓库中选择尚不存在的安装前缀：
 
 ```sh
-bridge_prefix=/opt/pad7spro-gpu-next
+bridge_prefix=/opt/pad7spro-gpu-my-candidate
 bash scripts/build.sh --prefix "$bridge_prefix" --jobs 4
 ```
 
@@ -69,7 +69,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 - libhybris、WSI 和 Android headers 按固定上游源码构建，保留其许可证并应用项目补丁。
 - 修改版 bionic 是固定上游二进制运行依赖，当前流程没有从 Android 整体源码重建它；不能声称全部依赖均在本仓库从源码生成。
 - Android 原厂 Mali 驱动仍由用户固件提供，不包含在项目发布源码中。
-- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前前端与已重开的 X server 均已加载 `0002` 的原生代码；实际 APK 哈希和进程映射见入口证据。
+- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前完整补丁与实际 APK/进程状态见 CURRENT-STATE 和 r3.5 文档。APK 从空对象目录完整复现仍需独立验证。
 
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
 
@@ -84,3 +84,24 @@ Linux 构建增加锁定 WSI 0008，独立目标 `/opt/pad7spro-gpu-r3.4.2-displ
 最新独立 r3.4.3 使用 WSI 0001–0009；r3.5 增加 0010。X11 0005 包含规范化的完整 gitlink patch，需整体应用到锁定 65d790b，再编译所有 Present 单元与三个 lorie 修改单元（四 ABI 各 13 个），不能混用旧私有结构的 archive。构建与安装路径及验收边界见 [r3.5](r3.5-efficiency.md)。
 
 最终 r3.5 0007 改变共享状态布局，因此四 ABI 各重编全部六个 lorie.h 引用单元（InitOutput、InitInput、renderer、activity、clipboard、cmdentrypoint）及十个 Present 单元，共 16 个；禁止复用旧 cmdentrypoint 对象。Java/资源使用已重建 0006 的 Gradle APK，叠加校验后的四个新原生库，同签名与 16 KiB 对齐。完整补丁用独立导出目录的标准 patch --fuzz=0 验证，避免 git apply 在仓库子目录继承父仓库而跳过 diff--git 文件。
+
+
+## 2026-10-15：固定源码的完整 X11 构建入口
+
+`scripts/build-x11.py` 从本地 Git 缓存导出 sources.lock 指定提交及全部固定子模块，忽略缓存工作区的修改、`.cxx` 和未提交对象。依次校验/应用顶层与依赖补丁，从新的 native 对象目录编译，再使用这些库构建 Java/资源及 APK；不从已安装 APK 提取库。输出目录必须不存在，默认不安装、不切入口、不重启会话。
+
+先准备含固定提交及子模块的 Git 缓存、JDK 21、可在构建主机运行的 Android SDK/NDK 和 Gradle。当前已验证 NDK 28.2.13676358、Gradle 9.3.1、AGP 9.1.0、compileSdk 36/buildTools 37，minSdk 24/targetSdk 34；ARM 主机使用的自定义 clang/aapt2/aidl 记录 SHA-256。这些工具的完整跨主机获取及新 rootfs 验证仍有缺口，不能宣称任意机器已可一键复现。
+
+```sh
+python3 scripts/build-x11.py \
+  --source-cache build/sources/termux-x11 \
+  --output build/my-x11-candidate \
+  --sdk /opt/android-sdk \
+  --gradle /absolute/path/to/gradle-9.3.1/bin/gradle
+```
+
+缓存可按 sources.lock 中的 Termux:X11 URL/commit 初始化并执行对应 `git submodule update --init --recursive`；脚本不会改缓存工作文件。Gradle 默认 `--offline`，缺少 Maven 依赖会明确失败；只有显式 `--allow-downloads` 才允许联网。`--native-only` 只编译 native 库，不需要 Gradle。
+
+默认只构建 arm64-v8a；`--abis arm64-v8a,armeabi-v7a,x86,x86_64` 才包含四 ABI，不把单 ABI 产物叫 universal。`build-report.json` 记录提交、子模块、补丁、编译器/工具链和产物哈希；`dependency-artifacts.json` 记录已解析外部模块版本及对应缓存文件校验，可能包含未使用的 classifier；它是依赖溯源，不能冒充每个实际参与构建的文件清单。版本名/BuildConfig 使用固定 X11 提交，不继承外层仓库 HEAD 或构建日期。APK 校验签名和 16 KiB ZIP 对齐，不承诺字节级可复现。
+
+只调整 Java/打包时，可显式 `--reuse-native-build /path/to/prior-output`；脚本核对旧产物与新导出 native 源码、编译器/工具链、补丁和库哈希，拒绝不匹配的复用，并在报告区分 fresh 与 verified reuse。修改 native 源码或工具链后重新从空对象目录编译。

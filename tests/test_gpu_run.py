@@ -17,7 +17,7 @@ keys = ('VK_DRIVER_FILES', 'VK_IMPLICIT_LAYER_PATH', 'VK_INSTANCE_LAYERS',
         'VK_ADD_DRIVER_FILES', 'HYBRIS_LD_LIBRARY_PATH', 'HYBRIS_LINKER_DIR',
         'HYBRIS_VULKANPLATFORM', 'LD_LIBRARY_PATH', 'MESA_LOADER_DRIVER_OVERRIDE',
         'GALLIUM_DRIVER', 'LIBGL_ALWAYS_SOFTWARE', 'DISABLE_WSI_LAYER', 'vblank_mode',
-        'DISPLAY', 'SENTINEL_APP_SETTING', 'PAD_GPU_PRESENT_CLOCK')
+        'DISPLAY', 'SENTINEL_APP_SETTING', 'PAD_GPU_PRESENT_CLOCK', 'PAD_GPU_MAX_FPS')
 print(json.dumps({'argv': sys.argv[1:], 'env': {key: os.environ.get(key) for key in keys}}))
 sys.exit(int(os.environ.get('TEST_EXIT', '0')))
 '''
@@ -98,6 +98,20 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(data['env']['VK_DRIVER_FILES'], str(self.prefix / 'share/vulkan/icd.d/sysvk_icd.json'))
         self.assertEqual(data['env']['HYBRIS_VULKANPLATFORM'], 'null')
         self.assertEqual(self.checks.read_text(), 'android:1\nx11\n')
+
+    def test_frame_limit_default_and_explicit_overrides(self):
+        for requested, expected in [('', '120'), ('60', '60'), ('120', '120'),
+                                    ('0', '0'), ('240', '240')]:
+            with self.subTest(requested=requested):
+                data = self.data(self.run_launcher('gl', self.prefix / 'bin/app',
+                                 env={'PAD_GPU_MAX_FPS': requested}))
+                self.assertEqual(data['env']['PAD_GPU_MAX_FPS'], expected)
+        for requested in ('241', '-1', 'abc'):
+            with self.subTest(invalid=requested):
+                result = self.run_launcher('gl', self.prefix / 'bin/app',
+                                          env={'PAD_GPU_MAX_FPS': requested})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('PAD_GPU_MAX_FPS', result.stderr)
 
     def test_launcher_symlink_uses_target_installation(self):
         link = self.prefix / 'gpu-link'

@@ -30,6 +30,22 @@ run=$(mktemp -d "$work/runs/build.XXXXXXXX")
 stage="$run/stage"
 deps="$stage$prefix"
 mkdir -p "$deps" "$run/src"
+python3 - "$repo" "$run/source-inputs.json" <<'PY'
+import hashlib, json, subprocess, sys
+from pathlib import Path
+repo, target = map(Path, sys.argv[1:])
+names = subprocess.check_output(['git', '-C', str(repo), 'ls-files', '-z', '--cached', '--others', '--exclude-standard']).split(b'\0')
+inputs = {}
+for raw in names:
+    if not raw:
+        continue
+    name = raw.decode()
+    if name in ('CMakeLists.txt', 'sources.lock.json') or name.startswith(('src/', 'scripts/', 'patches/', 'vendor/')):
+        path = repo / name
+        if path.is_file() and path.resolve().is_relative_to(repo):
+            inputs[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+target.write_text(json.dumps(inputs, sort_keys=True, indent=2) + '\n')
+PY
 python3 - "$repo" "$work/sources" "$run/src" <<'PY'
 import hashlib, json, subprocess, sys
 from pathlib import Path
@@ -82,14 +98,29 @@ DESTDIR="$stage" cmake --install "$run/wsi-build"
 mkdir -p "$deps/android-override" "$deps/share/vulkan/icd.d"
 install -m 644 "$work/sources/libc.so" "$deps/android-override/libc.so"
 install -m 755 "$repo/scripts/gpu-run.sh" "$deps/bin/gpu-run"
-python3 - "$deps" "$prefix" "$repo" <<'PY'
-import json, sys
+python3 - "$deps" "$prefix" "$repo" "$run/source-inputs.json" <<'PY'
+import hashlib, json, platform, subprocess, sys
 from pathlib import Path
 deps, prefix, repo = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3])
+inputs = json.loads(Path(sys.argv[4]).read_text())
+for name, expected in inputs.items():
+    if hashlib.sha256((repo/name).read_bytes()).hexdigest() != expected:
+        raise RuntimeError('Source changed during build: ' + name)
 icd={'file_format_version':'1.0.0','ICD':{'library_path':prefix+'/lib/libsysvk.so','api_version':'1.3.0'}}
 (deps/'share/vulkan/icd.d/sysvk_icd.json').write_text(json.dumps(icd,indent=2)+'\n')
 for path in (deps/'share/vulkan').rglob('*.json'): json.loads(path.read_text())
 (deps/'sources.lock.json').write_bytes((repo/'sources.lock.json').read_bytes())
+def output(*args):
+    result = subprocess.run(args, text=True, capture_output=True)
+    return dict(returncode=result.returncode, stdout=result.stdout.strip(), stderr=result.stderr.strip())
+tools = {name: output(name, '--version')['stdout'].splitlines()[0]
+         for name in ('gcc', 'g++', 'cmake', 'make', 'pkg-config', 'git')}
+info = dict(format=1, architecture=platform.machine(), prefix=prefix,
+            git_head=output('git', '-C', str(repo), 'rev-parse', 'HEAD')['stdout'],
+            source_files_sha256=inputs, tools=tools,
+            system_libraries=output('pkg-config', '--modversion', 'vulkan', 'xcb', 'xcb-present', 'xcb-dri3', 'xcb-xfixes'),
+            reproducibility='fresh objects from pinned sources; byte-for-byte reproducibility not asserted')
+(deps/'build-info.json').write_text(json.dumps(info, sort_keys=True, indent=2)+'\n')
 PY
 readelf -dW "$deps/lib/libsysvk.so" | grep -E 'NEEDED|RUNPATH'
 readelf -dW "$deps/lib/libhybris-common.so.1" | grep NODELETE
