@@ -115,6 +115,10 @@
       {
         "path": "patches/termux-x11/0007-copy-failure-feedback.patch",
         "sha256": "77fcd0a15280c0b68a0676f73e5efbc233e337e626775c28329d41bfe1e61332"
+      },
+      {
+        "path": "patches/termux-x11/0008-present-fragmented-damage-gpu-copy.patch",
+        "sha256": "c13989e2b9e96f566e19376ce40f1515dc7265dd86eb765b972244a9ba23da42"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

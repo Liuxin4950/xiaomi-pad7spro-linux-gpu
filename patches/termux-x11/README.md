@@ -110,3 +110,7 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 顶层与嵌套 Xserver 补丁对锁定提交均通过；四 ABI 增量编译/链接、16 KiB APK 对齐和原签名核对完成。候选未安装，不能认为空闲唤醒或显示 P99 已改善。原 APK 保存、DEX/资源保持一致，重开桌面需先保存全部 chroot 会话。范围与验证条件见 [显示效率记录](../../docs/r3.4-display-efficiency.md)。
 
 0007-copy-failure-feedback.patch 在 0006 后应用，区分安全完成与成功复制，失败清除消费端历史并报告 SKIP；共享头变更必须同步重编四 ABI 的全部引用单元。最新构建/安装范围以 CURRENT-STATE 与 r3.5 收尾证据为准。
+
+## 碎片化 damage 的 GPU 拷贝回退修复候选
+
+[0008-present-fragmented-damage-gpu-copy.patch](0008-present-fragmented-damage-gpu-copy.patch) 在 0007 后应用，SHA-256 `c13989e2b9e96f566e19376ce40f1515dc7265dd86eb765b972244a9ba23da42`。窗口化 Present 的 damage 被 tile 化客户端或重叠窗口的 clipList 切成超过 `LORIE_GPU_COPY_WIDEN_RECTS`（8，严格低于渲染端 `LORIE_GPU_COPY_MAX_RECTS` 16）块时，原实现直接放弃 GPU 卸载、回退到 tick 线程上的 CPU CopyArea；实测该 pixman 拷贝占 X 服务端 78% CPU，把节拍拖成 25–30 ms 停顿。现在改用与历史失效修复同语义的“完整可见源”超集拷贝（仍与 clipList 求交，不覆盖上层弹窗/IME），保持在 GPU 路径。同时为全部 GPU 卸载回退原因增加 `PAD_X11.CopyFallback.<reason>.<rects>` 埋点（1=禁用/legacy，2=无渲染器，3=缓冲不可采样，4=矩形数超限，5=队列满），部署后可直接归因。区域放大只做超集拷贝，不收窄 damage 提示，不改动 `lorie_copy_dst` 历史与失败修复语义。候选尚未构建或安装。

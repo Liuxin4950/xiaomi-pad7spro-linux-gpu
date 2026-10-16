@@ -1,0 +1,90 @@
+--- a/lorie/src/main/cpp/xserver/present/present_priv.h
++++ b/lorie/src/main/cpp/xserver/present/present_priv.h
+@@ -99,6 +99,13 @@
+     void                *gpu_copy_dst_buffer; /* opaque LorieBuffer*, held for lorieGpuCopyAck */
+ };
+ 
++/* lorie: the renderer applies one deferred GPU copy entry as a single vertex batch carrying at
++ * most LORIE_GPU_COPY_MAX_RECTS (lorie/lorie.h) quads.  Present damage arriving in more pieces
++ * than that would fall back to a CPU CopyArea on the tick thread, so present_execute_copy()
++ * widens such regions to the complete visible source first.  Keep this strictly below the
++ * renderer's limit so the widened region is always accepted. */
++#define LORIE_GPU_COPY_WIDEN_RECTS 8
++
+ /* lorie: hooks implemented in lorie/InitOutput.c, used by present_execute_copy() to offload the
+  * pixmap->dst copy (dst being whatever GetWindowPixmap(window) is - root, or a Composite-redirected
+  * window's own backing pixmap) to the renderer's GPU context instead of a CPU CopyArea. */
+--- a/lorie/src/main/cpp/xserver/present/present_execute.c
++++ b/lorie/src/main/cpp/xserver/present/present_execute.c
+@@ -118,6 +118,31 @@
+             RegionIntersect(gpuCopyRegion, gpuCopyRegion, &visible);
+             RegionUninit(&visible);
+         }
++
++        /* lorie: damage split into many pieces (tiled clients, or a sibling window punching holes
++         * in clipList) exceeds the renderer's per-batch rect budget and would fall back to a CPU
++         * CopyArea on the tick thread, where it starves the frame clock.  Copy the complete
++         * visible source instead - the same superset repair the history-invalidation path above
++         * uses - so the work stays on the GPU.  Still clipped against clipList, so popups and IME
++         * windows above us are never overwritten. */
++        if (gpuCopyRegion && RegionNumRects(gpuCopyRegion) > LORIE_GPU_COPY_WIDEN_RECTS) {
++            BoxRec full = { 0, 0, (short) vblank->pixmap->drawable.width,
++                            (short) vblank->pixmap->drawable.height };
++            RegionPtr repair = RegionCreate(&full, 1);
++            if (repair && gpuCopyDst == screen->GetScreenPixmap(screen)) {
++                RegionRec visible;
++                RegionInit(&visible, NULL, 1);
++                RegionCopy(&visible, &window->clipList);
++                RegionTranslate(&visible, -(window->drawable.x + vblank->x_off),
++                                 -(window->drawable.y + vblank->y_off));
++                RegionIntersect(repair, repair, &visible);
++                RegionUninit(&visible);
++            }
++            if (repair) {
++                RegionDestroy(gpuCopyRegion);
++                gpuCopyRegion = repair;
++            }
++        }
+     }
+ 
+     /* If present_flip failed, we may have to requeue for the next MSC */
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -1067,18 +1067,21 @@
+     uint32_t writeIndex, readIndex;
+ 
+     if (pvfb->gpuPresentDisabled || pvfb->root.legacyDrawing) {
++        lorieTraceEvent("CopyFallback", 1, 0);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
+ 
+     if (!lorieConnectionAlive() || !lorieRendererAvailable()) {
+         // No renderer to drain the queue, so fall back to CPU copy.
++        lorieTraceEvent("CopyFallback", 2, 0);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
+ 
+     if (!(srcBuffer = lorieEnsureGpuSampleable(pixmap, LORIEBUFFER_AHARDWAREBUFFER)) ||
+         !(dstBuffer = lorieEnsureGpuSampleable(dst, LORIEBUFFER_AHARDWAREBUFFER))) {
++        lorieTraceEvent("CopyFallback", 3, 0);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
+@@ -1103,6 +1106,7 @@
+     }
+ 
+     if (numRects <= 0 || numRects > LORIE_GPU_COPY_MAX_RECTS) {
++        lorieTraceEvent("CopyFallback", 4, (uint64_t) numRects);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
+@@ -1110,6 +1114,7 @@
+     writeIndex = pvfb->state->gpuCopyQueue.writeIndex;
+     readIndex = pvfb->state->gpuCopyQueue.readIndex;
+     if (writeIndex - readIndex >= LORIE_GPU_COPY_QUEUE_CAPACITY) {
++        lorieTraceEvent("CopyFallback", 5, (uint64_t) numRects);
+         gpuCopyAttempts++;
+         return FALSE;
+     }
