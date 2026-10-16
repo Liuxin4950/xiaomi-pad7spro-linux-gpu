@@ -113,4 +113,8 @@ APK 试运行还需验证：Android 120 Hz 配置下 `-max-fps 60` 的 MSC/实�
 
 ## 碎片化 damage 的 GPU 拷贝回退修复候选
 
-[0008-present-fragmented-damage-gpu-copy.patch](0008-present-fragmented-damage-gpu-copy.patch) 在 0007 后应用，SHA-256 `c13989e2b9e96f566e19376ce40f1515dc7265dd86eb765b972244a9ba23da42`。窗口化 Present 的 damage 被 tile 化客户端或重叠窗口的 clipList 切成超过 `LORIE_GPU_COPY_WIDEN_RECTS`（8，严格低于渲染端 `LORIE_GPU_COPY_MAX_RECTS` 16）块时，原实现直接放弃 GPU 卸载、回退到 tick 线程上的 CPU CopyArea；实测该 pixman 拷贝占 X 服务端 78% CPU，把节拍拖成 25–30 ms 停顿。现在改用与历史失效修复同语义的“完整可见源”超集拷贝（仍与 clipList 求交，不覆盖上层弹窗/IME），保持在 GPU 路径。同时为全部 GPU 卸载回退原因增加 `PAD_X11.CopyFallback.<reason>.<rects>` 埋点（1=禁用/legacy，2=无渲染器，3=缓冲不可采样，4=矩形数超限，5=队列满），部署后可直接归因。区域放大只做超集拷贝，不收窄 damage 提示，不改动 `lorie_copy_dst` 历史与失败修复语义。候选尚未构建或安装。
+[0008-present-fragmented-damage-gpu-copy.patch](0008-present-fragmented-damage-gpu-copy.patch) 在 0007 后应用，SHA-256 `016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399`。修改嵌套 `patches/xserver.patch` 中的 Present 实现，以及顶层 `lorie/InitOutput.c`；不能直接提前修改尚未应用嵌套补丁的 xserver 子模块。2026-10-17 首次干净构建发现原封装顺序不兼容，已修正封装；运行逻辑与交接版本逐字节核对一致（头文件仅修正边界注释）。
+
+原实现拒绝超过 `LORIE_GPU_COPY_MAX_RECTS`（16）块的 GPU 拷贝。候选在裁剪后区域超过 `LORIE_GPU_COPY_WIDEN_RECTS`（8）块时，改用“完整可见源”超集拷贝；写入真实 screen pixmap 时仍与 clipList 求交，保留弹窗/IME 遮挡。若完整可见区本身仍超过 16 块，仍会安全回退 CPU；阈值 8 不保证最终矩形数低于 16。区域放大不收窄 damage 提示，不改动消费端历史与失败修复语义。
+
+新增 `PAD_X11.CopyFallback.<reason>.<rects>` 埋点：1=禁用/legacy，2=无渲染器，3=缓冲不可采样，4=矩形数为零或超限，5=队列满。已有采样证明卡顿期间大量时间用于 tick 线程的 pixman 拷贝；**具体拒绝原因仍待新版埋点确认**，不能把“超过 16 块”写成已证实根因，也不能据此直接扩展缓冲或队列实现。构建、部署及验收状态见 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。

@@ -118,7 +118,7 @@
       },
       {
         "path": "patches/termux-x11/0008-present-fragmented-damage-gpu-copy.patch",
-        "sha256": "c13989e2b9e96f566e19376ce40f1515dc7265dd86eb765b972244a9ba23da42"
+        "sha256": "016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

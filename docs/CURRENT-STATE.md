@@ -1,5 +1,7 @@
 # 当前运行基线：r3.5 可复现构建版（2026-10-15）
 
+2026-10-17：碎片化 Present damage **候选 APK 已完成干净 arm64 构建，尚未安装**。首次正式构建发现 0008 直接修改 xserver 子模块与嵌套补丁顺序不兼容；现已将 Present 改动纳入 `patches/xserver.patch`，保留交接版本的运行逻辑。全部补丁按正式顺序以 `--fuzz=0` 应用，新对象编译/链接与离线 APK 打包通过；签名与旧包一致，16 KiB ZIP 对齐、CRC、包内原生库哈希核对通过。候选 SHA-256 `7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc`，构建输出 `build/x11-candidate-20261017/candidate.apk`。线上仍为下述 `e5aa6b77…` APK，Linux 前缀和系统链接未改，旧 APK 已另存回退。**pixman CPU 拷贝已有证据，具体拒绝原因仍待新版 CopyFallback 埋点确认**；完整可见区裁剪后仍可能超过 16 块，不能保证全部留在 GPU 路径。真实窗口/弹窗/IME 与 A/B 帧率、功耗均未验证。保存全部工作并明确授权停桌面后才部署，停止会结束当前对话客户端。见 [候选构建证据](../evidence/present-fragmented-candidate-2026-10-17.json)。
+
 2026-10-16：按用户要求，将统一 gpu-run、Termux 桌面入口及当前 profile-display 工具默认值同步为 **120 FPS**；普通桌面、GPU 桌面和 Widget 共用同一入口。Android 实际显示模式约 120 Hz、peak_refresh_rate=120，保留系统动态降频能力。配置和安装清单已更新；**当时配置尚未生效**：X11 仍以 -max-fps 60 运行，旧桌面/应用继承的 60 不会热更新；保存工作并正常停止/从 Widget 重开后才完整生效，重复点击已有 Widget/单实例不会重载。用户随后保存工作并用 zink 脚本正常重开，**120 已在运行态生效**：X11 `-max-fps 120`、根窗口 `_TERMUX_X11_DISPLAY_CLOCK=[1,120,15]`、模式 1（120.00001 Hz）、SurfaceFlinger 该图层测量周期 8.333 ms。生效不等于稳定 120 张新内容/秒：**不加采样工具**时 3000 帧小窗口探针平均 80.1 fps，图层呈现间隔中位数 8.58 ms（约 117 fps），约每 6–9 帧一次 25–30 ms 停顿；仅移动光标时该图层按 8.43 ms（约 118 fps）连续呈现，但 X 服务端 CPU 从 79 升到 161 ms/s（光标触发整幅重绘）。Mali 不是该样本的瓶颈（拷贝批次 p50 2.06 ms、交换 p50 0.57 ms、就绪等待低于 0.1 ms）。早前 38–40 fps 样本是在 atrace 与每秒 dumpsys 采样下取得，属采样条件，不能当正常帧率。功耗、输入延迟与长期稳定性仍未测。证据见 [120 FPS 配置](../evidence/fps120-2026-10-16.json) 与 [运行诊断](../evidence/fps120-runtime-diagnosis-2026-10-16.json)，后续计划见 [鼠标与功耗专项](gpu-optimization-plan.md#2026-10-16-鼠标交互与-120-fps-专项)。
 
 2026-10-15：已切换并实际运行 `/opt/pad7spro-gpu-r3.5-repro-20261015`，APK SHA-256 `e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c`。Linux 与 arm64 X11 从固定源码/新对象目录重建；Mali/AHB、两个最终屏幕图案各 49152 像素零差异、10×3 帧 oldSwapchain 重建通过。重开的助手 GPU 实际映射新前缀和原厂 Mali。首批测量/恢复工具已修正，未宣称新增帧率、功耗或延迟收益。[实施与切换证据](../evidence/optimization-2026-10-15.json)。
@@ -12,7 +14,7 @@
 
 - 默认入口（2026-10-15）：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.5-repro-20261015/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
-- 原生分辨率；新会话默认 `X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120`（2026-10-16 配置更新；当前保留会话仍为 60）、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
+- 原生分辨率；新会话默认 `X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120`（2026-10-16 配置更新；已确认运行态为 120）、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
 - **r3.4 回归已确认，已撤下默认入口**：用户报告浏览器与 Trae 闪烁/错位。`rectangleCount==0` 实为全图更新，旧实现错误跳帧；damage 只累计当前 AHB，没有跟踪其他轮换缓冲。独立逐像素回归在旧版稳定报出 stale pixels。原件与原前缀保留，历史统计不改值。
 - r3.4.1 优化版保留作为稳定回退 `/opt/pad7spro-gpu-r3.4.1-opt1`。空列表/缺提示全量拷贝并正常 Present；所有 AHB 累积变化，成功提交后只清当前缓冲；重叠/相邻 damage 先合并再判断面积与超限，保留小区域拷贝和全量命令复用。原始 r3.4.1 候选保留于 `/opt/pad7spro-gpu-r3.4.1`。详见 [r3.4 审查与修复](r3.4-damage-aware-copy.md)。
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。

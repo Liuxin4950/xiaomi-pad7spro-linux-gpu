@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-17",
+  "state": "apk-built-not-installed",
+  "scope": "Present fragmented-damage candidate: build integration repair, fresh arm64 native/APK build and static package verification; no runtime acceptance",
+  "baseline": {
+    "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+    "apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+    "display_clock": [
+      1,
+      120,
+      15
+    ],
+    "apk_unchanged_after_build": true,
+    "links_changed": false,
+    "desktop_stopped_or_restarted": false
+  },
+  "build": {
+    "base_commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+    "submodules": {
+      ".": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+      "lorie/src/main/cpp/bzip2": "6a8690fc8d26c815e798c588f796eabe9d684cf0",
+      "lorie/src/main/cpp/libepoxy": "c84bc9459357a40e46e2fec0408d04fbdde2c973",
+      "lorie/src/main/cpp/libfontenc": "780d1f6f192a331de7b298a96e23ebc44d2a884b",
+      "lorie/src/main/cpp/libtirpc": "5ca4ca92f629d9d83e83544b9239abaaacf0a527",
+      "lorie/src/main/cpp/libx11": "6c75545a1deb51f5903992c52af6bc35cc9bc103",
+      "lorie/src/main/cpp/libxau": "a9c65683e68b3a4349afee5d7673b393fb924d2e",
+      "lorie/src/main/cpp/libxcvt": "dd8631c61465cc0de5e476c7a98e56528d62b163",
+      "lorie/src/main/cpp/libxdmcp": "1192d3bc407348ff316bd3bffc791b3ac73f591b",
+      "lorie/src/main/cpp/libxfont": "88b9df882c0ea91d7bb468aa4792ef1b6f13aa9d",
+      "lorie/src/main/cpp/libxkbfile": "42e5dedd7fd3c7c73f3870a8751893c03c1afc69",
+      "lorie/src/main/cpp/libxshmfence": "89f064748554e11832a3ec783945e1f4c7fe846e",
+      "lorie/src/main/cpp/libxtrans": "cf05ba4a10c90da2c63805a5375e983b174e28b0",
+      "lorie/src/main/cpp/pixman": "9cc163c9da0fb4da430641715313d95a6ec466d9",
+      "lorie/src/main/cpp/xkbcomp": "2c7789785981ad1fce3858c726615b49293f7de0",
+      "lorie/src/main/cpp/xorgproto": "fcb7e9a1a0b593a44740d83b0babddd331fea830",
+      "lorie/src/main/cpp/xserver": "65d790bd208ec380b196eb98f144abb0b32e334d"
+    },
+    "abis": [
+      "arm64-v8a"
+    ],
+    "native_objects": "fresh",
+    "ndk": "28.2.13676358",
+    "compiler_version": "Android clang version 19.0.0 (https://github.com/HomuHomu833/llvm-custom)\nTarget: aarch64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/android-sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-arm64/bin",
+    "compiler_sha256": "a62e4c8cb8dc8189a9ae91324798ee22590baa6ab4cd970304ff388a8d7c68f7",
+    "toolchain_sha256": "055aaea7a9cebbd0fe45ba32571d1a722ee6be3b14c278072892a88d42f287d4",
+    "android_tools_sha256": {
+      "aapt2": "3ab6dbd5d6049fb00bf2f2e78ec525a193ff8decf9394ab6c8dadf4fc06f63da",
+      "aidl": "a27ced92f484fa97bb0c65867a629d22cadb8f6dc06bdf14f2c4e3bbd28634a6",
+      "zipalign": "b88f3129aa99396f5efea40f2b37979162fc0e5acbdc59f7a273646509eef1bf"
+    },
+    "gradle_version": "------------------------------------------------------------\nGradle 9.3.1\n------------------------------------------------------------\n\nBuild time:    2026-01-29 14:15:01 UTC\nRevision:      44f4e8d3122ee6e7cbf5a248d7e20b4ca666bda3\n\nKotlin:        2.2.21\nGroovy:        4.0.29\nAnt:           Apache Ant(TM) version 1.10.15 compiled on August 25 2024\nLauncher JVM:  21.0.12.1 (Debian 21.0.12.1+1-1-deb13u1-Debian)\nDaemon JVM:    /usr/lib/jvm/java-21-openjdk-arm64 (no Daemon JVM specified, using current Java home)\nOS:            Linux 6.6.77-android15-8-g5770c661275f-abogki443185593-4k aarch64",
+    "patches": [
+      {
+        "path": "patches/termux-x11/termux-x11-gpu-popup-fix.patch",
+        "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e"
+      },
+      {
+        "path": "patches/termux-x11/0002-pacing-and-copy-batching.patch",
+        "sha256": "c518cdc8fd7e53be1a6449cc2541e999e4ca78609dbd6beca55279ba9be0f69a"
+      },
+      {
+        "path": "patches/termux-x11/0003-ime-cursor-cancellation.patch",
+        "sha256": "25e46955ba0ad40585421721ed367de8dcbf4060f2f327672ba1c6c7ffc1db99"
+      },
+      {
+        "path": "patches/termux-x11/0004-demand-driven-display.patch",
+        "sha256": "54c571bed2dfe9b9a0c272662684f0d647f3a3c557a9b81cb42ebf893449dc59"
+      },
+      {
+        "path": "patches/termux-x11/0005-present-damage-repair.patch",
+        "sha256": "db707ca67edd10fc85f0f0493ed5e2af91d49a519a37d87d4fc37845ee33a23b"
+      },
+      {
+        "path": "patches/termux-x11/0006-resume-demand-render.patch",
+        "sha256": "24b947a4956c08c62cde52c2cf630b3d487dad67831877b3b7b5b16ff740e0c5"
+      },
+      {
+        "path": "patches/termux-x11/0007-copy-failure-feedback.patch",
+        "sha256": "77fcd0a15280c0b68a0676f73e5efbc233e337e626775c28329d41bfe1e61332"
+      },
+      {
+        "path": "patches/termux-x11/0008-present-fragmented-damage-gpu-copy.patch",
+        "sha256": "016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399"
+      }
+    ],
+    "dependency_manifest_sha256": "24fc11f1681fd0f358efd311eb88048bc735fed1d68d31537adbb6412c52b98c",
+    "report": "build/x11-candidate-20261017/build-report.json",
+    "log": "build/present-fix-20261017/build.log",
+    "source_cache": "/tmp/termux-x11-pacing-20261007-zpE2sJ/source",
+    "source_cache_policy": "Exported locked Git objects, including all 16 submodules; ignored cache HEAD, dirty worktree and prior compiled objects.",
+    "command": "python3 scripts/build-x11.py --source-cache /tmp/termux-x11-pacing-20261007-zpE2sJ/source --output build/x11-candidate-20261017 --sdk /opt/android-sdk --gradle /root/.gradle/wrapper/dists/gradle-9.3.1-all/9ot9r568e8zfvvd4mn8rbu1j0/gradle-9.3.1/bin/gradle --jobs 4",
+    "exit_code": 0,
+    "success_marker": "X11_APK_BUILD_OK"
+  },
+  "candidate": {
+    "path": "build/x11-candidate-20261017/candidate.apk",
+    "version_name": "1.03.01-d55f1b7-gpu-r3.5-repro",
+    "version_note": "Same versionName as baseline; identify this candidate by APK SHA-256.",
+    "state": "apk-built-not-installed",
+    "apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+    "apk_size": 22525815,
+    "packaged_native_sha256": "29c0757b5a003990a027e3f4f545546628bf8bb736d2969596fa55e55d3f8018",
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "same_certificate_as_installed_apk": true,
+    "v2_signature_verified": true,
+    "zip_crc_verified": true,
+    "zipalign_16k_verified": true,
+    "packaged_library_matches_fresh_native_build": true,
+    "fallback_trace_marker_present": true,
+    "installed_apk_unchanged": true,
+    "build_report_sha256": "af15679ea340d5cd99135955efe297f1f4e662482c9d17cacbb4119704f8f558",
+    "build_log_sha256": "218e99474e36d00d599bc08bf8a0429dc4105ac25a55671028d5f0695a756824"
+  },
+  "integration_repair": {
+    "previous_patch_sha256": "c13989e2b9e96f566e19376ce40f1515dc7265dd86eb765b972244a9ba23da42",
+    "current_patch_sha256": "016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399",
+    "failure": "Original 0008 modified xserver submodule files before the nested patches/xserver.patch was applied; clean build rejected both Present hunks.",
+    "repair": "Folded the Present changes into patches/xserver.patch, matching the existing 0001/0004/0005/0007 layout. InitOutput trace hooks remain top-level.",
+    "runtime_logic_comparison": "Integrated present_execute.c and InitOutput.c match the handoff apply-test versions byte for byte; present_priv.h comment corrected to acknowledge remaining clip fragmentation.",
+    "validation": "All top-level and recipe patches applied with --fuzz=0 in a new source export; all arm64 native objects rebuilt; package built offline.",
+    "failed_attempt_retained": "build/x11-candidate-20261017-integration-failed"
+  },
+  "rollback": {
+    "path": "build/present-fix-20261017/rollback/original.apk",
+    "sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+    "signature_verified": true,
+    "backup_matches_installed": true
+  },
+  "limits": {
+    "confirmed_prior_diagnosis": "The prior samples attributed heavy CPU work to pixman copies on the X server tick thread.",
+    "specific_fallback_reason": "Unconfirmed: rect-count overflow is a hypothesis pending CopyFallback runtime tracing. Existing build/agent-verify artifacts do not establish this cause.",
+    "remaining_rect_limit": "A full-source repair intersected with clipList can still have more than 16 rectangles; the existing safe CPU fallback remains.",
+    "runtime_acceptance": "Not run: candidate is not installed. No window, popup/IME, resize, renderer or A/B throughput result for this APK.",
+    "performance_power_latency_stability": "No new results or claims.",
+    "preexisting_experiment": "src/probe-present.c left untouched and uncommitted; not used by the APK build."
+  },
+  "next_step": "User must save all work and explicitly authorize the desktop stop/restart before installation. Then verify installed hash and fresh process mappings, run correctness and bounded A/B acceptance; use CopyFallback to attribute any remaining fallback."
+}

@@ -1,6 +1,8 @@
 # 平板 / 后续 AI 接手
 
-2026-10-16：按用户要求，将统一 gpu-run、Termux 桌面入口及当前 profile-display 工具默认值同步为 **120 FPS**；普通桌面、GPU 桌面和 Widget 共用同一入口。Android 实际显示模式约 120 Hz、peak_refresh_rate=120，保留系统动态降频能力。配置和安装清单已更新；**当前 X11 仍以 -max-fps 60 运行，旧桌面/应用继承的 60 不会热更新**。本次保留当前会话，不停止桌面；保存工作并正常停止/从 Widget 重开后才完整生效。重复点击已有 Widget/单实例不会重载。配置上限不是已测得 120 张新内容/秒。证据见 [120 FPS 配置](../evidence/fps120-2026-10-16.json)，后续计划见 [鼠标与功耗专项](gpu-optimization-plan.md#2026-10-16-鼠标交互与-120-fps-专项)。
+2026-10-17：0008 碎片化 Present damage 候选已构建并完成静态包校验，尚未安装；线上仍是 r3.5 可复现 APK，前缀/链接未改。候选及旧 APK 回退文件、SHA-256、构建封装修复与验收边界见 [候选证据](../evidence/present-fragmented-candidate-2026-10-17.json) 和 [CURRENT-STATE](CURRENT-STATE.md)。不得把构建通过当作卡顿已修复；具体回退原因仍待 CopyFallback 埋点确认。完整可见区本身也可能超过 16 块。停桌面会结束承载当前对话的客户端，仍须用户保存全部工作并明确授权。
+
+2026-10-16：统一 gpu-run、Termux 桌面入口及 profile-display 默认值已同步为 **120 FPS**。用户正常重开后，已确认 X11 `-max-fps 120`、根属性 `[1,120,15]` 与 SF 图层周期 8.333 ms；原“当前仍为 60”属于重开前快照。Android 实际显示模式约 120 Hz，保留系统动态降频能力。配置上限不等于 120 张新内容/秒：无额外采样工具时 3000 帧小窗口探针平均约 80.1 fps，仍有周期性停顿。见 [运行诊断](../evidence/fps120-runtime-diagnosis-2026-10-16.json)。
 
 2026-10-15：当前为 r3.5 可复现构建版，默认前缀 `/opt/pad7spro-gpu-r3.5-repro-20261015` 与新 arm64 APK 已实际加载，核心验收通过；最新哈希/范围见 [CURRENT-STATE](CURRENT-STATE.md) 和 [实施证据](../evidence/optimization-2026-10-15.json)。用户明确不要测试时结束承载当前对话的桌面；不再主动停止该 chroot 会话，使用独立进程和窗口继续。下文 r3.5 原前缀与 APK 为历史/回退信息。
 
@@ -16,7 +18,7 @@
 - Termux Widget、`~/debian-desktop.sh` 和 `~/mali-work/desktop-zink.sh` 共用 GPU 桌面入口。普通桌面不再默认 llvmpipe。
 - 桌面、菜单、URL、XFCE helper 和 CLI chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch 全部统一到 gpu-run。Office 图标也进入同一环境；MySQL、shell/TUI 不强加图形参数。
 - 二维 Skia 原生 Vulkan；WebGL ANGLE Vulkan；GL Zink；CC Switch 使用 WebKit 适配。
-- 原生分辨率，新会话默认 120 fps 请求与 WSI 上限（2026-10-16；当前保留会话仍为 60）；BGRA 字节契约，不设置 vblank_mode=0，不自动软件回退。
+- 原生分辨率，新会话默认 120 fps 请求与 WSI 上限（2026-10-16；运行态已生效）；BGRA 字节契约，不设置 vblank_mode=0，不自动软件回退。
 
 ## Android 实际文件同步
 
