@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-17",
+  "state": "installed-renderer-new-server-old",
+  "authorization": "User requested direct APK installation followed by opening Termux:X11, without zink scripts.",
+  "install_output": "Success",
+  "installed_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc",
+  "activity_launch": "Starting: Intent { cmp=com.termux.x11/.MainActivity }",
+  "desktop_stop_invoked": false,
+  "zink_script_invoked": false,
+  "linux_prefix_and_links_changed": false,
+  "runtime": {
+    "server": {
+      "pid": 20493,
+      "start_ticks": 39126354,
+      "cmdline": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+      "native_apk_maps": [
+        "760ee10000-760f132000 r-xp 000e0000 fe:44 1421455                        /data/app/dc0c4624-77d8-485a-bbbc-a4d2403a2285==deleted==/c7093a3b-acf0-4202-92c2-4573e45acc8d==deleted==/base.apk (deleted)",
+        "760f136000-760f143000 r--p 00402000 fe:44 1421455                        /data/app/dc0c4624-77d8-485a-bbbc-a4d2403a2285==deleted==/c7093a3b-acf0-4202-92c2-4573e45acc8d==deleted==/base.apk (deleted)",
+        "760f146000-760f179000 rw-p 0040e000 fe:44 1421455                        /data/app/dc0c4624-77d8-485a-bbbc-a4d2403a2285==deleted==/c7093a3b-acf0-4202-92c2-4573e45acc8d==deleted==/base.apk (deleted)",
+        "78f25c5000-78f25d2000 r--s 01570000 fe:44 1421455                        /data/app/dc0c4624-77d8-485a-bbbc-a4d2403a2285==deleted==/c7093a3b-acf0-4202-92c2-4573e45acc8d==deleted==/base.apk (deleted)"
+      ],
+      "mali_egl_mapped": true,
+      "mapped_apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c"
+    },
+    "android_app": {
+      "pid": 20995,
+      "start_ticks": 39126711,
+      "cmdline": "com.termux.x11",
+      "native_apk_maps": [
+        "7660015000-7660338000 r-xp 000e0000 fe:44 1395417                        /data/app/~~nNfPsoYmWPX6ydYMkGNHyg==/com.termux.x11-g3y9iRCzLB9ZU3yFjCD1xw==/base.apk"
+      ],
+      "mali_egl_mapped": true,
+      "mapped_apk_sha256": "7f13f30ef0cb3cd6928a8e5f75e786d1cc00a086408e09f8a9e190be7ee265bc"
+    }
+  },
+  "display_clock": "_TERMUX_X11_DISPLAY_CLOCK(CARDINAL) = 1, 120, 15",
+  "rollback_apk": "build/present-fix-20261017/rollback/original.apk",
+  "rollback_apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+  "acceptance": "Package update and Activity launch passed. Existing X11 connection remains available. No performance or visual acceptance for a fully updated server/renderer pair.",
+  "activation_limit": "Android Activity relaunched with the new APK, but the independent termux-x11 server retained its PID/start time and executable mappings of the deleted old APK. The Present fix and CopyFallback hooks in InitOutput.c require a new server process; opening MainActivity alone does not reload them.",
+  "next_step": "Leave the current desktop intact as requested. On a separately authorized X server restart, verify new server APK mappings before performing runtime acceptance; do not run zink scripts."
+}

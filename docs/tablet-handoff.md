@@ -1,6 +1,8 @@
 # 平板 / 后续 AI 接手
 
-2026-10-17：0008 碎片化 Present damage 候选已构建并完成静态包校验，尚未安装；线上仍是 r3.5 可复现 APK，前缀/链接未改。候选及旧 APK 回退文件、SHA-256、构建封装修复与验收边界见 [候选证据](../evidence/present-fragmented-candidate-2026-10-17.json) 和 [CURRENT-STATE](CURRENT-STATE.md)。不得把构建通过当作卡顿已修复；具体回退原因仍待 CopyFallback 埋点确认。完整可见区本身也可能超过 16 块。停桌面会结束承载当前对话的客户端，仍须用户保存全部工作并明确授权。
+2026-10-17（直接安装后）：用户要求直接覆盖安装候选 APK 后打开 Termux:X11，不运行 zink 脚本；已执行成功，未停止桌面。已安装与 Android renderer 映射哈希为 `7f13f30e…`，但独立 X server 保留旧 PID/starttime，已删除映射对应 APK 实测哈希仍为 `e5aa6b77…`。**0008 的服务端 Present 修复尚未生效**，直接打开 Activity 不会热换 X server。保持当前会话；后续经安排重启 X server，再核对新映射并做验收。见 [直接安装证据](../evidence/present-fragmented-install-2026-10-17.json)。
+
+2026-10-17（构建完成时快照，后续见上）：0008 碎片化 Present damage 候选已构建并完成静态包校验，当时尚未安装；线上仍是 r3.5 可复现 APK，前缀/链接未改。候选及旧 APK 回退文件、SHA-256、构建封装修复与验收边界见 [候选证据](../evidence/present-fragmented-candidate-2026-10-17.json) 和 [CURRENT-STATE](CURRENT-STATE.md)。不得把构建通过当作卡顿已修复；具体回退原因仍待 CopyFallback 埋点确认。完整可见区本身也可能超过 16 块。停桌面会结束承载当前对话的客户端，仍须用户保存全部工作并明确授权。
 
 2026-10-16：统一 gpu-run、Termux 桌面入口及 profile-display 默认值已同步为 **120 FPS**。用户正常重开后，已确认 X11 `-max-fps 120`、根属性 `[1,120,15]` 与 SF 图层周期 8.333 ms；原“当前仍为 60”属于重开前快照。Android 实际显示模式约 120 Hz，保留系统动态降频能力。配置上限不等于 120 张新内容/秒：无额外采样工具时 3000 帧小窗口探针平均约 80.1 fps，仍有周期性停顿。见 [运行诊断](../evidence/fps120-runtime-diagnosis-2026-10-16.json)。
 

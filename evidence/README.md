@@ -1,5 +1,7 @@
 # 验证记录
 
+- [2026-10-17 直接安装 APK](present-fragmented-install-2026-10-17.json)：覆盖安装并打开 Activity 成功；新 renderer / 旧 X server 的映射 APK 哈希已分别核实。未停桌面、未运行 zink 脚本，0008 服务端改动尚未生效。
+
 - [2026-10-17 碎片化 Present 候选构建](present-fragmented-candidate-2026-10-17.json)：修正嵌套补丁封装，干净 arm64 原生/APK 构建及签名/对齐/CRC/库哈希通过；未安装，具体回退原因与实机收益待确认。
 
 - [2026-10-16 120 FPS 运行诊断](fps120-runtime-diagnosis-2026-10-16.json)：重开后 120 已生效（-max-fps 120、[1,120,15]、模式 1、图层周期 8.333 ms）；不加采样工具时 3000 帧小窗口平均 80.1 fps、呈现间隔中位数 8.58 ms，约每 6–9 帧一次 25–30 ms 停顿；仅移动光标约 118 fps 连续呈现但 X 服务端 CPU 翻倍；同时也记录"开启 atrace + dumpsys 时只有约 38–40 fps"的采样条件。Mali 不是该样本瓶颈，功耗/延迟未测。
