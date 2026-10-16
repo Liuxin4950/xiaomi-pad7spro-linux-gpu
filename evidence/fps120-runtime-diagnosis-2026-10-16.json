@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-16",
+  "scope": "120 FPS runtime diagnosis after the desktop restart: traced vs untraced throughput, cursor-only path, stall structure, bottleneck attribution limits",
+  "prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+  "apk_sha256": "e5aa6b775418830f287cef03ba780e8503d3c939e60d5287c312149bd63fd77c",
+  "runtime": {
+    "x11_server": {
+      "pid": 20493,
+      "start_ticks": 39126354,
+      "cmdline": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+      "display_clock_property": [1, 120, 15],
+      "mali_mapped": true
+    },
+    "app_process": {
+      "pid": 26387,
+      "start_ticks": 38902178,
+      "cmdline": "com.termux.x11",
+      "renderer_thread": "Thread-8 (20654) owns CopyBatch/Draw/eglSwapBuffers on the SurfaceView"
+    },
+    "surface_layer": "d158e99 SurfaceView[com.termux.x11/com.termux.x11.MainActivity](BLAST)#11694",
+    "activating_earlier_limitation": "resolved; the X11 display clock is live 120 and no longer the startup default"
+  },
+  "android_display": {
+    "active_mode_id": 1,
+    "mode_fps": 120.00001,
+    "render_frame_rate": 120.00001,
+    "sf_layer_measurement_period_ns": 8333333,
+    "supported_refresh_rates": [120.00001, 144.00002, 90.0, 60.000004, 50.0, 48.000004, 30.000002],
+    "note": "mode 2 is 144 Hz but has not been evaluated; only mode 1 was active"
+  },
+  "traced_diagnosis": {
+    "tooling": "atrace (gfx,view,sched; 8 MB buffer; -a com.termux.x11) plus profile-display SurfaceFlinger sampling",
+    "auto_clock_run": {
+      "client_frames": 360,
+      "client_run_s": 9.30,
+      "x11_submit_interval_ms_p50": 25.236,
+      "whole_surface_sf_present_interval_ms_p50": 24.99,
+      "whole_surface_sf_hz": 45.09
+    },
+    "timer_clock_run": {
+      "client_frames": 240,
+      "client_run_s": 6.258,
+      "client_fps": 38.4,
+      "client_acquire_ms_p50": 22.47,
+      "client_host_frame_ms_p50": 26.92,
+      "display_wait_ms_p50": 0.013,
+      "timer_wait_ms_p50": 0.138,
+      "gpu_wait_ms_p50": 0.052,
+      "x11_request_to_complete_ms_mean": 24.30,
+      "msc_increments": {"3": 186, "1": 73, "4": 36, "2": 17, "5": 18, "6": 9, "7": 15, "8": 1}
+    },
+    "server_markers_from_atrace": {
+      "CopyBatchIssue_to_CopyDone_ms_p50": 2.061,
+      "CopyDone_to_next_SurfaceSubmit_ms_p50": 20.696,
+      "CopyBatchIssue_spacing_ms_p50": 26.557,
+      "SurfaceSubmits": 295,
+      "eglSwapBuffers_duration_ms_p50": 0.568,
+      "dequeueBuffer_events_ms_p50": 0.103,
+      "choreographer_frame_callback_ms_p50": 24.337,
+      "choreographer_callback_mean_ms": 18.4,
+      "choreographer_callback_distribution": "bimodal, 8.3 ms bursts mixed with ~25 ms intervals"
+    },
+    "vsync_distribution": {
+      "VSYNC-sf_per_s": 46.9,
+      "VSYNC-sf_intervals_ms": {"8.3": 84, "16.7": 32, "25.0": 127, "33.3": 51, "41.7": 10},
+      "VSYNC-app_per_s": 90.0,
+      "VSYNC-app_intervals_ms": {"8.3": 387, "16.7": 178}
+    },
+    "system_cpu": {
+      "busy_cpu_seconds_over_6.56s": 6.6,
+      "cores": 10,
+      "interpretation": "no CPU saturation; X server and renderer threads were mostly blocked, not running"
+    }
+  },
+  "untraced_baseline": {
+    "single_client": {"frames": 180, "seconds": 2.20, "fps": 81.4},
+    "three_concurrent_clients": {"fps": [89.1, 79.4, 89.1], "aggregate_submitted_fps": 257.6},
+    "three_thousand_frame_run": {
+      "frames": 3000,
+      "seconds": 37.45,
+      "fps": 80.1,
+      "frame_interval_ms": {"p50": 9.17, "mean": 12.49, "p95": 30.69, "p99": 36.04, "max": 61.11},
+      "host_frame_ms": {"p50": 8.94, "p95": 30.23},
+      "acquire_ms": {"p50": 7.65, "p95": 26.05},
+      "queue_present_ms": {"p50": 0.07, "p95": 0.58},
+      "interval_buckets": {"one_vsync_lt_9.5ms": 1611, "9.5_15ms": 712, "15_21ms": 179, "21_30ms": 306, "gt_30ms": 191},
+      "per_second_fps_range": [72, 91],
+      "drift_within_window": "none observed over 37 s"
+    },
+    "layer_measurement_during_the_same_run": {
+      "present_interval_ms": {"p50": 8.58, "p95": 31.93},
+      "present_rate_per_s": 76.6,
+      "desired_to_actual_latency_ms_p50": 18.52
+    },
+    "clock_modes": {
+      "auto": {"fps": 83.5, "acquire_ms_p50": 7.55},
+      "timer": {"fps": 78.5, "acquire_ms_p50": 7.55},
+      "mailbox": {"fps": 82.2, "acquire_ms_p50": 0.07, "queue_present_ms_p50": 8.52}
+    }
+  },
+  "cursor_only_path": {
+    "method": "xdotool mousemove chain (single client), ~118 moves/s, SurfaceFlinger --latency delta on the X11 SurfaceView layer",
+    "idle_window": {
+      "seconds": 3.02,
+      "layer_presents": 75,
+      "presents_per_s": 24.8,
+      "interval_ms": {"p50": 14.83, "p90": 81.77, "p95": 95.99, "max": 214.16},
+      "x11_server_cpu_ms_per_s": 79,
+      "note": "window contained concurrent activity from the running desktop client, not an empty desktop"
+    },
+    "motion_window": {
+      "seconds": 3.73,
+      "new_layer_frames": 127,
+      "interval_ms": {"p50": 8.43, "p90": 9.94, "p95": 10.80, "max": 12.29},
+      "interval_multiples_of_period": {"1": 126},
+      "x11_server_cpu_ms_per_s": 161,
+      "note": "SurfaceFlinger keeps only the last 127 frames, so the visible span (about 1.07 s) is a lower bound of motion-time presents"
+    }
+  },
+  "attribution": {
+    "gpu": "not the bottleneck: GPU-copy batch p50 2.06 ms including fence, eglSwapBuffers p50 0.57 ms, GPU-ready waits below 0.1 ms, GPU frequency stayed between 104.45 and 441.6 MHz",
+    "cpu": "not saturated in the sampled windows",
+    "measurement_effect": "the same 640x480 workload measured about 38-40 fps under atrace plus SurfaceFlinger polling and about 80-83 fps untraced; traced numbers describe a traced condition, not normal use",
+    "remaining_gap": "about 46 percent of untraced frames need more than one vsync; roughly every 6 to 9 frames stalls for 25-30 ms, which pulls the average from a 117-118 fps median down to 76-80 fps",
+    "stall_source": "not attributed; candidates are the serialized X11 present loop (client copy -> server tick -> renderer draw/swap -> SurfaceFlinger), the periodic empty redraws, and contention with the concurrently running desktop client",
+    "measured_contention": {
+      "chatgpt_renderer_cpu_percent": 70,
+      "chatgpt_gpu_process_cpu_percent": 24,
+      "surfaceflinger_cpu_percent": 21,
+      "x11_server_cpu_percent": 11
+    }
+  },
+  "conclusions": [
+    "120 FPS is active and effective at runtime: X11 -max-fps 120, root display clock [1, 120, 15], SurfaceFlinger layer period 8.333 ms, and median presents of 8.4-8.6 ms in unthrottled windows",
+    "no hardware ceiling has been demonstrated: three concurrent clients submitted 257.6 fps in total on the same display path",
+    "the earlier 38-40 fps figures were taken under tracing and must not be read as normal-use throughput",
+    "the remaining gap to 120 fps is a stall tail, not a uniform per-frame cost",
+    "cursor-only motion already presents at roughly one vsync per frame; its cost is CPU and full-surface redraw work, not frame pacing"
+  ],
+  "private_artifacts": {
+    "traced_run": "build/fps120-diagnosis-20261016 (atrace.txt, timer-timeline, auto, load.csv)",
+    "untraced_runs": "build/fps120-diagnosis-20261016/scale, build/fps120-diagnosis-20261016/scale2, /tmp/commandcode/scratch-probe.csv"
+  },
+  "limitations": [
+    "No power, energy, or battery-life measurement",
+    "No input-to-display latency measurement",
+    "No per-window SurfaceFlinger attribution: the X11 desktop presents as a single SurfaceView layer",
+    "The desktop was running a heavy client during sampling; idle and stall numbers mix that client's work",
+    "The 3-client aggregate counts submitted copies, not distinct displayed frames",
+    "Stall source is not yet isolated; traced and untraced conditions are both recorded and are not interchangeable",
+    "144 Hz mode is supported by the panel but was not evaluated"
+  ]
+}
