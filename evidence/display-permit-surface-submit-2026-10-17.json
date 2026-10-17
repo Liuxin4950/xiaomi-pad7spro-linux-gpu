@@ -669,7 +669,7 @@
       "decision": "Do not change defaults. Initialized hardware backend alone is insufficient; first 600-frame workload did not complete within the CDP deadline. No GPU-crash or software-fallback claim is inferred from timeout.",
       "source_url": "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/gpu/config/gpu_switches.cc"
     },
-    "next_action": "Locate remaining paced-page delivery/CPU-GPU waiting using existing runtime instrumentation before selecting a small production change.",
+    "next_action": "Use existing frame-sequence, scheduler and submit traces to distinguish main-frame/raster readiness from display-queue pacing at missed updates. No further backend switch or queue enlargement without causal evidence.",
     "artifacts_sha256": {
       "build/content-rate-20261017/egl-capabilities.txt": "ab9a3829c9e52bb2615a9b9cb6b6de50e4dfe003b5429a6150642c36b0f08a48",
       "build/content-rate-20261017/window-age.txt": "eb3e71e2c92bdf9aca9859c6776780e3f0f28cc5ea43d31b5d39c434b622afed",
@@ -680,6 +680,663 @@
       "build/page-120-20261017/graphite-vulkan/report.json": "a7f28ec21d0803e26585e63987883dda5a7da5b37a81e78f7a7f03eace70e4f9",
       "build/page-120-20261017/graphite-dawn-vulkan/report.json": "3ee734dec3d173028c56f3dacf4a4e41e95c354e3b17abcccfae73e6c33b716d",
       "build/page-120-20261017/graphite-dawn-vulkan/browser.log": "8784e7b867dcb0fb1f69c0259c8326c8d32e35f612b4aae776caa77596d5daab"
+    },
+    "pacing_review": {
+      "observed_at_utc": "2026-10-17T07:07:34.333482+00:00",
+      "deployment": "Default APK, library prefix and launcher unchanged; no APK installation or session restart.",
+      "trace": {
+        "chromium_scene": [
+          {
+            "mode": "canvas",
+            "frames": 600,
+            "raf_hz": 114.77514418747246,
+            "p50_ms": 8.300000000000182,
+            "p95_ms": 8.5,
+            "p99_ms": 16.700000000000273,
+            "max_ms": 16.800000000000182,
+            "over_12ms": 27,
+            "visibility": "visible",
+            "focus": true,
+            "inner_size": [
+              1707,
+              971
+            ],
+            "device_pixel_ratio": 1.875
+          }
+        ],
+        "swap_throttled_events": 609,
+        "swap_limit_observed": 1,
+        "host_duration_metrics": {
+          "Display::DrawAndSwap": {
+            "count": 721,
+            "p50_ms": 0.619,
+            "p95_ms": 1.093,
+            "max_ms": 4.758
+          },
+          "SkiaOutputSurfaceImplOnGpu::SwapBuffers": {
+            "count": 722,
+            "p50_ms": 0.264,
+            "p95_ms": 0.672,
+            "max_ms": 1.885
+          },
+          "VulkanQueueSubmitHook": {
+            "count": 724,
+            "p50_ms": 0.066,
+            "p95_ms": 0.111,
+            "max_ms": 1.323
+          }
+        },
+        "interpretation": "Swap throttled is a bounded-queue state, not a drop counter or causal proof. The Vulkan output-device source sets max_pending_swaps=1. Existing WSI already uses four images and a two-request display bound; do not blindly add more buffering.",
+        "joint_timeline": {
+          "stage_ms": {
+            "gpu_wait": {
+              "n": 722,
+              "p50": 1.5420050024986267,
+              "p95": 7.752994984388351,
+              "max": 12.544348984956741
+            },
+            "display_wait": {
+              "n": 721,
+              "p50": 6.210676997900009,
+              "p95": 10.281120002269745,
+              "max": 18.211926996707916
+            },
+            "timer_wait": {
+              "n": 5,
+              "p50": 0.08799499273300171,
+              "p95": 0.2080729901790619,
+              "max": 0.3421350121498108
+            }
+          },
+          "gpu_transfer_ms": {
+            "n": 722,
+            "p50": 2.064479,
+            "p95": 6.442994,
+            "max": 8.150338
+          },
+          "stage_counts": {
+            "display_clock_fps": 1,
+            "payload_begin": 722,
+            "payload_submitted": 722,
+            "gpu_wait_begin": 722,
+            "gpu_wait_end": 722,
+            "gpu_ticks_start": 722,
+            "gpu_ticks_end": 722,
+            "gpu_transfer_window_ns": 722,
+            "display_wait_begin": 721,
+            "display_wait_end": 721,
+            "display_queue_depth": 717,
+            "x11_target_msc": 722,
+            "x11_request": 722,
+            "x11_idle": 722,
+            "x11_complete": 722,
+            "x11_complete_ust_us": 722,
+            "x11_complete_mode": 722,
+            "display_clock_skip_fallback": 6,
+            "display_clock_recovered": 6,
+            "timer_wait_begin": 5,
+            "timer_wait_end": 5
+          }
+        },
+        "qualification": "Instrumented diagnostic data. GPU timestamp window includes barriers and transfer; not isolated copy cost. Browser presentation feedback does not prove physical scanout."
+      },
+      "backend_comparison": {
+        "order": [
+          "native",
+          "angle",
+          "native"
+        ],
+        "runs": {
+          "compare-native-1": {
+            "backend": "GaneshVulkan",
+            "state": "passed",
+            "scenes": [
+              {
+                "mode": "canvas",
+                "frames": 600,
+                "raf_hz": 115.32981631945783,
+                "p50_ms": 8.300000000000182,
+                "p95_ms": 8.400000000000546,
+                "p99_ms": 16.699999999999818,
+                "max_ms": 16.700000000000728,
+                "over_12ms": 24,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "scroll",
+                "frames": 600,
+                "raf_hz": 119.94633452812432,
+                "p50_ms": 8.300000000001091,
+                "p95_ms": 8.400000000001455,
+                "p99_ms": 8.400000000001455,
+                "max_ms": 8.5,
+                "over_12ms": 0,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "edit",
+                "frames": 600,
+                "raf_hz": 112.26268343422605,
+                "p50_ms": 8.30000000000291,
+                "p95_ms": 16.600000000000364,
+                "p99_ms": 16.700000000000728,
+                "max_ms": 16.799999999999272,
+                "over_12ms": 41,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              }
+            ],
+            "cpu_ms_per_second": {
+              "browser": 112.06653007257215,
+              "renderer": 699.358581537797,
+              "GPU": 670.8133333117645,
+              "network.mojom.NetworkService": 24.316322562916604,
+              "storage.mojom.StorageService": 0.0
+            },
+            "hardware_checks": {
+              "new_wsi_mapped": true,
+              "new_bridge_mapped": true,
+              "mali_mapped": true
+            }
+          },
+          "compare-angle": {
+            "backend": "GaneshGL",
+            "state": "passed",
+            "scenes": [
+              {
+                "mode": "canvas",
+                "frames": 600,
+                "raf_hz": 117.58932076953279,
+                "p50_ms": 8.300000000000182,
+                "p95_ms": 8.400000000000546,
+                "p99_ms": 8.5,
+                "max_ms": 91.59999999999991,
+                "over_12ms": 3,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "scroll",
+                "frames": 600,
+                "raf_hz": 112.43758681533207,
+                "p50_ms": 8.300000000001091,
+                "p95_ms": 8.400000000001455,
+                "p99_ms": 16.700000000000728,
+                "max_ms": 91.70000000000073,
+                "over_12ms": 14,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "edit",
+                "frames": 600,
+                "raf_hz": 117.98073703492155,
+                "p50_ms": 8.300000000001091,
+                "p95_ms": 8.400000000001455,
+                "p99_ms": 8.5,
+                "max_ms": 83.29999999999927,
+                "over_12ms": 2,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              }
+            ],
+            "cpu_ms_per_second": {
+              "browser": 107.11285229455838,
+              "renderer": 636.3453195430413,
+              "GPU": 727.1010367581351,
+              "network.mojom.NetworkService": 13.191237967310144,
+              "storage.mojom.StorageService": 0.0
+            },
+            "hardware_checks": {
+              "new_wsi_mapped": true,
+              "new_bridge_mapped": true,
+              "mali_mapped": true
+            }
+          },
+          "compare-native-2": {
+            "backend": "GaneshVulkan",
+            "state": "passed",
+            "scenes": [
+              {
+                "mode": "canvas",
+                "frames": 600,
+                "raf_hz": 115.14137977433057,
+                "p50_ms": 8.300000000000182,
+                "p95_ms": 8.5,
+                "p99_ms": 16.700000000000273,
+                "max_ms": 16.800000000000182,
+                "over_12ms": 25,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "scroll",
+                "frames": 600,
+                "raf_hz": 114.5928986838078,
+                "p50_ms": 8.300000000001091,
+                "p95_ms": 8.5,
+                "p99_ms": 16.700000000000728,
+                "max_ms": 16.799999999999272,
+                "over_12ms": 28,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              },
+              {
+                "mode": "edit",
+                "frames": 600,
+                "raf_hz": 114.0452754031567,
+                "p50_ms": 8.300000000001091,
+                "p95_ms": 16.599999999998545,
+                "p99_ms": 16.700000000000728,
+                "max_ms": 16.80000000000109,
+                "over_12ms": 31,
+                "visibility": "visible",
+                "focus": true,
+                "inner_size": [
+                  1707,
+                  971
+                ],
+                "device_pixel_ratio": 1.875
+              }
+            ],
+            "cpu_ms_per_second": {
+              "browser": 110.10290755409204,
+              "renderer": 699.4156127483752,
+              "GPU": 688.9296215527473,
+              "network.mojom.NetworkService": 15.204687233660334,
+              "storage.mojom.StorageService": 0.0
+            },
+            "hardware_checks": {
+              "new_wsi_mapped": true,
+              "new_bridge_mapped": true,
+              "mali_mapped": true
+            }
+          }
+        },
+        "decision": "Keep native default: ANGLE has workload-dependent rAF improvements but 83-92 ms stalls; no overall CPU advantage. No power conclusion. Backend-order trial, not a full thermal/power study."
+      },
+      "optimal_layout_candidate": {
+        "source_patch": "build/wsi-optimal-20261017/experimental-optimal-presentation.patch",
+        "changes": "Presentation AHB image LINEAR to OPTIMAL; matching destination-feature check; skip invalid subresource-layout query for optimal image. Existing AHB socket import takes stride from its own descriptor.",
+        "build": "Fresh isolated WSI objects and prefix; unchanged factory Mali and APK.",
+        "page": [
+          {
+            "mode": "canvas",
+            "frames": 600,
+            "raf_hz": 114.4090457636183,
+            "p50_ms": 8.300000000000182,
+            "p95_ms": 8.5,
+            "p99_ms": 16.699999999999818,
+            "max_ms": 16.799999999999272,
+            "over_12ms": 29,
+            "visibility": "visible",
+            "focus": true,
+            "inner_size": [
+              1707,
+              971
+            ],
+            "device_pixel_ratio": 1.875
+          }
+        ],
+        "timeline": {
+          "stage_ms": {
+            "gpu_wait": {
+              "n": 721,
+              "p50": 0.7118220031261444,
+              "p95": 7.120546996593475,
+              "max": 20.823228985071182
+            },
+            "display_wait": {
+              "n": 721,
+              "p50": 6.956640988588333,
+              "p95": 10.686015993356705,
+              "max": 15.639791995286942
+            },
+            "timer_wait": {
+              "n": 9,
+              "p50": 0.10304698348045349,
+              "p95": 0.1913280189037323,
+              "max": 0.28518199920654297
+            }
+          },
+          "gpu_transfer_ms": {
+            "n": 721,
+            "p50": 1.981953,
+            "p95": 5.171614,
+            "max": 6.807551
+          },
+          "counts": {
+            "display_clock_fps": 1,
+            "payload_begin": 721,
+            "payload_submitted": 721,
+            "gpu_wait_begin": 721,
+            "gpu_wait_end": 721,
+            "gpu_ticks_start": 721,
+            "gpu_ticks_end": 721,
+            "gpu_transfer_window_ns": 721,
+            "display_wait_begin": 721,
+            "display_wait_end": 721,
+            "display_queue_depth": 712,
+            "x11_target_msc": 721,
+            "x11_request": 721,
+            "x11_idle": 721,
+            "x11_complete": 721,
+            "x11_complete_ust_us": 721,
+            "x11_complete_mode": 721,
+            "display_clock_skip_fallback": 9,
+            "timer_wait_begin": 9,
+            "timer_wait_end": 9,
+            "display_clock_recovered": 9
+          }
+        },
+        "physical_pixels": {
+          "server_pid": 24735,
+          "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+          "captures": [
+            {
+              "capture": 0,
+              "screen_size": [
+                3200,
+                2136
+              ],
+              "format": 1,
+              "color_space_id": 2,
+              "screen_origin": [
+                0,
+                82
+              ],
+              "logical_origin": [
+                0,
+                0
+              ],
+              "red": [
+                234,
+                51,
+                35,
+                255
+              ],
+              "green": [
+                117,
+                251,
+                76,
+                255
+              ],
+              "checked_pixels": 307200,
+              "protected_hole_pixels": 6400,
+              "pixel_mismatches": 0,
+              "first_mismatches": []
+            },
+            {
+              "capture": 1,
+              "screen_size": [
+                3200,
+                2136
+              ],
+              "format": 1,
+              "color_space_id": 2,
+              "screen_origin": [
+                0,
+                82
+              ],
+              "logical_origin": [
+                0,
+                0
+              ],
+              "red": [
+                234,
+                51,
+                35,
+                255
+              ],
+              "green": [
+                117,
+                251,
+                76,
+                255
+              ],
+              "checked_pixels": 307200,
+              "protected_hole_pixels": 6400,
+              "pixel_mismatches": 0,
+              "first_mismatches": []
+            }
+          ]
+        },
+        "decision": "Rejected for production: no page-rate gain (114.41 vs joint baseline 114.96 rAF/s); small transfer-window median difference 1.982 vs 2.064 ms does not establish a useful benefit. Patch unregistered; no default links changed.",
+        "cleanup": "Owned test processes exited; no mappings of the isolated candidate prefix remained. Removed only that experimental prefix; source, objects, patch and evidence retained under build/wsi-optimal-20261017."
+      },
+      "uncapped_browser": {
+        "flag": "--disable-frame-rate-limit",
+        "result": {
+          "backend": "GaneshVulkan",
+          "state": "passed",
+          "scenes": [
+            {
+              "mode": "canvas",
+              "frames": 600,
+              "raf_hz": 630.5263157894736,
+              "p50_ms": 1.5,
+              "p95_ms": 2.5,
+              "p99_ms": 3.400000000000091,
+              "max_ms": 7.600000000000136,
+              "over_12ms": 0,
+              "visibility": "visible",
+              "focus": true,
+              "inner_size": [
+                1707,
+                971
+              ],
+              "device_pixel_ratio": 1.875
+            },
+            {
+              "mode": "scroll",
+              "frames": 600,
+              "raf_hz": 902.1084337349398,
+              "p50_ms": 1,
+              "p95_ms": 1.7000000000002728,
+              "p99_ms": 2.599999999999909,
+              "max_ms": 6,
+              "over_12ms": 0,
+              "visibility": "visible",
+              "focus": true,
+              "inner_size": [
+                1707,
+                971
+              ],
+              "device_pixel_ratio": 1.875
+            },
+            {
+              "mode": "edit",
+              "frames": 600,
+              "raf_hz": 720.6448508180941,
+              "p50_ms": 1.300000000000182,
+              "p95_ms": 2.099999999999909,
+              "p99_ms": 2.800000000000182,
+              "max_ms": 4.099999999999909,
+              "over_12ms": 0,
+              "visibility": "visible",
+              "focus": true,
+              "inner_size": [
+                1707,
+                971
+              ],
+              "device_pixel_ratio": 1.875
+            }
+          ],
+          "cpu_ms_per_second": {
+            "browser": 176.87952002709264,
+            "renderer": 2611.384913854531,
+            "GPU": 1817.0350693692244,
+            "network.mojom.NetworkService": 12.863965092879468,
+            "storage.mojom.StorageService": 0.0
+          },
+          "hardware_checks": {
+            "new_wsi_mapped": true,
+            "new_bridge_mapped": true,
+            "mali_mapped": true
+          }
+        },
+        "decision": "Rejected: 630-902 rAF/s and roughly 4.6 CPU cores across browser/renderer/GPU, versus roughly 1.5 cores in capped native samples. WSI cap cannot by itself pace browser JavaScript. This is not 120 unique physical frames or a power measurement."
+      },
+      "sources": {
+        "components/viz/service/display_embedder/skia_output_device_vulkan.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/components/viz/service/display_embedder/skia_output_device_vulkan.cc",
+          "sha256": "27e44eaa8463be0d3532189208088cc5708c84ac7ed938cd69c2bb52ad5f15f1",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        },
+        "gpu/vulkan/vulkan_swap_chain.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/gpu/vulkan/vulkan_swap_chain.cc",
+          "sha256": "6bbbe26b6ed1614206a81a5f1c2d8e7cd7a45f9cf9030fb3ef4b9a1c11821198",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        },
+        "components/viz/service/frame_sinks/compositor_frame_sink_support.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/components/viz/service/frame_sinks/compositor_frame_sink_support.cc",
+          "sha256": "6f939ec77186878c96a82ad6ea835531992b909ab2eb77dd1953cb627de68259",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        },
+        "components/viz/common/features.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/components/viz/common/features.cc",
+          "sha256": "972738729ebdf361221eead55275dfd8b75f9e1ea2dff003fd61c5789b405343",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        },
+        "components/viz/common/switches.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/components/viz/common/switches.cc",
+          "sha256": "07966a4e7039031a8385cdc5d9975904f0cc3cb22f0f5aa37029ecfc1c181364",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        },
+        "cc/metrics/compositor_frame_reporting_controller.cc": {
+          "url": "https://chromium.googlesource.com/chromium/src/+/main/cc/metrics/compositor_frame_reporting_controller.cc",
+          "sha256": "28bb633ccc373fefedfc69db5744a005816e999a7db352b8baddaa3fc67e0f88",
+          "scope": "Observed upstream main, not asserted identical to installed Chromium 152 source"
+        }
+      },
+      "next_action": "Use existing frame-sequence, scheduler and submit traces to distinguish main-frame/raster readiness from display-queue pacing at missed updates. No further backend switch or queue enlargement without causal evidence.",
+      "completion": "Sustained 120 unique page images/s remains unproven; goal active.",
+      "artifacts_sha256": {
+        "build/page-120-20261017/pipeline-trace/report.json": "4555e60c9227091f0caff6b00b5283cae85bc67283b393391710f8f61d053389",
+        "build/page-120-20261017/pipeline-trace/report.trace.json": "3010f0ca7e5c5c9acde4278a9a0294d601b0b3230071c4d4ce2b79e26a5af3c6",
+        "build/page-120-20261017/pipeline-trace/run.py": "34579cf0c33362098b834639284ab076d64c9d15f848bf00cb6b89a56a973ae0",
+        "build/page-120-20261017/pipeline-trace/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
+        "build/page-120-20261017/pipeline-trace/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/pipeline-trace/browser.log": "2cfa7808d38ad4dcb2c1f036c050cdde87a782ab40ad5bd3069745bb14b2d47c",
+        "build/page-120-20261017/pipeline-trace/run.log": "23f4686fad22e98970b4b926f85d798effe8158091a4fb72953d4d66d2977741",
+        "build/page-120-20261017/pipeline-trace/begin-frame-arrival.json": "fd5ca0562c50a7c50bcd0c9103d0403404048bca0d01e4e0c3af8a3658f94e3d",
+        "build/page-120-20261017/joint-trace/report.json": "3cda2ee1a3b1a9ff75438d081d62fb1183c3d0bea4e92dbf0e29921cc999c8ba",
+        "build/page-120-20261017/joint-trace/report.trace.json": "10eab2d66190cd3e6dc29072c178c1b8910bdec09a9b69eea9e4a5e5c87a8b22",
+        "build/page-120-20261017/joint-trace/run.py": "dc311e51be88e81c42d287d69efaa806d35a4e67f94945edd8b4ff984428578c",
+        "build/page-120-20261017/joint-trace/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
+        "build/page-120-20261017/joint-trace/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/joint-trace/browser.log": "2bd34a6237b69983e08eea69cb7e5912ba0370fe233145267aacc14e15947741",
+        "build/page-120-20261017/joint-trace/run.log": "554ef5dadfbba6089e90b4b460dbaa576db2751380605c0d9879789712a59dde",
+        "build/page-120-20261017/joint-trace/timeline-summary.json": "7b7b12e9035a556c72125dd18b7b0f29de15e3fb65703a078eb384fcdb08d8be",
+        "build/page-120-20261017/joint-trace/timeline/wsi-6801-48234497-202297652893584.csv": "3ec99495d4f139ad29352790922028550c24b985f909b084261b395eb7e17c1f",
+        "build/page-120-20261017/joint-trace/timeline/wsi-6801-48234497-202297836453845.csv": "40e433e5129987523ac70a707473586633857bf38570721abf9cac9e2404e087",
+        "build/page-120-20261017/angle-hardware/report.json": "cfcb11b590fdfc7428c73ce9223274e45f19d45a5d8be320078f793642df943a",
+        "build/page-120-20261017/angle-hardware/run.py": "9a449d3158da11ef31d622522f65a1d111583a9a917c4bdbee06b5b7deeaf7db",
+        "build/page-120-20261017/angle-hardware/check.mjs": "f8cbcdc1907e5d70a7a4291ad67ff1abc85779bf4486a3104ef562b7a1d06065",
+        "build/page-120-20261017/angle-hardware/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/angle-hardware/browser.log": "c258df50e8851c260118c58a3d2021b356257931ff4b85eeb6faa38ed666f47e",
+        "build/page-120-20261017/angle-hardware/run.log": "8298370985cdccba6d0d026f66dbf5541c495e1791582eddebe054b16087042b",
+        "build/page-120-20261017/compare-native-1/report.json": "03f69ee65c498f601a661198c99ddeabe2afc99bce3764e04f3b1010ecb3e23b",
+        "build/page-120-20261017/compare-native-1/run.py": "34579cf0c33362098b834639284ab076d64c9d15f848bf00cb6b89a56a973ae0",
+        "build/page-120-20261017/compare-native-1/check.mjs": "e56150986058611ae4e4dd8e1a4cb95ace44791efd7d0aaad485af14e596fb63",
+        "build/page-120-20261017/compare-native-1/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/compare-native-1/browser.log": "ef327cd85778bb28ca0afebc04784c5237922e21a1a9575317d311811fcf5c86",
+        "build/page-120-20261017/compare-native-1/run.log": "0dcba7d4eef05a0b5f51f006b9de2b852b4560f0f2e61ce23494beee31c5dda0",
+        "build/page-120-20261017/compare-angle/report.json": "6af1b3058f74131b6cbba6d7d6fddb403c3cbb60af47a5a429a59f96bb791ea6",
+        "build/page-120-20261017/compare-angle/run.py": "9a449d3158da11ef31d622522f65a1d111583a9a917c4bdbee06b5b7deeaf7db",
+        "build/page-120-20261017/compare-angle/check.mjs": "a394ead8c916e576cc2e93d4fcae15d48bb5007314cd7ffde8158be76a4a5fee",
+        "build/page-120-20261017/compare-angle/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/compare-angle/browser.log": "480402ed3491f5b72ad6ab861f6b94b184cf1b2984eac13025fe8f3fdfdb78eb",
+        "build/page-120-20261017/compare-angle/run.log": "cdfba83cfc867912184e7705e6878023cc6f74f73d47211a97cbc673287e6c92",
+        "build/page-120-20261017/compare-native-2/report.json": "1234c5e519efc9275517810f6e582b5a35fe4c873a58ad66b23129837403f7d1",
+        "build/page-120-20261017/compare-native-2/run.py": "34579cf0c33362098b834639284ab076d64c9d15f848bf00cb6b89a56a973ae0",
+        "build/page-120-20261017/compare-native-2/check.mjs": "e56150986058611ae4e4dd8e1a4cb95ace44791efd7d0aaad485af14e596fb63",
+        "build/page-120-20261017/compare-native-2/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/compare-native-2/browser.log": "407c605bf2c1923b0a3b0db8ee3f6e7d49e3f2ca3f7b9f58d1d6e1ce3d046bd5",
+        "build/page-120-20261017/compare-native-2/run.log": "1e68f812374eeda2d839426e938d532429e076b3efe20bcb68ef721b37581d02",
+        "build/page-120-20261017/single-pacer/report.json": "2f45cc9734bae745a05b4110349d0e87b52dcdc92b589aedcdaa51137c2f9ef4",
+        "build/page-120-20261017/single-pacer/run.py": "542a56dafb2d5ba05f22674dc92de3e0953f09e72033401e9a1fa32f45872ae7",
+        "build/page-120-20261017/single-pacer/check.mjs": "e56150986058611ae4e4dd8e1a4cb95ace44791efd7d0aaad485af14e596fb63",
+        "build/page-120-20261017/single-pacer/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+        "build/page-120-20261017/single-pacer/browser.log": "f69ade9463574d8c6d0b4afcf9551875b428fc7ba81f826715a20611e98d94d1",
+        "build/page-120-20261017/single-pacer/run.log": "963830893aa916d7f7e9acb2693b8476e7cfe9a4e90732fe727c4a2d7fc415f5",
+        "build/wsi-optimal-20261017/experimental-optimal-presentation.patch": "cfc739f88370aa1bf4882ebc741c63006d0ab2e94916aa7a4096abe100f23d9c",
+        "build/wsi-optimal-20261017/build.log": "cd0eea7ba6ed861efe7e28debc8581627d7d988ddc13a9075fdce0229b22f8fc",
+        "build/wsi-optimal-20261017/smoke.log": "7b0a35ecf4aa34415466735a88058b2017423726e64c6a1c4b3baac6b9ffca0e",
+        "build/wsi-optimal-20261017/objects/libVkLayer_window_system_integration.so": "8ef6fc3f2bf360040dc7dfd911d6299a183288cdb3abe226fced78ee85c1a45b",
+        "build/wsi-optimal-20261017/page/report.json": "bc7d942752b57b7b267470011ca8611074066a7135303bb05e00c41828953644",
+        "build/wsi-optimal-20261017/page/report.trace.json": "0b8f531e3324dc0c13194a1a2be3f7622d8320450f7b852d8373f0d07225de47",
+        "build/wsi-optimal-20261017/page/timeline-summary.json": "27d5fd246fbd3646e9ea31f75752a4b2f30d8ace13aa1e48910e63ff15c1163d",
+        "build/wsi-optimal-20261017/correctness/clip-screen-check.json": "505287c152a4394d4b00731f484d54a5ccfa3e07115a766e2a3920ff3c325ef8",
+        "build/wsi-optimal-20261017/correctness/run.log": "cb5c870cd6735000da0e51e2d79b859e547fbf711f18fa07ebd56b3c83e6ebe0",
+        "build/wsi-optimal-20261017/page/timeline/wsi-9178-48234497-202476787141638.csv": "61f62ab91cf1a70ba561f619881d2837438ebff8b2a85cd5079c4f650453aa44",
+        "build/wsi-optimal-20261017/page/timeline/wsi-9178-48234497-202476989192680.csv": "757b69fff918224897a861b5dcbe67339dc4171534bcb834d83755bfae0b14b5"
+      },
+      "runtime_check": [
+        {
+          "pid": 24735,
+          "start_ticks": "45568550",
+          "command": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+          "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+          "mali_mapped": true,
+          "mali_map_names": [
+            "/vendor/lib64/egl/libGLES_mali.so"
+          ]
+        },
+        {
+          "pid": 29634,
+          "start_ticks": "44498494",
+          "command": "com.termux.x11",
+          "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+          "mali_mapped": true,
+          "mali_map_names": [
+            "/vendor/lib64/egl/libGLES_mali.so"
+          ]
+        }
+      ],
+      "default_launcher": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-run"
     }
   }
 }

@@ -4,6 +4,8 @@
 
 **会话保护更新**：两次 APK 安装均伴随当前对话中断。用户已明确要求先通知、由其安排重启 Termux；后续先完成候选构建、验证和备份，不再自动替换 APK 或重启 X server。当前包已加载，这轮无需再重启。普通验证只使用独立窗口。
 
+**页面节拍复核**：同会话原生 Vulkan → ANGLE Vulkan → 原生 Vulkan 对比未证明切换收益，ANGLE 出现 83–92 ms 长停顿。独立 optimal AHB 布局候选显示/遮挡像素通过，但页面速率未提高，未纳入生产补丁。`--disable-frame-rate-limit` 把 rAF 拉高到 630–902/s，并把浏览器相关 CPU 用量推到约 4.6 核，已拒绝；不能用回调空转冒充屏幕 120 帧。当前默认和 APK 保持，实验前缀已在进程退出后清理；详细追踪、CPU 范围及后续定位见同一份[本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)的 `followup_review.pacing_review`。
+
 ## 前一轮已验收基线（以下 c62abdc5 与旧 PID 为历史快照）
 
 默认 `gpu-run` / `gpu-launcher` 已切到 `/opt/pad7spro-gpu-fps-20261017`；Termux:X11 已安装且两端实际映射 APK `c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`。原厂 Mali 保留，120 配置 `[1,120,15]` 正常。新栈完整 3000 帧 FIFO 探针 **116.84 次提交/秒**，默认入口复测 600 帧 **119.31/s**；隔离 Chromium **119.45 rAF/s**，缩放后 **115.11 rAF/s**，GaneshVulkan / ANGLE Vulkan / Mali、WebGL 回读和 GPU 崩溃计数 0 均确认。独立 SurfaceFlinger 内容层快照约 **111.95 次呈现/秒**；这些指标不等于逐帧屏幕新内容计数。
@@ -46,7 +48,7 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`；新 Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`，已有进程须正常重开加载新库。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009–0011 与 WSI 0012 已联合验收，服务端及当前助手均已加载修复版。
+- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac`；Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`。versionName 仍为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；包含 0009–0013，与 WSI 0012 联合检查通过。当前映射复核见本轮证据；下方 FPS 修复交付中的 `c62abdc5…` 与 PID 为前一轮快照。
 - 当前进程/库/APK 映射见 [FPS 修复交付](../evidence/fps120-release-2026-10-17.json)，PID 每次重新核对。
 
 ## 已验证和边界

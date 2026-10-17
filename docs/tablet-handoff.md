@@ -4,6 +4,8 @@
 
 2026-10-17 当前在测包 `9c6276b8…` 已在两端加载，包含新的 tick 许可时机修复和最终绘制合并；无追踪提交约 119/s、SF 内容层短快照 117.18/s、712704 像素零差异。持续独立页面内容 120 帧目标仍未完成，见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
 
+页面节拍后续核对：原生 Vulkan / ANGLE 同会话对比未支持切换默认；optimal AHB 候选没有页面速率收益，未登记为生产补丁，独立实验前缀已清理。不要加入 `--disable-frame-rate-limit`：已测到 630–902 rAF/s 和约 4.6 核浏览器 CPU 开销，不能代表屏幕内容更新。Chromium 的 `Swap throttled` 是队列状态，不是掉帧计数；原生 Vulkan 输出后端固定一次交换在途，WSI 已有四缓冲、两次显示提交上限，不要据此盲目扩大队列。接下来用已有 frame-sequence / Scheduler 追踪定位未更新帧的主线程准备与显示等待，详见同一证据的 `pacing_review`。本轮未安装 APK、未重启会话。
+
 2026-10-17 前一轮已验收基线：默认链接已切到 `/opt/pad7spro-gpu-fps-20261017`，APK `c62abdc5…` 已在 server / renderer 两端加载。联合验收：3000 帧 FIFO 116.84 次提交/秒，默认入口复测 119.31/s；Chromium 119.45 rAF/s、缩放后 115.11，Mali / GaneshVulkan / ANGLE 和 WebGL / 0 崩溃通过；SF 内容层快照 111.95 次呈现/秒。712704 个物理像素零差异，包含 25 矩形遮挡、增量和空列表；oldSwapchain/缩放/Flip 通过。详细 source/build/hash、早前 800 像素失败及修复、回退见 [交付证据](../evidence/fps120-release-2026-10-17.json)。
 
 用户已正常重开助手；新 GPU 进程 PID 22446（start_ticks 44231138）已确认加载新前缀 WSI、sysvk 和原厂 Mali，最后一项生效检查通过。**不要为此停止桌面、不要运行 zink 脚本、不要直接杀当前对话客户端。** 新启动应用已走修复版；旧前缀、APK 和激活备份均保留。功耗、精确输入延迟、长期稳定性及每帧屏幕独立内容率未测。下文为历史阶段快照。
