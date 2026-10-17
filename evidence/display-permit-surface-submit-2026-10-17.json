@@ -1,0 +1,526 @@
+{
+  "observed_at_utc": "2026-10-17T03:25:28.563195+00:00",
+  "state": "active-validated-improvements-120fps-goal-incomplete",
+  "scope": "Display permit timing and final-Surface submission coalescing.",
+  "implementation": {
+    "termux_0012": "Claim the existing byte-sized display permit before rendering can block. Accepted ticks during GL/fence work remain available; completion never sets the flag again. Atomic gate helpers preserve shared layout.",
+    "termux_0013": "Complete copy-FBO work before clearing the final Surface. Draw root and cursor before creating their common ownership fence and issuing one explicit flush. CPU/GPU ownership fence remains before root unlock."
+  },
+  "patches": {
+    "patches/termux-x11/0012-consume-display-permit-before-render.patch": "0dfdbc910c2aed594ad2b209dfb3c07dc39e267ab4266f188c43c594bf057055",
+    "patches/termux-x11/0013-coalesce-final-surface-submission.patch": "55ce3643df246e6edf932dde50b3ce2cee487a6c57cea19f6c5984bea5ff4b45"
+  },
+  "build": {
+    "base_commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+    "submodules": 16,
+    "abis": [
+      "arm64-v8a"
+    ],
+    "native_objects": "fresh for both candidates",
+    "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+    "native_sha256": "58e928c4477f021dbf8ac74e6e3a95d612678e355f96eb23c78cd1884f0426d5",
+    "v2_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "signature_crc_16k_alignment": "passed"
+  },
+  "runtime": [
+    {
+      "kind": "renderer",
+      "pid": 7339,
+      "start_ticks": 44356588,
+      "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+      "mali_mapped": true
+    },
+    {
+      "kind": "server",
+      "pid": 19990,
+      "start_ticks": 44396126,
+      "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+      "mali_mapped": true
+    }
+  ],
+  "baseline": {
+    "untraced_native": [
+      {
+        "label": "baseline-1",
+        "frames": 1200,
+        "submissions_per_second": 119.72773476542486,
+        "interval_ms": {
+          "50": 8.302057,
+          "95": 12.728913999999998,
+          "99": 15.240165799999993
+        },
+        "max_interval_ms": 23.69625,
+        "intervals_over_30ms": 0,
+        "cpu_ms_per_second": {
+          "server": 152.94290142484127,
+          "renderer": 416.23701020684643
+        },
+        "pids": {
+          "server": 21225,
+          "renderer": 31408
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      },
+      {
+        "label": "baseline-2",
+        "frames": 1200,
+        "submissions_per_second": 119.8383468256278,
+        "interval_ms": {
+          "50": 8.346979,
+          "95": 13.616449999999999,
+          "99": 16.413010019999998
+        },
+        "max_interval_ms": 33.188333,
+        "intervals_over_30ms": 1,
+        "cpu_ms_per_second": {
+          "server": 141.23182303540486,
+          "renderer": 389.6050290631858
+        },
+        "pids": {
+          "server": 21225,
+          "renderer": 31408
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      }
+    ],
+    "surface": {
+      "layer": "a705be0 SurfaceView[com.termux.x11/com.termux.x11.MainActivity](BLAST)#12646",
+      "measurement_period_ns": 8333333,
+      "frames_in_retained_window": 126,
+      "retained_window_s": 1.133407396,
+      "whole_surface_present_rate_per_s": 110.28691046233477,
+      "present_interval_ms": {
+        "p50": 8.334479,
+        "p95": 16.66388,
+        "max": 16.822317
+      },
+      "snapshot_duration_ms": 32.528593,
+      "probe_exit_code": 0,
+      "new_wsi_and_mali_maps_verified": true,
+      "note": "One SurfaceFlinger snapshot during a separate moving-window run, not periodic polling. Whole X11 BLAST layer includes other clients; this does not directly count unique probe pixels or input latency."
+    }
+  },
+  "frame_gate_candidate": {
+    "apk_sha256": "f7ee35edf8c17562c6dabc097458b6915359aa4e6a72577c0a980312909d49c1",
+    "untraced_native": [
+      {
+        "label": "candidate-1",
+        "frames": 1200,
+        "submissions_per_second": 118.80676848743494,
+        "interval_ms": {
+          "50": 8.324427,
+          "95": 12.913552299999992,
+          "99": 19.281715259999995
+        },
+        "max_interval_ms": 29.173906,
+        "intervals_over_30ms": 0,
+        "cpu_ms_per_second": {
+          "server": 120.72923223953526,
+          "renderer": 322.58850854403823
+        },
+        "pids": {
+          "server": 8365,
+          "renderer": 21950
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      },
+      {
+        "label": "candidate-2",
+        "frames": 1200,
+        "submissions_per_second": 118.21229740457031,
+        "interval_ms": {
+          "50": 8.331745,
+          "95": 14.119541599999987,
+          "99": 19.2242293
+        },
+        "max_interval_ms": 30.272708,
+        "intervals_over_30ms": 2,
+        "cpu_ms_per_second": {
+          "server": 126.47508051734255,
+          "renderer": 326.3250169073418
+        },
+        "pids": {
+          "server": 8365,
+          "renderer": 21950
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      }
+    ],
+    "surface": {
+      "layer": "d158e99 SurfaceView[com.termux.x11/com.termux.x11.MainActivity](BLAST)#12845",
+      "measurement_period_ns": 8333333,
+      "frames_in_retained_window": 126,
+      "retained_window_s": 1.091675938,
+      "whole_surface_present_rate_per_s": 114.50284434133968,
+      "present_interval_ms": {
+        "p50": 8.334817,
+        "p95": 8.402422,
+        "max": 25.017761
+      },
+      "snapshot_duration_ms": 32.159766,
+      "probe_exit_code": 0,
+      "new_wsi_and_mali_maps_verified": true,
+      "note": "One SurfaceFlinger snapshot during a separate moving-window run, not periodic polling. Whole X11 BLAST layer includes other clients; this does not directly count unique probe pixels or input latency."
+    },
+    "diagnostic": {
+      "scope": "Diagnostic trace only, not normal throughput.",
+      "stage_counts": {
+        "Tick": 737,
+        "CopyEnqueue": 1018,
+        "CopyChunks": 1018,
+        "CopyRects": 1018,
+        "PresentCopy": 1018,
+        "FrameBegin": 706,
+        "CopyBatchIssue": 701,
+        "CopyDraws": 1335,
+        "CopyPixels": 1335,
+        "CopyIssued": 1335,
+        "CopyAndRootFenceWait": 919,
+        "CopyDone": 701,
+        "FrameGateAtSubmit": 706,
+        "SurfaceTime": 5633,
+        "SurfaceSubmit": 706,
+        "eglSwapBuffers": 706
+      },
+      "frame_gate_ready_at_submit": {
+        "0": 517,
+        "1": 189
+      },
+      "frames_crossing_tick": 175,
+      "crossing_with_permit_preserved": 171,
+      "crossing_examples": [
+        {
+          "begin": 443728.634485,
+          "submit": 443728.64221,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.68384,
+          "submit": 443728.695714,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.696187,
+          "submit": 443728.701451,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.7721,
+          "submit": 443728.781459,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.781898,
+          "submit": 443728.787366,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.787735,
+          "submit": 443728.792877,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.817752,
+          "submit": 443728.827075,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443728.989433,
+          "submit": 443728.992728,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443729.097035,
+          "submit": 443729.101145,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        },
+        {
+          "begin": 443729.163635,
+          "submit": 443729.168053,
+          "ticks_during_frame": 1,
+          "permit_ready_at_submit": true
+        }
+      ],
+      "tracing_on_after": "0",
+      "atrace_tags_after": "0"
+    }
+  },
+  "coalesced_candidate": {
+    "untraced_native": [
+      {
+        "label": "candidate-1",
+        "frames": 1200,
+        "submissions_per_second": 119.00685962357696,
+        "interval_ms": {
+          "50": 8.498776,
+          "95": 13.203806899999995,
+          "99": 18.918420059999995
+        },
+        "max_interval_ms": 34.540365,
+        "intervals_over_30ms": 1,
+        "cpu_ms_per_second": {
+          "renderer": 326.9833204207044,
+          "server": 138.7495988728805
+        },
+        "pids": {
+          "renderer": 7339,
+          "server": 19990
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      },
+      {
+        "label": "candidate-2",
+        "frames": 1200,
+        "submissions_per_second": 118.8722913643197,
+        "interval_ms": {
+          "50": 8.401745,
+          "95": 13.172067899999995,
+          "99": 20.014674879999998
+        },
+        "max_interval_ms": 29.416562,
+        "intervals_over_30ms": 0,
+        "cpu_ms_per_second": {
+          "renderer": 291.8954357075064,
+          "server": 132.41614136400125
+        },
+        "pids": {
+          "renderer": 7339,
+          "server": 19990
+        },
+        "exit_code": 0,
+        "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+        "scope": "Native client submission timestamps, not unique physical-screen contents."
+      }
+    ],
+    "surface": {
+      "layer": "6f6855e SurfaceView[com.termux.x11/com.termux.x11.MainActivity](BLAST)#12987",
+      "measurement_period_ns": 8333333,
+      "frames_in_retained_window": 126,
+      "retained_window_s": 1.066705417,
+      "whole_surface_present_rate_per_s": 117.18324291588367,
+      "present_interval_ms": {
+        "p50": 8.333698,
+        "p95": 8.39836,
+        "max": 16.714791
+      },
+      "snapshot_duration_ms": 29.815912,
+      "probe_exit_code": 0,
+      "new_wsi_and_mali_maps_verified": true,
+      "note": "One SurfaceFlinger snapshot during a separate moving-window run, not periodic polling. Whole X11 BLAST layer includes other clients; this does not directly count unique probe pixels or input latency."
+    },
+    "physical_pixels": {
+      "checked": 712704,
+      "mismatches": 0,
+      "clip_captures": {
+        "server_pid": 19990,
+        "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+        "captures": [
+          {
+            "capture": 0,
+            "screen_size": [
+              3200,
+              2136
+            ],
+            "format": 1,
+            "color_space_id": 2,
+            "screen_origin": [
+              0,
+              82
+            ],
+            "logical_origin": [
+              0,
+              0
+            ],
+            "red": [
+              234,
+              51,
+              35,
+              255
+            ],
+            "green": [
+              117,
+              251,
+              76,
+              255
+            ],
+            "checked_pixels": 307200,
+            "protected_hole_pixels": 6400,
+            "pixel_mismatches": 0,
+            "first_mismatches": []
+          },
+          {
+            "capture": 1,
+            "screen_size": [
+              3200,
+              2136
+            ],
+            "format": 1,
+            "color_space_id": 2,
+            "screen_origin": [
+              0,
+              82
+            ],
+            "logical_origin": [
+              0,
+              0
+            ],
+            "red": [
+              234,
+              51,
+              35,
+              255
+            ],
+            "green": [
+              117,
+              251,
+              76,
+              255
+            ],
+            "checked_pixels": 307200,
+            "protected_hole_pixels": 6400,
+            "pixel_mismatches": 0,
+            "first_mismatches": []
+          }
+        ]
+      },
+      "incremental": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          61,
+          113,
+          210
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1591,
+          1044,
+          1654,
+          1139
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "android_overlay_wait_s": 0.5313039589964319,
+        "android_overlay_seen": false,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      },
+      "empty_regions": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          24,
+          63,
+          12
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1472,
+          996,
+          1727,
+          1187
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "android_overlay_wait_s": 0.5242572919814847,
+        "android_overlay_seen": false,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      }
+    }
+  },
+  "validation": {
+    "host_actual_production_redraw_function": "passed under UBSan; GL order, one flush, ownership, tick during wait, busy permit, missing/invalid root",
+    "copy_cpu_gpu_order_and_grouped_clipping": "passed",
+    "negative_controls": [
+      {
+        "name": "old-multiple-submissions",
+        "exit_code": -6,
+        "assertion": "test: tests/x11-renderer-regression.cpp:118: int main(): Assertion `events == expected' failed."
+      },
+      {
+        "name": "late-permit-overwrite",
+        "exit_code": -6,
+        "assertion": "test: tests/x11-renderer-regression.cpp:120: int main(): Assertion `lorieFrameGateReady(&shared.waitForNextFrame) == tick' failed."
+      }
+    ],
+    "prefix_manifest_verified": true,
+    "prefix_manifest_sha256": "0a584d569420367daa1ccf415484d50a89d98d7c8f4ff612d83449dc05a6e102"
+  },
+  "deployment_incident": {
+    "apk_installation_interrupted_current_conversation": true,
+    "observed_twice": true,
+    "agent_explicitly_invoked_desktop_stop": false,
+    "zink_script_invoked": false,
+    "user_latest_instruction": "Prepare and validate candidates first, notify the user, and let the user arrange Termux restart. No further automatic APK replacement or server restart.",
+    "rollback_current_to_previous_apk": "build/frame-submit-20261017/rollback/previous.apk",
+    "rollback_previous_sha256": "f7ee35edf8c17562c6dabc097458b6915359aa4e6a72577c0a980312909d49c1"
+  },
+  "limits": [
+    "Native submissions and SF whole-X11 content-layer presentation are separate measurements. No proof of sustained 120 distinct page images per second.",
+    "The desktop/process environment restarted between snapshots. These results are directional samples, not a tightly controlled alternating A/B.",
+    "Diagnostic trace affects timing and is not a normal-FPS sample. Tick markers precede gate reopening, so not every crossing marker requires a ready permit at that instant.",
+    "No whole-device power, precise input latency, or long-term stability result."
+  ],
+  "remaining_work": [
+    "Locate remaining Surface delivery misses with low-overhead per-frame correlation.",
+    "Optimize demonstrable GPU/CPU work while preserving clipping, ownership and lifecycle correctness.",
+    "Verify actual page-content presentation near 120/s over representative activity before claiming the original goal complete."
+  ],
+  "artifacts_sha256": {
+    "build/frame-gate-20261017/baseline-trace-analysis.json": "dca540292ab83c32dc998e1a5f4fe2feae9f9781facae936cc19d5d17b7eb385",
+    "build/frame-gate-20261017/baseline-1/summary.json": "b57269d61a04ae449bd760a13dee05dad25553d166c5cf6f34fbdb250049cbab",
+    "build/frame-gate-20261017/baseline-2/summary.json": "e1a8e10d49225214b2a72b900a38df056d3854b9c93004c56e7caa21b2ec2c2e",
+    "build/frame-gate-20261017/baseline-surface/surface-check.json": "bea7c6e04d7236b7ac38ec0fbeac02981122270e0cade24161e96f7ac2f5365f",
+    "build/frame-gate-20261017/candidate-1/summary.json": "1ad940fe8be0662bb0036607f6e9bc39e320b812020c0c7f9c637201609e3907",
+    "build/frame-gate-20261017/candidate-2/summary.json": "bcbf09498522f9bfc8913ec8cd9bbad3fff12ee90490febf59c77c7f723c7ae5",
+    "build/frame-gate-20261017/candidate-surface/surface-check.json": "8502cdb506575abe98c737ed8d968c4e4268c0cbbac126488751723175444754",
+    "build/frame-gate-20261017/diagnostic/summary.json": "fb301184eba6663bbb0a36be08b26c06dc7b0b86ff652ecd0a6d338ff1ddf212",
+    "build/frame-gate-20261017/correctness/clip-screen-check.json": "d0be5acf64dd56498f57ccd32b459a5a2cd6f0463d8c7f9e2419b02ac48255d5",
+    "build/frame-submit-20261017/runtime.json": "87eee1027c8434a8031f3c951f16142aa0a003d88093af52dfcae5f88a78f779",
+    "build/frame-submit-20261017/candidate-1/summary.json": "c7b795778f1e7fc67fbe78297344f29c026b2ec9e082781e213f8a253635adc8",
+    "build/frame-submit-20261017/candidate-2/summary.json": "c531a27e96a7e7743765368fb08a58925f56a76494164894c87ceedef3bee544",
+    "build/frame-submit-20261017/surface/surface-check.json": "e662f45d2e78d47ef5894ee0da840a132cd6a97ce159bb3598700cd39798fdf2",
+    "build/frame-submit-20261017/correctness/clip-screen-check.json": "975eafb222d2faf0bbee4703c3e4d986204db8fda5a0d6f77defd0f6c502dc25",
+    "build/frame-submit-20261017/correctness/regions-screen-check.json": "d9eb8a112a156c13f942ced8b115fd1faea3c129ac0496ce68acc30e9b140c4c",
+    "build/frame-submit-20261017/correctness/empty-screen-check.json": "710ddc00cc0dffe3eafeb9e1345b4b5038d4804504ca88727b27b326ea4beb4c",
+    "build/frame-submit-20261017/regression.log": "9282fe5d331d643f3da954e7111a2b6ffefb323b970abed1aa41b1594aac4bc0",
+    "build/frame-submit-20261017/negative-controls/summary.json": "8a98ac561046710a68e19283959345a3c5c2ed725464d31ff327cdb0fce4e464",
+    "build/frame-submit-20261017/build.log": "9a1cd69e4839e3b9127556baa78360718ae0b46cd0c2faa0c3c14608cf5578f4",
+    "build/frame-submit-20261017/install.log": "7fc0023a6402c7bd7abd98bb3e580968de4833eed07d88d1cc8d70819d69c7a0",
+    "build/frame-submit-20261017/signature.txt": "bbe4ea3885dc2b5b20fa141377332b5779ed69080b7f33a11af63b769622f544",
+    "build/x11-frame-gate-20261017/build-report.json": "dfb7223f386bd67f659ae2af85c2b85198415b82c43e548e87bdbbe075a64737",
+    "build/x11-frame-submit-20261017/build-report.json": "a9b52676a86f9be3ee6721297282b1b0934ff6a78765076d2d2c874035f911d4"
+  }
+}

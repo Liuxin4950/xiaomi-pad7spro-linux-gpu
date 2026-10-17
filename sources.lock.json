@@ -135,6 +135,14 @@
       {
         "path": "patches/termux-x11/0011-order-cpu-after-queued-gpu-copy.patch",
         "sha256": "a4fd4c215bcab83f5e4a477c6407f3360956ae7aaca96ead84044cf98b456dc7"
+      },
+      {
+        "path": "patches/termux-x11/0012-consume-display-permit-before-render.patch",
+        "sha256": "0dfdbc910c2aed594ad2b209dfb3c07dc39e267ab4266f188c43c594bf057055"
+      },
+      {
+        "path": "patches/termux-x11/0013-coalesce-final-surface-submission.patch",
+        "sha256": "55ce3643df246e6edf932dde50b3ce2cee487a6c57cea19f6c5984bea5ff4b45"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

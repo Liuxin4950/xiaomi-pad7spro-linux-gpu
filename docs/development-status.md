@@ -1,6 +1,8 @@
 # 当前验证状态
 
-更新：2026-10-17。当前新默认为 **r3.5-fps-20261017 / copy-chunks-scoped-root-cpu-bounded-wsi-pipeline**，唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)，集成范围见 [r3.5](r3.5-efficiency.md)。
+更新：2026-10-17。继续优化目标仍进行中：当前 APK `9c6276b8…` 已加载，SF 内容层短快照约 117.18/s，尚无持续独立页面 120 帧证据。后续更新先通知用户安排 Termux 重启。见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
+
+前一轮已验收默认为 **r3.5-fps-20261017 / copy-chunks-scoped-root-cpu-bounded-wsi-pipeline**，唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)，集成范围见 [r3.5](r3.5-efficiency.md)。
 
 FPS 修复的 APK 与新默认栈已联合验收，3000 帧约 116.84 次提交/秒、Chromium 约 119.45 rAF/s，物理像素检查通过；用户重开后的助手 GPU 进程也已确认加载新 WSI、桥接和原厂 Mali，本轮 FPS 修复验收完成。见 [最新证据](../evidence/fps120-release-2026-10-17.json)。2026-10-13 的 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)保留为历史。受控像素/Chromium 核心验收已取得，真实输入延迟、长期能耗、全部应用与恢复场景仍不作完成承诺。
 

@@ -8,6 +8,8 @@
 
 2026-10-12 已将 [r3.3 原生 GPU 渲染](docs/r3.3-native-rendering.md)设为默认，替换 r2：二维 Skia 直接使用 Vulkan/Mali，保留 WSI 命令复用、空闲休眠及固定节奏限帧，并部署 Termux:X11 前端 GPU 批处理与输入法接口修正。Chromium / Trae 已实机核对；[r3.2 记录](docs/r3.2-gpu-replacement.md)保留。
 
+2026-10-17 继续优化：显示许可与最终绘制提交重排后，当前 APK `9c6276b8…` 的 SF 内容层短快照约 117.18/s，712704 像素零差异；持续独立页面 120 帧仍待证明。APK 更新已实测中断当前对话，后续先通知用户安排 Termux 重启。见 [本轮证据](evidence/display-permit-surface-submit-2026-10-17.json)。
+
 当前唯一配置与后续 AI 接手入口：[CURRENT-STATE](docs/CURRENT-STATE.md)、[AGENTS.md](AGENTS.md)。
 
 ## 日常使用
@@ -62,7 +64,7 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
 | Termux:Widget | `0.15.0`，桌面快捷入口追随统一 gpu-run |
-| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `c62abdc5…`，以完整哈希区分同名构建 |
+| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `9c6276b8…`，以完整哈希区分同名构建 |
 | 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
 设备型号/固件基线来自 2026-10-01；Termux、Widget、X11 和入口清单已于 2026-10-17 重新核对，见 [Termux 配套资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
@@ -90,7 +92,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
 
 依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
 
-当前 Termux:X11 已从固定提交和子模块干净构建，0009–0011 与新 WSI 0012 已安装并联合验收。构建、签名、APK 哈希及两端实际映射见 [交付证据](evidence/fps120-release-2026-10-17.json)，补丁顺序见 [补丁说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
+当前 Termux:X11 已从固定提交和子模块干净构建，0009–0013 与 WSI 0012 已安装；前一轮联合验收及最新继续优化记录分别见下方证据。构建、签名、APK 哈希及两端实际映射见 [交付证据](evidence/fps120-release-2026-10-17.json)，补丁顺序见 [补丁说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
 
 ## 文档
 

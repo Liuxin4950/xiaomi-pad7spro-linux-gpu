@@ -24,6 +24,8 @@
 su -c '/system/bin/am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity'
 ```
 
+本机两次 X11 APK 更新已中断承载对话的会话。后续须先准备并验证候选、保存原件，再通知用户，由用户安排 Termux 重启；不自动换包或重启服务端。当前继续优化包为 `9c6276b8…`，实测范围见 [最新证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
+
 打开 Activity、安装 APK、重载独立 X server、重开 Linux 应用是四件不同的事：APK 更新后打开 Activity 可能形成新 renderer / 旧 server；Linux 前缀链接切换后，已有应用仍保留原库。分别检查 APK 映射和应用 GPU PID。无需为 Linux 应用换库重启整个桌面。Termux / Widget / X11 的版本、脚本位置与备份见 [配套资源](../reference/README.md)。
 
 在 Termux 手动启动的等价命令：

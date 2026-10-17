@@ -1,6 +1,6 @@
 # Termux:X11 GPU Present 补丁
 
-更新：2026-10-17。当前 APK SHA-256 `c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4` 已干净构建、安装，X server / Android renderer 两端映射核对通过。补丁完整顺序以 `sources.lock.json` 的 `termux_x11.patches` 为准；0009–0011 与 WSI 0012 联合验收通过。下文早期阶段的构建命令、60 FPS、候选未安装和 swap 后预热说明均为历史，请使用 [当前构建流程](../../docs/build.md)与 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
+更新：2026-10-17。当前 APK SHA-256 `9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac` 已干净构建、安装，X server / Android renderer 两端映射核对通过。补丁完整顺序以 `sources.lock.json` 的 `termux_x11.patches` 为准；0009–0011 与 WSI 0012 为前一轮联合验收基线；新增 0012/0013 的实际结果和边界见文末。下文早期阶段的构建命令、60 FPS、候选未安装和 swap 后预热说明均为历史，请使用 [当前构建流程](../../docs/build.md)与 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
 
 上游：[termux/termux-x11](https://github.com/termux/termux-x11)。
 
@@ -151,3 +151,12 @@ python3 tests/run-x11-copy-regression.py build/x11-rect-chunks-20261017/source
 CPU access 现在等待此前发布的 GPU serial ownership watermark，等待时让出 renderer mutex；不能等待由同一 X server 主线程处理的 Ack 计数。GPU 完成独立发布水位，断连/2 秒超时则拒绝不安全访问。生产函数 UBSan 回归覆盖排队先后、等待期间让锁、没有 Ack 的进展以及失败拒绝；绕过水位的负向对照会失败。共享队列 ABI 不变。
 
 最新 APK `c62abdc5…` 与 WSI 0012 的联合实机验收已通过：25 矩形遮挡两幅图各 307200 像素零差异，另有增量/空列表、重建/Flip 和真实 Chromium 验证。结果及当前生效范围见 [FPS 交付证据](../../evidence/fps120-release-2026-10-17.json)，前文候选未验收描述为历史阶段。
+
+
+## 2026-10-17：刷新许可与最终 Surface 提交
+
+0012 在开始渲染前原子领取现有 byte 许可；tick 在 GPU 等待期间到达时仍可供下一帧使用，完成时不再次覆盖许可。共享布局与所有权栅栏保持原协议。0013 将离屏拷贝放在最终 Surface 清屏之前，根画面和光标之后创建共同栅栏并只显式 flush 一次。
+
+`tests/run-x11-copy-regression.py` 直接提取实际 `Renderer::redrawLocked` 执行 GL/所有权 stub 回归，覆盖 tick 与等待交错、忙许可、无效根缓冲排空，以及 copy→clear→root/cursor→fence→flush→wait→unlock 顺序；旧绘制顺序和晚覆盖许可的负向对照均失败。干净 arm64 构建、同 v2 证书、CRC/16 KiB 对齐及两端实际映射通过。当前短样本 SF 内容层约 117.18/s，712704 物理像素零差异；持续独立页面 120 帧目标尚未完成，不能据此声称长期流畅或省电。
+
+两次 APK 替换均伴随当前会话中断；后续先完成候选和备份，再通知用户安排 Termux 重启。原始测量、候选版本及回退见 [本轮证据](../../evidence/display-permit-surface-submit-2026-10-17.json)。

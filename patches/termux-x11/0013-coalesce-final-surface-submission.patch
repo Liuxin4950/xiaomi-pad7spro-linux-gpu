@@ -1,0 +1,48 @@
+diff --git a/lorie/src/main/cpp/lorie/renderer.cpp b/lorie/src/main/cpp/lorie/renderer.cpp
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -1115,10 +1115,6 @@
+     float sourceLeft = panSourceLeft, sourceTop = panSourceTop;
+ 
+     glDisable(GL_SCISSOR_TEST);
+-    glViewport(0, 0, surfaceW, surfaceH);
+-    glClearColor(0.f, 0.f, 0.f, 1.f);
+-    glClear(GL_COLOR_BUFFER_BIT);
+-    glViewport(renderViewportX, surfaceH - renderViewportY - renderViewportH, renderViewportW, renderViewportH);
+ 
+     reportViewport(renderViewportX, renderViewportY, renderViewportW, renderViewportH,
+                    sourceLeft, sourceTop, logicalSourceWidth, logicalSourceHeight);
+@@ -1128,6 +1124,13 @@
+     // Share this draw's flush+fence below instead of a separate round trip per frame.
+     uint64_t gpuCopySerial = applyPendingGpuCopiesLocked();
+     state->drawRequested = FALSE;
++
++    // Finish offscreen copies before opening the final Surface render pass.
++    // Clearing first would split that pass around the copy FBO switch.
++    glViewport(0, 0, surfaceW, surfaceH);
++    glClearColor(0.f, 0.f, 0.f, 1.f);
++    glClear(GL_COLOR_BUFFER_BIT);
++    glViewport(renderViewportX, surfaceH - renderViewportY - renderViewportH, renderViewportW, renderViewportH);
+ 
+     LorieBuffer_bindTexture(buffer);
+     if (desc->type == LORIEBUFFER_FD)
+@@ -1137,9 +1140,6 @@
+                (sourceLeft + sourceWidth) / (float) desc->width * xfactor,
+                (sourceTop + sourceHeight) / (float) desc->height,
+                LorieBuffer_isRgba(buffer));
+-    fence = eglCreateSyncKHR(egl_display, EGL_SYNC_FENCE_KHR, nullptr);
+-    glFlush();
+-
+     if (state->cursor.updated) {
+         log("Xlorie: updating cursor\n");
+         lorie_mutex_lock(&state->cursor.lock, &state->cursor.lockingPid);
+@@ -1151,6 +1151,9 @@
+ 
+     state->cursor.moved = FALSE;
+     drawCursor(sourceWidth, sourceHeight, sourceLeft, sourceTop, cursorX, cursorY);
++    // Root and cursor belong to one Surface submission. The ownership fence
++    // still follows every root read/write, now also covering the cursor draw.
++    fence = eglCreateSyncKHR(egl_display, EGL_SYNC_FENCE_KHR, nullptr);
+     glFlush();
+ 
+     // Wait until root window drawing is finished before giving control back to X server

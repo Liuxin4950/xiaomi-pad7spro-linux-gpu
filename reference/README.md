@@ -8,10 +8,10 @@
 |---|---|---|
 | Termux (`com.termux`) | 0.118.3 | 提供 Bash、root/chroot 启动环境 |
 | Termux:Widget (`com.termux.widget`) | 0.15.0 | 展示 `~/.shortcuts/` 中的快捷入口 |
-| Termux:X11 (`com.termux.x11`) | `1.03.01-d55f1b7-gpu-r3.5-repro`，APK SHA-256 `c62abdc5…` | Android 显示端和独立 X server 使用的原生实现 |
+| Termux:X11 (`com.termux.x11`) | `1.03.01-d55f1b7-gpu-r3.5-repro`，APK SHA-256 `9c6276b8…` | Android 显示端和独立 X server 使用的原生实现 |
 | Termux `termux-x11-nightly` 包 | 1.03.01-5 | Termux 侧 `termux-x11` 命令；包版本与 Android APK 版本分别记录 |
 
-这些是设备已安装版本，不表示已检查上游最新版本。本次对齐已验收修复版及配套资源；没有替换 Termux/Widget APK。Termux:API、Termux:Boot 未安装，本方案不依赖它们。更新 X11 时应使用包含本项目补丁的匹配构建，不能用无补丁的上游 APK 覆盖后仍沿用现有验收结论。
+这些是设备已安装版本，不表示已检查上游最新版本。本次对齐已验收修复版及配套资源；没有替换 Termux/Widget APK。Termux:API、Termux:Boot 未安装，本方案不依赖它们。本次继续优化中的当前包与测量范围见 [显示许可/最终提交证据](../evidence/display-permit-surface-submit-2026-10-17.json)。更新 X11 时应使用包含本项目补丁的匹配构建，不能用无补丁的上游 APK 覆盖后仍沿用现有验收结论。
 
 ## 文件位置与职责
 
@@ -35,7 +35,7 @@ Widget 还有 shell、stop、DSH、Code Server、Command Code 等既有入口。
 - 桌面已运行：直接点 Android 的 Termux:X11 图标。无需运行桌面启动脚本。
 - 创建桌面：使用现有 Widget `debian-zink` 或普通 `debian-desktop.sh`。已有 XFCE 时仅复用。
 - Linux 前缀更新：系统 gpu-run/gpu-launcher 链接切换后，正常重开需要换库的应用，再核对新 GPU PID 的映射；不用停止整个桌面。
-- X11 APK 更新：安装 APK 与打开 Activity 不等于独立 X server 已重载。分别核对 server / renderer 的映射哈希。确需重启 server 时先保存全部工作并安排切换；停止桌面会结束 chroot 应用。
+- X11 APK 更新：本机替换 APK 已两次中断当前对话。先构建/验证/备份并通知用户，由用户安排 Termux 重启；不自动替换或重启。安装 APK 与打开 Activity 不等于独立 X server 已重载。分别核对 server / renderer 的映射哈希。确需重启 server 时先保存全部工作并安排切换；停止桌面会结束 chroot 应用。
 
 只打开现有 X11 的 Termux 命令：
 

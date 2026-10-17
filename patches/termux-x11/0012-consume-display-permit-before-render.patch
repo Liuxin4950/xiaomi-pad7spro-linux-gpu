@@ -1,0 +1,102 @@
+diff --git a/lorie/src/main/cpp/lorie/frame-pacing.h b/lorie/src/main/cpp/lorie/frame-pacing.h
+--- a/lorie/src/main/cpp/lorie/frame-pacing.h
++++ b/lorie/src/main/cpp/lorie/frame-pacing.h
+@@ -52,3 +52,21 @@
+                          elapsed % UINT64_C(1000000000) * rate / UINT64_C(1000000000) + 1;
+     return msc > previous ? msc : previous;
+ }
++
++/* A permit is consumed BEFORE rendering can block. Ticks during GPU work
++ * reopen it for the next draw; completion must never erase that newer tick.
++ * One byte retains the existing shared-state ABI and coalesces missed ticks. */
++static inline bool lorieFrameGateReady(const volatile uint8_t *waiting)
++{
++    return !__atomic_load_n(waiting, __ATOMIC_ACQUIRE);
++}
++
++static inline bool lorieFrameGateBegin(volatile uint8_t *waiting)
++{
++    return !__atomic_exchange_n(waiting, 1, __ATOMIC_ACQ_REL);
++}
++
++static inline void lorieFrameGateTick(volatile uint8_t *waiting)
++{
++    __atomic_store_n(waiting, 0, __ATOMIC_RELEASE);
++}
+diff --git a/lorie/src/main/cpp/lorie/renderer.cpp b/lorie/src/main/cpp/lorie/renderer.cpp
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -31,6 +31,7 @@
+ #include "list.h"
+ #include "lorie.h"
+ #include "surface-trace.h"
++#include "frame-pacing.h"
+ 
+ // libEGL exports this only since API 26, weak so the library still loads below that.
+ __attribute__((weak)) EGLClientBuffer eglGetNativeClientBufferANDROID(const struct AHardwareBuffer* buffer);
+@@ -1031,6 +1032,12 @@
+         return;
+     }
+ 
++    // Claim this tick before GL submission, callbacks or the ownership fence can
++    // block. A later tick must remain available after this frame completes.
++    if (!lorieFrameGateBegin(&state->waitForNextFrame))
++        return;
++    lorieTraceEvent("FrameBegin", state->rootWindowTextureID, 0);
++
+     int surfaceH = ANativeWindow_getHeight(win);
+     int surfaceW = ANativeWindow_getWidth(win);
+     int renderViewportX = viewportX, renderViewportY = viewportY, renderViewportW = viewportW, renderViewportH = viewportH;
+@@ -1148,7 +1155,8 @@
+ 
+     // Wait until root window drawing is finished before giving control back to X server
+     finishGpuCopiesLocked(fence, gpuCopySerial);
+-    state->waitForNextFrame = true;
++    lorieTraceEvent("FrameGateAtSubmit", state->rootWindowTextureID,
++                    lorieFrameGateReady(&state->waitForNextFrame));
+     lorie_mutex_unlock(&state->lock, &state->lockingPid);
+ 
+     // CopySerial and root buffer identify the content submitted to this Surface.
+@@ -1189,7 +1197,7 @@
+         lastRequestedBufferId = state->rootWindowTextureID;
+     }
+ 
+-    if (!state || !state->surfaceAvailable || state->waitForNextFrame || *waitingForBuffers)
++    if (!state || !state->surfaceAvailable || !lorieFrameGateReady(&state->waitForNextFrame) || *waitingForBuffers)
+         // Even in the case if there are pending changes, we can not draw it without rendering surface
+         return true;
+ 
+@@ -1250,7 +1258,7 @@
+         // Prefer a full redraw over the standalone apply below so a pending GPU copy shares one
+         // lock+fence with the root/cursor draw, instead of two GPU round trips per frame.
+         bool gpuCopyPending = state && state->gpuCopyQueue.readIndex != state->gpuCopyQueue.writeIndex;
+-        if (state && state->surfaceAvailable && !state->waitForNextFrame &&
++        if (state && state->surfaceAvailable && lorieFrameGateReady(&state->waitForNextFrame) &&
+             (state->drawRequested || state->cursor.moved || state->cursor.updated || gpuCopyPending))
+             redrawLocked(&waitingForBuffers);
+         else if (gpuCopyPending)
+diff --git a/lorie/src/main/cpp/lorie/InitOutput.c b/lorie/src/main/cpp/lorie/InitOutput.c
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -582,7 +582,7 @@
+     lorieTraceEvent("Tick", pvfb->current_msc, frameTimeNanos);
+     loriePerformVblanks();
+ 
+-    pvfb->state->waitForNextFrame = false;
++    lorieFrameGateTick(&pvfb->state->waitForNextFrame);
+ 
+     if (!lorieConnectionAlive() || !pvfb->state->surfaceAvailable)
+         return TRUE;
+diff --git a/lorie/src/main/cpp/lorie/lorie.h b/lorie/src/main/cpp/lorie/lorie.h
+--- a/lorie/src/main/cpp/lorie/lorie.h
++++ b/lorie/src/main/cpp/lorie/lorie.h
+@@ -238,7 +238,8 @@
+      * Therefore, we set eglSwapInterval(dpy, 1), so that eglSwapBuffers does not block until the frame is displayed.
+      * Even then, we do not want to waste GPU resources rendering more than one full-screen quad per vsync,
+      * because that would spend GPU time on a frame that will never be shown.
+-     * To handle this, we use a waitForNextFrame flag, which we set after a successful render and clear from the AChoreographer’s frame callback.
++     * To handle this, we consume waitForNextFrame before rendering starts and clear it on an accepted display tick.
++     * A tick arriving during rendering must remain available; frame completion never sets the flag again.
+      */
+     volatile uint8_t waitForNextFrame;
+ 

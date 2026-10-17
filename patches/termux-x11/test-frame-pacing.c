@@ -13,11 +13,41 @@ static void check_rate(uint32_t source_rate, uint32_t cap, uint32_t expected)
     assert(accepted == expected);
 }
 
+/* Interleave accepted ticks at each potentially blocking renderer stage.
+ * The real gate helpers preserve a tick arriving during copy, fence or swap,
+ * while coalescing multiple ticks instead of accumulating render credits. */
+static void check_frame_gate(void)
+{
+    for (unsigned stage = 0; stage < 5; ++stage) {
+        volatile uint8_t waiting = 0;
+        assert(lorieFrameGateReady(&waiting));
+        assert(lorieFrameGateBegin(&waiting));
+        assert(!lorieFrameGateBegin(&waiting));
+        for (unsigned step = 0; step < 5; ++step) {
+            if (step == stage) {
+                lorieFrameGateTick(&waiting);
+                lorieFrameGateTick(&waiting);
+            }
+        }
+        assert(lorieFrameGateReady(&waiting));
+        assert(lorieFrameGateBegin(&waiting));
+        assert(!lorieFrameGateReady(&waiting));
+        assert(!lorieFrameGateBegin(&waiting));
+    }
+    volatile uint8_t waiting = 1;
+    lorieFrameGateTick(&waiting);
+    assert(lorieFrameGateBegin(&waiting));
+    assert(!lorieFrameGateReady(&waiting));
+    // No tick during a frame means it cannot immediately draw again.
+    assert(!lorieFrameGateBegin(&waiting));
+}
+
 int main(void)
 {
     LorieFramePacer pacer = {0};
     uint32_t accepted = 0;
 
+    check_frame_gate();
     check_rate(120, 60, 600);
     check_rate(90, 60, 600);
     check_rate(240, 60, 600);

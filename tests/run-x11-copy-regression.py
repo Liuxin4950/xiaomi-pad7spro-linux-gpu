@@ -54,6 +54,18 @@ def main():
                         '-fno-sanitize-recover=all', '-I', str(out),
                         str(Path(__file__).with_name('x11-copy-regression.c')), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True, timeout=10)
+        # Exercise the complete production renderer method, including tick
+        # interleavings and GL/fence ordering, rather than a duplicate model.
+        renderer = (cpp / 'lorie/renderer.cpp').read_text()
+        if 'lorieFrameGateBegin' in renderer:
+            (out / 'production-redraw.h').write_text(function(renderer, 'Renderer::redrawLocked'))
+            binary = out / 'renderer-regression'
+            subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                            '-fsanitize=undefined', '-fno-sanitize-recover=all',
+                            '-I', str(out), '-I', str(cpp / 'lorie'),
+                            str(Path(__file__).with_name('x11-renderer-regression.cpp')),
+                            '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=10)
 
 
 if __name__ == '__main__':
