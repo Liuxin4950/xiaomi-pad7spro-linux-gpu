@@ -66,6 +66,10 @@
         {
           "path": "patches/wsi/0011-recover-display-clock.patch",
           "sha256": "9fde47801072b5873cfeb9f3493c77e255cefca182cdf17297f5448eacba8b07"
+        },
+        {
+          "path": "patches/wsi/0012-bounded-display-pipeline.patch",
+          "sha256": "92934e7b3568b5d1ab6fb147aaae2a4c1fe2722822e44f3dc08074232ec1c660"
         }
       ]
     },
@@ -127,6 +131,10 @@
       {
         "path": "patches/termux-x11/0010-scoped-root-cpu-access.patch",
         "sha256": "8984d9f88984866c00ea1c5ddbbd91038afe38731e03633b4b18e90ff75c35ec"
+      },
+      {
+        "path": "patches/termux-x11/0011-order-cpu-after-queued-gpu-copy.patch",
+        "sha256": "a4fd4c215bcab83f5e4a477c6407f3360956ae7aaca96ead84044cf98b456dc7"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

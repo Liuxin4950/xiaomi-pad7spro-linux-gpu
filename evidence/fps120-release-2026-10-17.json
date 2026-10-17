@@ -1,0 +1,627 @@
+{
+  "date": "2026-10-17",
+  "state": "active-default-existing-app-restart-pending",
+  "scope": "Joint FPS repair: exact clipped GPU copy batches, scoped and ordered CPU/GPU ownership, bounded two-request WSI display pipeline.",
+  "deployment": {
+    "date": "2026-10-17",
+    "state": "active-default-new-processes",
+    "prefix": "/opt/pad7spro-gpu-fps-20261017",
+    "gpu_run": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-run",
+    "gpu_launcher": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-launcher",
+    "runtime_android": {
+      "android_app": {
+        "pid": 27610,
+        "start_ticks": 43986701,
+        "mapped_apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4",
+        "mali_egl_mapped": true
+      },
+      "server": {
+        "pid": 30787,
+        "start_ticks": 44012890,
+        "mapped_apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4",
+        "mali_egl_mapped": true
+      }
+    },
+    "existing_gpu_processes": [
+      {
+        "pid": 31753,
+        "prefixes_mapped": [
+          "/opt/pad7spro-gpu-r3.5-repro-20261015"
+        ],
+        "mali_mapped": true
+      }
+    ],
+    "display_clock": "_TERMUX_X11_DISPLAY_CLOCK(CARDINAL) = 1, 120, 15",
+    "tracing_on": "0",
+    "atrace_tags": "0",
+    "prefix_manifest_sha256": "382e2a1db91ff478f84cff55ad0f1713146885807905a40e6c9450ea40cbcba1",
+    "wsi_library_sha256": "d011bb7b220ab83bfb7c136e1e1b3190def27c013cb24775167c405073d77636",
+    "install_manifest_verified": true,
+    "entry_mode": "0755",
+    "desktop_stop_invoked": false,
+    "zink_script_invoked": false
+  },
+  "implementation": {
+    "termux_0009": "Exact clipped regions are atomically split into 16-rectangle entries. All chunks share one Present serial and ownership fence. Queue capacity remains 8 entries (128 rectangles maximum).",
+    "termux_0010": "AHB root is mapped only for actual CPU access. CPU cache flush finishes before releasing the GPU ownership mutex; GPU-only frames avoid whole-screen CPU lock/unlock.",
+    "termux_0011": "CPU access also waits for the already-published GPU serial watermark, releasing the renderer mutex while waiting. Does not wait for main-thread Ack counters; disconnect/timeout refuses unsafe access.",
+    "wsi_0012": "At most two requests reserve distinct consecutive MSC targets after one-request epoch bootstrap. Only Complete releases pacing credit, not Idle. Older Complete cannot overwrite a future reservation. Legacy/lower-cap timer behavior, SKIP recovery, cancellation and GPU ownership fences remain."
+  },
+  "build_provenance": {
+    "android_base_commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+    "android_abis": [
+      "arm64-v8a"
+    ],
+    "android_ndk": "28.2.13676358",
+    "android_apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4",
+    "android_native_sha256": "749fb1de8df996bd8d93c82e18ce19a2a75fb5cc5d45b4b4147e56a987fc44b7",
+    "android_build_report_sha256": "72d2e9a5463e97b2b02d4b2a26b93b31db2f5a0ba2158a1ed39b64a7004df7cc",
+    "linux_build_run": "build/runs/build.WLETmuDB",
+    "linux_source_snapshot_base": "7aaeb10",
+    "linux_build_info_sha256": "cfc04652dc932914a0e494dc2effee51c2508fc35206a1cb505db7b70e3e08e8",
+    "linux_git_sources": [
+      {
+        "name": "libhybris",
+        "url": "https://github.com/Linux-on-droid/libhybris.git",
+        "commit": "29e0fa6da0166261f6b9437582fe2d56bab8530c",
+        "patches": [
+          {
+            "path": "patches/libhybris/0001-pad7spro-bridge.patch",
+            "sha256": "3f7113253e889b1077bcad6d8614ebce881126deaf8f962ebdff50c6858b2721"
+          }
+        ],
+        "verify_files": {
+          "hybris/common/hooks.c": "abb8962a4ce5cad94eb3e8df06703dfe2c516962f0d92a4a23c5824803917556",
+          "hybris/common/q/linker_main.cpp": "13c98c90076ed9a99512d62232d202481cf455c41dbc59436a42147f809b86cb",
+          "hybris/configure.ac": "d374b147dd20675b260158624687831fc043db35b70c0d7d2fc1dfaf1793fdfb",
+          "hybris/vulkan/vulkan.c": "4b4a7a234fc16d1c86978c43889693f9145b7a82e46e58f4935debcabb804d2e"
+        }
+      },
+      {
+        "name": "wsi",
+        "url": "https://github.com/xMeM/vulkan-wsi-layer.git",
+        "commit": "d5624d42d8b2debbd910ad25662a05c751eb38b7",
+        "patches": [
+          {
+            "path": "patches/wsi/0001-pad7spro-bridge.patch",
+            "sha256": "0436ebe8f8571b86c52cb7a7add62a416da200a1b64bb25ba1bc7b99664d0355"
+          },
+          {
+            "path": "patches/wsi/0002-r3-efficiency.patch",
+            "sha256": "6da3711c1086e581dbb115a2d8c0e39099244bd6f36d9e40a024606741158e30"
+          },
+          {
+            "path": "patches/wsi/0003-timeline-diagnostics.patch",
+            "sha256": "ec544d53fb5ff665e18106f3ec7e61de40e36f18da586c64524126d85486e622"
+          },
+          {
+            "path": "patches/wsi/0004-complete-before-idle.patch",
+            "sha256": "56455a6c29588d6300a533b314289ef95146873fee923e07a076485a21edf18c"
+          },
+          {
+            "path": "patches/wsi/0005-damage-aware-copy.patch",
+            "sha256": "1c8f42eb1a7e802678d424b55b76bd688c7cafed37ee3b758719f9b918b61362"
+          },
+          {
+            "path": "patches/wsi/0006-incremental-present-correctness.patch",
+            "sha256": "a6db2bfacd66c916b26eb05c69c1d2dc03b61a4ff22fa6bb60039d5275ed9146"
+          },
+          {
+            "path": "patches/wsi/0007-coalesce-damage-regions.patch",
+            "sha256": "30100b45ecda305561a2ead0b7383c56965e8c5ca3e98ea331eb15c7b6b2a4c3"
+          },
+          {
+            "path": "patches/wsi/0008-display-clock-pacing.patch",
+            "sha256": "19258aba0e09f507963d96c957e3568ae414814cfc6143d281d2f904735ea111"
+          },
+          {
+            "path": "patches/wsi/0009-copy-target-msc.patch",
+            "sha256": "ec9d90220a390c9f4e91e61fe4c28cf08c168200cca4a7237c8f26960c94d872"
+          },
+          {
+            "path": "patches/wsi/0010-downstream-present-regions.patch",
+            "sha256": "deb1ff7a81affe47b9d2120f3047fad216d7a361b1afbea0033922f18c185452"
+          },
+          {
+            "path": "patches/wsi/0011-recover-display-clock.patch",
+            "sha256": "9fde47801072b5873cfeb9f3493c77e255cefca182cdf17297f5448eacba8b07"
+          },
+          {
+            "path": "patches/wsi/0012-bounded-display-pipeline.patch",
+            "sha256": "92934e7b3568b5d1ab6fb147aaae2a4c1fe2722822e44f3dc08074232ec1c660"
+          }
+        ]
+      },
+      {
+        "name": "android-headers",
+        "url": "https://github.com/Linux-on-droid/android-headers-30.git",
+        "commit": "a6261c5cce8e945868b68318e867e382dea4bffd",
+        "patches": []
+      }
+    ],
+    "termux_patches": [
+      {
+        "path": "patches/termux-x11/termux-x11-gpu-popup-fix.patch",
+        "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e"
+      },
+      {
+        "path": "patches/termux-x11/0002-pacing-and-copy-batching.patch",
+        "sha256": "c518cdc8fd7e53be1a6449cc2541e999e4ca78609dbd6beca55279ba9be0f69a"
+      },
+      {
+        "path": "patches/termux-x11/0003-ime-cursor-cancellation.patch",
+        "sha256": "25e46955ba0ad40585421721ed367de8dcbf4060f2f327672ba1c6c7ffc1db99"
+      },
+      {
+        "path": "patches/termux-x11/0004-demand-driven-display.patch",
+        "sha256": "54c571bed2dfe9b9a0c272662684f0d647f3a3c557a9b81cb42ebf893449dc59"
+      },
+      {
+        "path": "patches/termux-x11/0005-present-damage-repair.patch",
+        "sha256": "db707ca67edd10fc85f0f0493ed5e2af91d49a519a37d87d4fc37845ee33a23b"
+      },
+      {
+        "path": "patches/termux-x11/0006-resume-demand-render.patch",
+        "sha256": "24b947a4956c08c62cde52c2cf630b3d487dad67831877b3b7b5b16ff740e0c5"
+      },
+      {
+        "path": "patches/termux-x11/0007-copy-failure-feedback.patch",
+        "sha256": "77fcd0a15280c0b68a0676f73e5efbc233e337e626775c28329d41bfe1e61332"
+      },
+      {
+        "path": "patches/termux-x11/0008-present-fragmented-damage-gpu-copy.patch",
+        "sha256": "016ce9e4c2cd63ddf7d99a7bb2c8da08d7cc4a5953a917b5c1afdbc35ae81399"
+      },
+      {
+        "path": "patches/termux-x11/0009-atomic-clipped-copy-chunks.patch",
+        "sha256": "7f30833935093a42ef202e93191a1e0546228d9640a39f39852b10486a2e981d"
+      },
+      {
+        "path": "patches/termux-x11/0010-scoped-root-cpu-access.patch",
+        "sha256": "8984d9f88984866c00ea1c5ddbbd91038afe38731e03633b4b18e90ff75c35ec"
+      },
+      {
+        "path": "patches/termux-x11/0011-order-cpu-after-queued-gpu-copy.patch",
+        "sha256": "a4fd4c215bcab83f5e4a477c6407f3360956ae7aaca96ead84044cf98b456dc7"
+      }
+    ],
+    "preexisting_probe_experiment": "Excluded from the Linux build snapshot; src/probe-present.c remains untouched and uncommitted. Android build does not use that probe."
+  },
+  "validation": {
+    "production_cpu_copy_test": "copy groups, scoped CPU access and queued GPU-before-CPU ordering passed with UBSan; bypassing queued fence and flushing after releasing ownership both fail negative controls",
+    "real_wsi_mock_suite": "eager/deferred/alias/failure/MAILBOX/FIFO/cancel/disconnect/oldSwapchain/BGRA/damage-pixel-rotation/empty-list/coalescing/display-clock passed; includes two-request cap, bootstrap, distinct MSC, older Complete and Idle-credit cases",
+    "native_device": "VULKAN_DEVICE_SUBMIT_READBACK_OK; Mali-G925-Immortalis",
+    "ahb": "AHB_ALLOCATE_SEND_RECEIVE_READBACK_RELEASE_OK",
+    "resize_old_swapchain": "10 cycles x 3 frames, size alternation 256x192/240x176, success marker and exit 0",
+    "root_flip": {
+      "exit_code": 0,
+      "width": 3200,
+      "height": 2054,
+      "complete_mode_counts": {
+        "1": 3
+      },
+      "success_marker": true
+    }
+  },
+  "untraced_native_probe": {
+    "frames": 3000,
+    "fps": 116.84326887931455,
+    "frame_interval_ms": {
+      "p50": 8.444271,
+      "mean": 8.558473325775259,
+      "p95": 15.230884999999999,
+      "p99": 22.165435659999996,
+      "max": 37.635808
+    },
+    "interval_buckets": {
+      "lt_9.5ms": 1889,
+      "9.5_15ms": 942,
+      "15_21ms": 127,
+      "21_30ms": 32,
+      "gt_30ms": 9
+    },
+    "cpu_ms_per_second": {
+      "android_app": 416.7214819261449,
+      "server": 149.8194606924865
+    },
+    "exit_code": 0,
+    "success_marker": true,
+    "timed_out": false,
+    "clock_policy": "auto",
+    "present_mode": "fifo",
+    "instrumentation": "No atrace/simpleperf/dumpsys during measurement; endpoint CPU counters only. Client probe timestamps, not physical-screen unique-content FPS."
+  },
+  "new_default_entry_probe": {
+    "frames": 600,
+    "fps": 119.30701648806435,
+    "frame_interval_ms": {
+      "p50": 8.387318,
+      "mean": 8.381736711185308,
+      "p95": 13.785073800000006,
+      "p99": 17.468146659999988,
+      "max": 23.628437
+    },
+    "interval_buckets": {
+      "lt_9.5ms": 376,
+      "9.5_15ms": 204,
+      "15_21ms": 18,
+      "21_30ms": 1,
+      "gt_30ms": 0
+    },
+    "cpu_ms_per_second": {
+      "android_app": 396.6113768334971,
+      "server": 154.13333128126428
+    },
+    "exit_code": 0,
+    "success_marker": true,
+    "timed_out": false,
+    "clock_policy": "auto",
+    "present_mode": "fifo",
+    "instrumentation": "No atrace/simpleperf/dumpsys during measurement; endpoint CPU counters only. Client probe timestamps, not physical-screen unique-content FPS."
+  },
+  "controlled_reference": {
+    "same_probe_binary": "/opt/pad7spro-gpu-r3.5-repro-20261015/bin/probe-present",
+    "probe_sha256": "62882f2a8be5a2a850a4b5e5f9a320003b175146352ce1c0ffdc87fa62e1cd53",
+    "prior_apk_same_session_order": [
+      "candidate FIFO 600: 120.52/s",
+      "candidate FIFO 3000: 119.97/s",
+      "baseline FIFO 600 recheck: 82.57/s"
+    ],
+    "baseline_recheck": {
+      "frames": 600,
+      "fps": 82.57349249195447,
+      "frame_interval_ms": {
+        "p50": 11.781875,
+        "mean": 12.110423936560935,
+        "p95": 19.2002445,
+        "p99": 20.588728599999996,
+        "max": 24.782526
+      },
+      "interval_buckets": {
+        "lt_9.5ms": 197,
+        "9.5_15ms": 227,
+        "15_21ms": 170,
+        "21_30ms": 5,
+        "gt_30ms": 0
+      },
+      "cpu_ms_per_second": {
+        "server": 193.2731316710787,
+        "android_app": 362.718069026545
+      },
+      "exit_code": 0,
+      "success_marker": true,
+      "timed_out": false,
+      "clock_policy": "auto",
+      "present_mode": "fifo",
+      "instrumentation": "No atrace/simpleperf/dumpsys during measurement; endpoint CPU counters only. Client probe timestamps, not physical-screen unique-content FPS."
+    },
+    "qualification": "Prior APK 804ecfc9 was used for the alternating pipeline comparison. Final joint candidate uses c62abdc5 and measured 116.84/s over 3000 frames. Background desktop load can vary; client timing is not physical-screen unique-content FPS."
+  },
+  "surface_present": {
+    "layer": "a705be0 SurfaceView[com.termux.x11/com.termux.x11.MainActivity](BLAST)#12477",
+    "measurement_period_ns": 8333333,
+    "frames_in_retained_window": 126,
+    "retained_window_s": 1.116588074,
+    "whole_surface_present_rate_per_s": 111.94817758728811,
+    "present_interval_ms": {
+      "p50": 8.335157,
+      "p95": 16.646667,
+      "max": 16.767214
+    },
+    "snapshot_duration_ms": 33.276015,
+    "probe_exit_code": 0,
+    "new_wsi_and_mali_maps_verified": true,
+    "note": "One SurfaceFlinger snapshot during a separate moving-window run, not periodic polling. Whole X11 BLAST layer includes other clients; this does not directly count unique probe pixels or input latency."
+  },
+  "physical_pixels": {
+    "clip_holes": {
+      "server_pid": 30787,
+      "apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4",
+      "captures": [
+        {
+          "capture": 0,
+          "screen_size": [
+            3200,
+            2136
+          ],
+          "format": 1,
+          "color_space_id": 2,
+          "screen_origin": [
+            0,
+            82
+          ],
+          "logical_origin": [
+            0,
+            0
+          ],
+          "red": [
+            234,
+            51,
+            35,
+            255
+          ],
+          "green": [
+            117,
+            251,
+            76,
+            255
+          ],
+          "checked_pixels": 307200,
+          "protected_hole_pixels": 6400,
+          "pixel_mismatches": 0,
+          "first_mismatches": []
+        },
+        {
+          "capture": 1,
+          "screen_size": [
+            3200,
+            2136
+          ],
+          "format": 1,
+          "color_space_id": 2,
+          "screen_origin": [
+            0,
+            82
+          ],
+          "logical_origin": [
+            0,
+            0
+          ],
+          "red": [
+            234,
+            51,
+            35,
+            255
+          ],
+          "green": [
+            117,
+            251,
+            76,
+            255
+          ],
+          "checked_pixels": 307200,
+          "protected_hole_pixels": 6400,
+          "pixel_mismatches": 0,
+          "first_mismatches": []
+        }
+      ]
+    },
+    "incremental_regions": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        61,
+        113,
+        210
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1591,
+        1044,
+        1654,
+        1139
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "android_overlay_wait_s": 0.6102279429906048,
+      "android_overlay_seen": false,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "empty_region_full_updates": {
+      "screen_width": 3200,
+      "screen_height": 2136,
+      "format": 1,
+      "expected_screen_color": [
+        24,
+        63,
+        12
+      ],
+      "screen_color_space_id": 2,
+      "color_bounds": [
+        1472,
+        996,
+        1727,
+        1187
+      ],
+      "window_origin": [
+        1472,
+        996
+      ],
+      "checked_pixels": 49152,
+      "pixel_mismatches": 0,
+      "android_overlay_wait_s": 0.5695823440037202,
+      "android_overlay_seen": false,
+      "probe_exit": 0,
+      "bridge_mapped": true,
+      "mali_mapped": true
+    },
+    "checked_pixels_total": 712704,
+    "mismatches_total": 0,
+    "qualification": "Two physical Android frames of a red GPU window with 8 protected green holes (25 clipped rectangles), plus one final frame each for rotating incremental damage and empty-list full updates. Not a per-frame scanout oracle or manual IME text-composition test."
+  },
+  "real_chromium": {
+    "browser": "Chrome/152.0.7977.82",
+    "animation": {
+      "frames": 240,
+      "raf_hz": 119.44624918786546,
+      "interval_ms_p50": 8.300000000000182,
+      "interval_ms_p95": 8.400000000000091,
+      "interval_ms_max": 16.600000000000136,
+      "visibility": "visible",
+      "focus": true
+    },
+    "after_resize": {
+      "frames": 120,
+      "raf_hz": 115.10930547494678,
+      "interval_ms_p50": 8.300000000000182,
+      "interval_ms_p95": 8.5,
+      "interval_ms_max": 16.800000000000182,
+      "visibility": "visible",
+      "focus": true
+    },
+    "skia_backend": "GaneshVulkan",
+    "gl_renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis-49.1.0)",
+    "webgl": {
+      "pixel": [
+        26,
+        153,
+        204,
+        255
+      ],
+      "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis)"
+    },
+    "gpu_crash_count": 0,
+    "new_wsi_mapped": true,
+    "new_bridge_mapped": true,
+    "mali_mapped": true,
+    "owned_browser_normal_exit": 0
+  },
+  "separate_diagnostic": {
+    "server": {
+      "probe_exit_code": 0,
+      "simpleperf_exit_code": 0,
+      "server_pid": 30787,
+      "trace_stage_counts": {
+        "Tick": 814,
+        "CopyEnqueue": 1047,
+        "CopyChunks": 1047,
+        "CopyRects": 1047,
+        "PresentCopy": 1047,
+        "CopyBatchIssue": 791,
+        "CopyDraws": 1305,
+        "CopyPixels": 1305,
+        "CopyIssued": 1305,
+        "CopyAndRootFenceWait": 1083,
+        "CopyDone": 791,
+        "SurfaceTime": 4609,
+        "SurfaceSubmit": 664,
+        "eglSwapBuffers": 664
+      },
+      "fallback_counts": {},
+      "chunks_per_present_histogram": {
+        "1": 789,
+        "2": 258
+      },
+      "rectangles_per_present_histogram": {
+        "3": 8,
+        "25": 258,
+        "1": 781
+      },
+      "note": "Diagnostic only: trace/simpleperf/WSI timeline are separate from the untraced throughput sample.",
+      "tracing_on_after": "0",
+      "atrace_tags_after": "0"
+    },
+    "wsi_protocol": {
+      "paced_queue_depth_histogram": {
+        "1": 10,
+        "2": 784
+      },
+      "max_paced_in_flight": 2,
+      "target_msc_strictly_increasing": true,
+      "complete_mode_counts": {
+        "0": 791,
+        "2": 5
+      }
+    },
+    "qualification": "Trace, WSI timeline and simpleperf were separate from untraced throughput. No CopyFallback in 1047 sampled Presents; 258 25-rectangle jobs used two chunks. Sampled Complete includes 5 SKIP events, with bounded fallback/recovery retained."
+  },
+  "failure_preserved": {
+    "path": "build/wsi-pipeline-20261017/acceptance/clip-screen-check.json",
+    "sha256": "f1e63334565b0ff93fa542a814201464d1a2969f830e0dfb8d7b5aa895559777",
+    "mismatches": 800,
+    "cause": "GPU work with an earlier clip could execute after a later CPU popup paint; holding the renderer mutex alone did not order queued work.",
+    "resolution": "Termux 0011 orders CPU access after the published GPU ownership watermark; final captures above have zero differences."
+  },
+  "activation_scope": {
+    "entry_files": [
+      {
+        "path": "mali-work/desktop-zink.sh",
+        "matches_reference": true,
+        "sha256": "883367057cbb66fcf4a7004ffc9be0a541b06b6652b56abaf1e361b88c6383d9",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      },
+      {
+        "path": "debian-desktop.sh",
+        "matches_reference": true,
+        "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      },
+      {
+        "path": ".shortcuts/debian-zink.sh",
+        "matches_reference": true,
+        "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0o700"
+      }
+    ],
+    "desktop_plan_entries": [],
+    "links_changed": [
+      "/usr/local/bin/gpu-run",
+      "/usr/local/bin/gpu-launcher"
+    ],
+    "existing_processes": "The single GPU process listed in deployment.existing_gpu_processes still maps the prior prefix and must normally restart to load the new WSI. No current application was terminated.",
+    "restart_existing_app_gate": "pending"
+  },
+  "rollback": {
+    "linux_links": "python3 scripts/activate-release.py --restore build/wsi-pipeline-20261017/activation-backup --apply",
+    "old_prefix": "/opt/pad7spro-gpu-r3.5-repro-20261015",
+    "apk_backup": "build/ordered-cpu-gpu-20261017/rollback/pre-order.apk",
+    "apk_backup_sha256": "804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39",
+    "note": "Linux link rollback is independent of APK. APK replacement/server restart remains a saved-work operation."
+  },
+  "limits": [
+    "No whole-device power, precise input latency or long-term thermal/battery-life result.",
+    "WSI submissions, browser rAF, whole X11 SurfaceFlinger presents and unique physical-screen content rate are distinct measurements.",
+    "Existing GUI processes retain prior mapped libraries until their normal restart.",
+    "Bounded GPU-copy capacity and unsupported-buffer safe fallbacks remain; the sampled 25-rectangle failure is fixed."
+  ],
+  "completion_audit": {
+    "code_build_host_tests": "passed",
+    "installed_apk_and_both_mappings": "passed",
+    "new_default_links_manifest_permissions": "passed",
+    "native_fifo_110plus_3000_frames": "passed",
+    "real_browser_hardware_110plus": "passed",
+    "physical_clip_and_incremental_pixels": "passed",
+    "resize_and_flip": "passed",
+    "bounded_queue_and_cleanup": "passed",
+    "existing_current_app_loading_new_prefix": "pending normal application restart"
+  },
+  "artifacts": {
+    "directory": "build/wsi-pipeline-20261017",
+    "sha256": {
+      "acceptance-ordered/fifo-long-untraced.timings.csv": "e60c0375d327cf0963885f6d1cb57edb5455ae91acb673221fc9ac434a3a5329",
+      "acceptance-ordered/fifo-long-untraced.summary.json": "6142efb44e9a1ab7c7d2b07d80fa11e95176fbc8806975abff326ff4197c16f5",
+      "acceptance-ordered/default-entry.summary.json": "8c08c8ac0ecba1a9e6040839181e9234442e0f397a934d0fb8441965b82aa363",
+      "acceptance-ordered/surface-check.json": "9951577e71992b7bd10b20f04cc13d01f5a577e98d50a5d6ac895b801db56bd1",
+      "acceptance-ordered/surface-latency.txt": "d68199285294f90bab0847e68ac88276824990fa8580e9fd904f73789af162a2",
+      "acceptance-ordered/clip-screen-check.json": "e80f6a1e1d3f43d4c2284a6dee5a00cf2c7386bea5f569b1b0b64819f679c2cb",
+      "acceptance-ordered/regions-screen-check.json": "ce36df3564e904e73b8c004de26dc3f8ed97946d91e54fd0985f7f1a788cbbfe",
+      "acceptance-ordered/empty-screen-check.json": "a6c6e4cab7aa06c0b5505b6c77c801f09d36304dec61dd816bfbbbe1a25cff1e",
+      "acceptance-ordered/resize-oldswapchain.log": "8756300faa84453f0742c281e885da93d6aa9b174392ced110e9b371b546aca5",
+      "acceptance-ordered/root-flip.summary.json": "78bc06858c528e077d857268c527ffd4b51526038189340e4f4207699f94021c",
+      "acceptance-ordered/diagnostic.summary.json": "273998e0d564e6483e0950bdc800842cefc8566cdc3f03fe2a5ed00a93b196c3",
+      "acceptance-ordered/pipeline-protocol-check.json": "2ee17386b53acabe9c9f158d0590b57f90d6a84d80f7662f1a266f6acb9665c5",
+      "real-app-final/report.json": "96892aaa8ca729a0e42e8d701855f35f68865333992cafc6e342991b2926a784",
+      "real-app-final/report.maps": "4a8f2ceaf5eec26b94864f99c209f304297a9d9bb572c4626f97edfd058a183f",
+      "regression.log": "7d1e67e9d8882022c48d1c20f19fb4a024d0a7ee5753b0a9185b8f1abe78653e",
+      "build.log": "e6d85d0c133a2b9b964a38ba24f6322f8796a61b5bfc04077ec442ae25b94925",
+      "activation-plan.json": "6dc25bb30f7597b2506847f9490a5af792de5f7dba798ccb97c78ea9a06b0dce",
+      "activation-result.json": "14efd78c5795e00b2bc7c92738bff66fc1e5c1be862dc573cb0b0baf200a85b0",
+      "activation-backup/restore-plan.json": "14efd78c5795e00b2bc7c92738bff66fc1e5c1be862dc573cb0b0baf200a85b0",
+      "entry-files-check.json": "101da0cd95c92a4ee6d8bd10c9c0ebd36da486e581a524e3b357de84426adb5b",
+      "deployment-final.json": "c0e0817fa60b88fcdfc67d059d2266d10417762b4e7e94e70a6df140b9a9af4f"
+    }
+  }
+}

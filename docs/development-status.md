@@ -1,8 +1,8 @@
 # 当前验证状态
 
-更新：2026-10-15。当前已部署 **r3.5-repro-20261015 / clean-linux-build-and-probe-diagnostics**，唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)，集成范围见 [r3.5](r3.5-efficiency.md)。
+更新：2026-10-17。当前新默认为 **r3.5-fps-20261017 / copy-chunks-scoped-root-cpu-bounded-wsi-pipeline**，唯一配置基线见 [CURRENT-STATE](CURRENT-STATE.md)，集成范围见 [r3.5](r3.5-efficiency.md)。
 
-r3.5 已全域切换；桥接、X11 APK 与运行进程核对见 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)。受控像素/Chromium 核心验收已取得，真实输入延迟、长期能耗、全部应用与恢复场景仍不作完成承诺。
+FPS 修复的 APK 与新默认栈已联合验收，3000 帧约 116.84 次提交/秒、Chromium 约 119.45 rAF/s，物理像素检查通过；一个已打开应用仍需正常重开加载新 WSI。见 [最新证据](../evidence/fps120-release-2026-10-17.json)。2026-10-13 的 [全域替换证据](../evidence/r3.5-global-switch-2026-10-13.json)保留为历史。受控像素/Chromium 核心验收已取得，真实输入延迟、长期能耗、全部应用与恢复场景仍不作完成承诺。
 
 后续按 [优化计划](gpu-optimization-plan.md) 执行。2026-10-15 已完成首批独立构建、版本明确的测量与可恢复部署，并通过新 APK/前缀的核心像素与设备验收；不能把工具修复计为 GPU 帧率或省电收益。
 

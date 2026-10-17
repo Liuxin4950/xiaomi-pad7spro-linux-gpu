@@ -37,12 +37,16 @@ def main():
     queue = 'struct test_server_state { int lock, lockingPid;\n' + header[start:end] + '\n};\n'
     names = ['lorieTryScheduleGpuCopy', 'lorieGpuCopyIsDone', 'lorieGpuCopyFailed', 'lorieGpuCopyAck']
     scoped = 'static void lorieReleaseCpuMapping(' in implementation
+    ordered = 'static Bool lorieLockGpuForCpuAccess(' in implementation
     if scoped:
-        names = ['lorieReleaseCpuMapping', 'lorieNeedsGpuLock',
-                 'loriePrepareAccess', 'lorieFinishAccess', *names]
+        names = ['lorieGpuCopyIsDone', 'lorieReleaseCpuMapping', 'lorieNeedsGpuLock',
+                 *(['lorieLockGpuForCpuAccess'] if ordered else []),
+                 'loriePrepareAccess', 'lorieFinishAccess', 'lorieTryScheduleGpuCopy',
+                 'lorieGpuCopyFailed', 'lorieGpuCopyAck']
     with tempfile.TemporaryDirectory(prefix='x11-copy-regression-') as directory:
         out = Path(directory)
-        (out / 'production-types.h').write_text(('#define TEST_SCOPED_CPU_ACCESS 1\n' if scoped else '')
+        (out / 'production-types.h').write_text(('#define TEST_QUEUED_CPU_GPU_ORDER 1\n' if ordered else '')
+                                               + ('#define TEST_SCOPED_CPU_ACCESS 1\n' if scoped else '')
                                                + types + queue)
         (out / 'production-copy.h').write_text('\n'.join(function(implementation, name) for name in names))
         binary = out / 'regression'

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "production-types.h"
 
 typedef int Bool;
@@ -33,12 +34,20 @@ static struct {
 static struct TestScreen { PixmapPtr devPrivate;
     PixmapPtr (*GetScreenPixmap)(struct TestScreen *);
 } screen, *pScreenPtr = &screen;
+static LorieBuffer src, dst;
+static PixmapRec source, destination;
 static unsigned gpuCopyAttempts, gpuCopyOffloads, signals, registrations;
 static unsigned fallback_reason;
 static unsigned map_begins, map_ends;
 static int gpu_lock_depth, flush_requires_gpu_lock, fail_next_mapping;
+static int connection_alive=1;
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+static uint64_t test_clock_ns;
+static unsigned gpu_wait_calls;
+static int finish_queued_on_wait, expire_queued_on_wait, cpu_requires_fence;
+#endif
 static void *rendererCond;
-static int lorieConnectionAlive(void) { return 1; }
+static int lorieConnectionAlive(void) { return connection_alive; }
 static int lorieRendererAvailable(void) { return 1; }
 static LorieBuffer *lorieEnsureGpuSampleable(PixmapPtr p, int type) {
     assert(type == LORIEBUFFER_AHARDWAREBUFFER);
@@ -51,6 +60,9 @@ static int LorieBuffer_unlock(LorieBuffer *b) {
     b->cpu_locked=0; ++map_ends; return 0;
 }
 static int LorieBuffer_lock(LorieBuffer *b, void **locked) {
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+    if (cpu_requires_fence) assert(state.gpuCopyQueue.completedSerial>=server.gpuCopySerialCounter);
+#endif
     if (fail_next_mapping) { fail_next_mapping=0; *locked=NULL; return -1; }
     assert(!b->cpu_locked); b->cpu_locked=1; ++map_begins; *locked=b; return 0;
 }
@@ -79,11 +91,22 @@ static void lorie_mutex_unlock(void *lock, void *owner) {
     (void)lock; (void)owner; assert(gpu_lock_depth==1); --gpu_lock_depth;
 }
 #endif
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+static uint64_t lorieMonotonicNanos(void) { return ++test_clock_ns; }
+static int wait_queued_gpu(const struct timespec *pause, struct timespec *remaining) {
+    (void)remaining;
+    assert(!gpu_lock_depth && !dst.cpu_locked);
+    assert(pause->tv_sec==0 && pause->tv_nsec==1000000);
+    ++gpu_wait_calls;
+    test_clock_ns += expire_queued_on_wait ? UINT64_C(2100000000) : UINT64_C(1000000);
+    if (finish_queued_on_wait) state.gpuCopyQueue.completedSerial=server.gpuCopySerialCounter;
+    return 0;
+}
+#define nanosleep wait_queued_gpu
+#endif
 #include "production-copy.h"
 
 static BoxRec boxes[129];
-static LorieBuffer src, dst;
-static PixmapRec source, destination;
 static void reset(uint32_t read, uint32_t write, int redirected) {
     memset(&state, 0x5a, sizeof(state));
     state.gpuCopyQueue.readIndex = read;
@@ -99,6 +122,11 @@ static void reset(uint32_t read, uint32_t write, int redirected) {
     signals = registrations = gpuCopyAttempts = gpuCopyOffloads = fallback_reason = 0;
     map_begins=map_ends=0;
     gpu_lock_depth=flush_requires_gpu_lock=fail_next_mapping=0;
+    connection_alive=1;
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+    test_clock_ns=0; gpu_wait_calls=0;
+    finish_queued_on_wait=expire_queued_on_wait=cpu_requires_fence=0;
+#endif
     /* Disjoint tiles leave protected holes that must never become a bounding-box copy. */
     for (unsigned i=0; i<129; ++i)
         boxes[i] = (BoxRec){(i%16)*4,(i/16)*4,(i%16)*4+2,(i/16)*4+2};
@@ -161,6 +189,7 @@ static void capacity(void) {
 #ifdef TEST_SCOPED_CPU_ACCESS
 static void scoped_cpu_access(void) {
     reset(0,0,0); screen.GetScreenPixmap=get_screen_pixmap;
+    state.gpuCopyQueue.completedSerial=server.gpuCopySerialCounter;
     /* Publish initial CPU content once; pure GPU frames must not remap the root. */
     assert(!LorieBuffer_lock(&dst,&destination.priv.locked));
     lorieReleaseCpuMapping(&destination.priv);
@@ -196,6 +225,29 @@ static void scoped_cpu_access(void) {
 }
 #endif
 
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+static void ordered_cpu_access(void) {
+    reset(0,0,0); screen.GetScreenPixmap=get_screen_pixmap;
+    server.rootGpuCopyPending=1;
+    state.gpuCopyQueue.completedSerial=server.gpuCopySerialCounter-1;
+    cpu_requires_fence=finish_queued_on_wait=1;
+    assert(loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+    assert(gpu_wait_calls==1 && gpu_lock_depth==1 && dst.cpu_locked);
+    assert(server.rootGpuCopyPending==1); /* Main-thread Ack has not run and is not needed. */
+    flush_requires_gpu_lock=1;
+    lorieFinishAccess(&destination,EXA_PREPARE_DEST);
+    assert(!gpu_lock_depth && !dst.cpu_locked && map_begins==1 && map_ends==1);
+    ++server.gpuCopySerialCounter;
+    connection_alive=0;
+    assert(!loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+    assert(!gpu_lock_depth && !dst.cpu_locked && map_begins==1);
+    connection_alive=1;finish_queued_on_wait=0;expire_queued_on_wait=1;
+    assert(!loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+    assert(!gpu_lock_depth && !dst.cpu_locked && map_begins==1);
+    assert(gpu_wait_calls==2); /* One successful drain plus one bounded timeout. */
+}
+#endif
+
 int main(void) {
     const unsigned counts[]={1,16,17,25,32,127,128};
     for (unsigned i=0;i<sizeof(counts)/sizeof(counts[0]);++i)
@@ -205,6 +257,10 @@ int main(void) {
 #ifdef TEST_SCOPED_CPU_ACCESS
     scoped_cpu_access();
     puts("X11_SCOPED_CPU_ACCESS_OK: lazy root mapping, CPU writes/reads, flush before GPU release, mapping failure unlock");
+#endif
+#ifdef TEST_QUEUED_CPU_GPU_ORDER
+    ordered_cpu_access();
+    puts("X11_QUEUED_CPU_GPU_ORDER_OK: CPU waits for published GPU fence, renderer mutex released while waiting, no Ack deadlock, disconnect/timeout refuse access");
 #endif
     puts("X11_COPY_CHUNKS_REGRESSION_OK: exact clipping, wrap, atomic capacity, grouped failure, root/redirected ownership");
     return 0;

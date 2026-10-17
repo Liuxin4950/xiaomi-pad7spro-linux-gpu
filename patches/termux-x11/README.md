@@ -142,3 +142,12 @@ python3 tests/run-x11-copy-regression.py build/x11-rect-chunks-20261017/source
 0010 发布根缓冲时结束已有 CPU 映射，纯 GPU 帧不立即重新映射；切到 GPU 生产的 AHB root 也不开始 CPU 访问。真实 CPU 绘制仍由 EXA PrepareAccess/FinishAccess 映射，缓存刷新发生在释放 GPU 所有权锁之前；映射失败时不遗留该锁。legacy FD 映射周期、共享 ABI、队列、GPU fence 和厂商 Mali 不变。
 
 扩展 `tests/run-x11-copy-regression.py PATCHED_SOURCE` 检查按需 root 映射、真实 CPU 写入/读回、先刷新后释放 GPU 锁、失败解锁与持久 regular/FD 映射；故意恢复错误释放顺序的负向对照会失败。主机回归和干净 arm64 构建、签名/对齐/包内库校验通过，候选已直接安装；服务端尚待切换，不能宣称已取得帧率或功耗收益。完整范围见 [证据](../../evidence/scoped-root-cpu-access-2026-10-17.json)。
+
+
+## CPU access 与已排队 GPU 拷贝的顺序
+
+[0011-order-cpu-after-queued-gpu-copy.patch](0011-order-cpu-after-queued-gpu-copy.patch) 在 0010 后应用，SHA-256 `a4fd4c215bcab83f5e4a477c6407f3360956ae7aaca96ead84044cf98b456dc7`。配合 WSI 两在途调度时，曾实测一块后来绘制的弹窗被旧 clip 的已排队 GPU 拷贝覆盖（800 像素），不能只靠 renderer mutex 排除尚未执行的工作。
+
+CPU access 现在等待此前发布的 GPU serial ownership watermark，等待时让出 renderer mutex；不能等待由同一 X server 主线程处理的 Ack 计数。GPU 完成独立发布水位，断连/2 秒超时则拒绝不安全访问。生产函数 UBSan 回归覆盖排队先后、等待期间让锁、没有 Ack 的进展以及失败拒绝；绕过水位的负向对照会失败。共享队列 ABI 不变。
+
+最新 APK `c62abdc5…` 与 WSI 0012 的联合实机验收已通过：25 矩形遮挡两幅图各 307200 像素零差异，另有增量/空列表、重建/Flip 和真实 Chromium 验证。结果及当前生效范围见 [FPS 交付证据](../../evidence/fps120-release-2026-10-17.json)，前文候选未验收描述为历史阶段。

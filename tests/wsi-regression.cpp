@@ -469,15 +469,21 @@ int main()
          auto flipNext = std::async(std::launch::async, [&] {
             return chain->queue_present(handle<VkQueue>(), &info, params);
          });
-         require(flipNext.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout,
-                 "FLIP did not wait for its completion");
+         require(flipNext.wait_for(std::chrono::seconds(1)) == std::future_status::ready && flipNext.get() == VK_SUCCESS &&
+                 last_target_msc == 44, "second in-flight frame must reserve a distinct next tick");
+         params.pending_present.image_index = 3;
+         auto third = std::async(std::launch::async, [&] {
+            return chain->queue_present(handle<VkQueue>(), &info, params);
+         });
+         require(third.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout,
+                 "paced queue exceeded its two-request bound");
          complete = static_cast<xcb_present_complete_notify_event_t *>(calloc(1, sizeof(xcb_present_complete_notify_event_t)));
          complete->event_type = XCB_PRESENT_EVENT_COMPLETE_NOTIFY; complete->kind = XCB_PRESENT_COMPLETE_KIND_PIXMAP;
          complete->serial = secondSerial; complete->msc = 43; complete->mode = XCB_PRESENT_COMPLETE_MODE_FLIP;
          deliver_event(reinterpret_cast<xcb_generic_event_t *>(complete));
-         require(flipNext.wait_for(std::chrono::seconds(1)) == std::future_status::ready && flipNext.get() == VK_SUCCESS &&
-                 last_target_msc == 44, "FLIP acquired an unnecessary second display tick");
-         params.pending_present.image_index = 3;
+         require(third.wait_for(std::chrono::seconds(1)) == std::future_status::ready && third.get() == VK_SUCCESS &&
+                 last_target_msc == 45, "older Complete overwrote an already reserved future MSC");
+         params.pending_present.image_index = 0;
          auto cancelled = std::async(std::launch::async, [&] {
             return chain->queue_present(handle<VkQueue>(), &info, params);
          });
@@ -486,6 +492,52 @@ int main()
            chain->m_present_event_thread_run = false; chain->m_thread_status_cond.notify_all(); }
          require(cancelled.wait_for(std::chrono::seconds(1)) == std::future_status::ready, "display wait cannot cancel");
          cancelled.get(); chain.reset();
+      }
+      // FIFO must also overlap two consecutive ticks, not wait for each
+      // previous GPU ownership fence before sending the next ready image.
+      {
+         auto chain = f.create(false, VK_PRESENT_MODE_FIFO_KHR);
+         VkPresentInfoKHR info{}; wsi::swapchain_presentation_parameters params{};
+         params.handle_present_frame_boundary_event = false;
+         const auto before = presents.load();
+         auto waitPresents = [&](unsigned count) {
+            const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+            while (presents < count) {
+               require(std::chrono::steady_clock::now() < until, "FIFO paced worker stalled");
+               std::this_thread::yield();
+            }
+         };
+         auto finish = [&](uint32_t serial, uint64_t msc) {
+            auto *event = static_cast<xcb_present_complete_notify_event_t *>(calloc(1,sizeof(xcb_present_complete_notify_event_t)));
+            event->event_type=XCB_PRESENT_EVENT_COMPLETE_NOTIFY; event->kind=XCB_PRESENT_COMPLETE_KIND_PIXMAP;
+            event->serial=serial; event->msc=msc;
+            deliver_event(reinterpret_cast<xcb_generic_event_t *>(event));
+         };
+         require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS,"FIFO bootstrap");
+         waitPresents(before+1); finish(last_present_serial,60);
+         params.pending_present.image_index=1;
+         require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS,"FIFO frame one");
+         waitPresents(before+2);
+         const auto first = last_present_serial.load(), pixmap = last_present_pixmap.load();
+         require(last_target_msc==61,"FIFO first target");
+         params.pending_present.image_index=2;
+         require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS,"FIFO frame two");
+         waitPresents(before+3);
+         require(last_target_msc==62,"FIFO failed to pipeline consecutive ticks");
+         { std::lock_guard<std::mutex> lock(chain->m_thread_status_lock);
+           require(chain->m_display_pending==2,"FIFO pending bound incorrect"); }
+         params.pending_present.image_index=3;
+         require(chain->queue_present(handle<VkQueue>(), &info, params)==VK_SUCCESS,"FIFO frame three");
+         std::this_thread::sleep_for(std::chrono::milliseconds(30));
+         require(presents==before+3,"FIFO exceeded two downstream requests");
+         auto *idle = static_cast<xcb_present_idle_notify_event_t *>(calloc(1,sizeof(xcb_present_idle_notify_event_t)));
+         idle->event_type=XCB_PRESENT_EVENT_IDLE_NOTIFY;idle->pixmap=pixmap;idle->serial=first;
+         deliver_event(reinterpret_cast<xcb_generic_event_t *>(idle));
+         std::this_thread::sleep_for(std::chrono::milliseconds(30));
+         require(presents==before+3,"FIFO used Idle as a pacing credit");
+         finish(first,61);waitPresents(before+4);
+         require(last_target_msc==63,"FIFO future tick reservation regressed");
+         chain.reset();
       }
       {
          auto chain = f.create(false);

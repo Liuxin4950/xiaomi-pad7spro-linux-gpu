@@ -1,5 +1,9 @@
 # 平板 / 后续 AI 接手
 
+2026-10-17 最新：默认链接已切到 `/opt/pad7spro-gpu-fps-20261017`，APK `c62abdc5…` 已在 server / renderer 两端加载。联合验收：3000 帧 FIFO 116.84 次提交/秒，默认入口复测 119.31/s；Chromium 119.45 rAF/s、缩放后 115.11，Mali / GaneshVulkan / ANGLE 和 WebGL / 0 崩溃通过；SF 内容层快照 111.95 次呈现/秒。712704 个物理像素零差异，包含 25 矩形遮挡、增量和空列表；oldSwapchain/缩放/Flip 通过。详细 source/build/hash、早前 800 像素失败及修复、回退见 [交付证据](../evidence/fps120-release-2026-10-17.json)。
+
+当前只有一个已开 GPU 应用仍映射旧前缀；须正常关闭并从统一入口重开后再核对 PID/映射。**不要为此停止桌面、不要运行 zink 脚本、不要直接杀当前对话客户端。** 新启动应用已走修复版；旧前缀、APK 和激活备份均保留。功耗、精确输入延迟、长期稳定性及每帧屏幕独立内容率未测。下文为历史阶段快照。
+
 2026-10-17（0010 已安装，服务端待切换）：0009 两端映射已实际切到 `88ce7f61…`，完整无追踪 600 帧约 81.98 次提交/秒、P95 20.87 ms；822 个 GPU Present 中有 240 个 25 矩形任务成功分两项，未采到回退或 pixman 拷贝热点。剩余 CPU 热点已由调用链确认是根缓冲在 lorieRedraw 中反复 AHB CPU lock/unlock。0010 改为实际 CPU 访问时才映射，CPU 写入刷新后才释放 GPU 锁，不改共享 ABI 或 GPU fence。干净构建、扩展生产函数回归/错误刷新顺序负向对照及包校验通过，已直接安装/打开 `804ecfc9…`；未运行 zink、未停桌面，服务端仍是 `88ce7f61…`。用户保存工作后的重启正在协调，随后必须完成帧率/回退缓存采样和物理像素/遮挡验收；目标未完成。证据与本机验收命令见 [根缓冲 CPU 访问](../evidence/scoped-root-cpu-access-2026-10-17.json)。
 
 2026-10-17（0009 已安装，服务端待重启）：精确裁剪的原子分批候选 `88ce7f61…` 已构建、主机回归及包校验通过，并直接安装/打开 Activity；未运行 zink、未停桌面。0009 撤掉 0008 的放宽，将 25 块拆成两项共用一个 serial/fence，布局不变，保留遮挡洞。当前服务端仍是旧 `7f13f30e…`，待用户保存工作后重启，目标仍未完成；之后必须用新版映射、无追踪帧率、独立回退/CPU 采样及像素/遮挡证明实际效果。见 [分批候选证据](../evidence/present-copy-chunks-2026-10-17.json)。
@@ -22,7 +26,7 @@
 
 工作区 `/opt/pad7spro-gpu-release-test/repository`，别名 `/root/Working/xiaomi-pad7spro-linux-gpu`。容器为 Debian 13，Android rootfs 路径 `/data/linux/debian`；用户可能称其 Ubuntu，不据此另找第二个 rootfs。
 
-- 当前默认前缀 `/opt/pad7spro-gpu-r3.5-repro-20261015`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，当前桌面/助手 GPU 实际映射 r3.5；以 CURRENT-STATE 为准。
+- 当前默认前缀 `/opt/pad7spro-gpu-fps-20261017`，系统 gpu-run/gpu-launcher 链接到这里，版本与文件状态读 release.json / install-manifest.json。r3.4 原件保留在 `/opt/pad7spro-gpu-next`，存在 damage 语义和缓冲轮换错误，禁止再选作默认。初版修复保留于 `/opt/pad7spro-gpu-r3.4.1`，稳定回退 r3.3 保留于 `/opt/pad7spro-gpu-observe-20261012`。优化版已完成窗口/像素/Chromium/Trae 定向验收，用户已重开，当前桌面/助手 GPU 实际映射 r3.5；以 CURRENT-STATE 为准。
 - Termux Widget、`~/debian-desktop.sh` 和 `~/mali-work/desktop-zink.sh` 共用 GPU 桌面入口。普通桌面不再默认 llvmpipe。
 - 桌面、菜单、URL、XFCE helper 和 CLI chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch 全部统一到 gpu-run。Office 图标也进入同一环境；MySQL、shell/TUI 不强加图形参数。
 - 二维 Skia 原生 Vulkan；WebGL ANGLE Vulkan；GL Zink；CC Switch 使用 WebKit 适配。

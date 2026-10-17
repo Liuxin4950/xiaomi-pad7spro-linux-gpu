@@ -1,0 +1,125 @@
+--- a/wsi/x11/swapchain.hpp
++++ b/wsi/x11/swapchain.hpp
+@@ -34,6 +34,7 @@
+ #include "diagnostics.hpp"
+ #include "timeline.hpp"
+ #include <android/hardware_buffer.h>
++#include <array>
+ #include <condition_variable>
+ #include <chrono>
+ #include <cstdint>
+@@ -177,8 +178,10 @@
+    uint32_t m_max_present_fps{ 0 };
+    uint32_t m_display_clock_fps{ 0 };
+    uint32_t m_negotiated_clock_fps{ 0 };
+-   bool m_display_request_pending{ false };
+-   uint32_t m_display_serial{ 0 };
++   // Two paced requests overlap the next tick with the previous ownership fence.
++   // Bootstrap with one request until the first Complete establishes the MSC epoch.
++   std::array<uint32_t, 2> m_display_serials{};
++   uint32_t m_display_pending{ 0 };
+    void negotiate_display_clock();
+    bool m_region_present{ false };
+    bool m_region_force_full{ true }; // protected by the existing event-thread lock
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -479,8 +479,13 @@
+                      m_timeline->record("x11_complete_ust_us", data->pixmap, complete->serial, complete->ust);
+                      m_timeline->record("x11_complete_mode", data->pixmap, complete->serial, complete->mode);
+                   }
+-                  if (m_display_clock_fps && complete->serial == m_display_serial) {
+-                     m_display_request_pending = false;
++                  auto paced_end = m_display_serials.begin() + m_display_pending;
++                  auto paced = std::find(m_display_serials.begin(), paced_end, complete->serial);
++                  if (paced != paced_end) {
++                     std::move(paced + 1, paced_end, paced);
++                     --m_display_pending;
++                  }
++                  if (m_display_clock_fps && paced != paced_end) {
+                      // In the locked Xorg, COPY executes at target_msc. Only
+                      // synchronous FLIP decrements exec_msc before submission;
+                      // its Complete still reports the completed target tick.
+@@ -490,7 +495,9 @@
+                         m_target_msc = 0;
+                         if (m_timeline) m_timeline->record("display_clock_skip_fallback", data->pixmap, complete->serial);
+                      } else
+-                        m_target_msc = complete->msc + 1;
++                        // Never overwrite an already reserved future tick when an older
++                        // request completes; every in-flight frame owns a distinct MSC.
++                        m_target_msc = std::max(m_target_msc, complete->msc + 1);
+                   }
+                   if (complete->mode == XCB_PRESENT_COMPLETE_MODE_SKIP ||
+                       complete->mode == XCB_PRESENT_COMPLETE_MODE_FLIP)
+@@ -512,6 +519,7 @@
+                      }
+                      if (drained) {
+                         m_display_clock_fps = m_negotiated_clock_fps;
++                        m_display_pending = 0;
+                         m_target_msc = complete->msc + 1;
+                         if (m_timeline) m_timeline->record("display_clock_recovered", data->pixmap, complete->serial, m_display_clock_fps);
+                      }
+@@ -564,17 +572,22 @@
+    if (m_display_clock_fps)
+    {
+       if (m_timeline) m_timeline->record("display_wait_begin", image_data->pixmap, image_data->payload_sequence);
+-      // Bound the downstream queue to one outstanding request for this
+-      // swapchain, including MAILBOX. Complete wakes us; Idle alone cannot.
++      // Bound the queue to two consecutive display ticks. Waiting for each
++      // Complete before submitting the next frame serialized tick wait + GPU
++      // ownership fence and left display ticks empty, even with ready images.
++      // The first request still establishes the epoch; Idle alone frees no slot.
+       m_thread_status_cond.wait(thread_status_lock, [&] {
+-         return !m_present_event_thread_run || !m_display_request_pending;
++         const auto limit = m_target_msc ? m_display_serials.size() : 1U;
++         return !m_present_event_thread_run || !m_display_clock_fps || m_display_pending < limit;
+       });
+       image_data = current_image_data();
+       if (image_data == nullptr) return set_present_id(pending_present.present_id);
+       if (!m_present_event_thread_run) return unpresent_image(pending_present.image_index);
+       if (m_timeline) m_timeline->record("display_wait_end", image_data->pixmap, image_data->payload_sequence);
+    }
+-   else if (m_max_present_fps)
++   // SKIP may switch policy while the paced wait released the thread lock.
++   // Recheck instead of issuing an uncapped request after that transition.
++   if (!m_display_clock_fps && m_max_present_fps)
+    {
+       if (m_timeline) m_timeline->record("timer_wait_begin", image_data->pixmap, image_data->payload_sequence);
+       // Sleep without holding the image lock or spinning; cancellation and
+@@ -604,10 +617,14 @@
+    uint32_t serial = (uint32_t)m_send_sbc;
+    uint32_t options = XCB_PRESENT_OPTION_NONE;
+ 
++   const uint64_t target_msc = m_target_msc;
+    if (m_display_clock_fps) {
+-      m_display_request_pending = true;
+-      m_display_serial = serial;
+-   }
++      assert(m_display_pending < m_display_serials.size());
++      m_display_serials[m_display_pending++] = serial;
++      if (m_target_msc) ++m_target_msc;
++      if (m_timeline) m_timeline->record("display_queue_depth", image_data->pixmap, serial, m_display_pending);
++   }
++   if (m_timeline) m_timeline->record("x11_target_msc", image_data->pixmap, serial, target_msc);
+    if (m_timeline) m_timeline->record("x11_request", image_data->pixmap, serial, image_data->payload_sequence);
+    xcb_xfixes_region_t update = 0;
+    if (m_region_present) {
+@@ -633,7 +650,7 @@
+       m_region_force_full = false;
+    }
+    auto cookie = xcb_present_pixmap_checked(m_connection, m_window, image_data->pixmap, serial, 0, update, 0, 0, 0, 0, 0,
+-                                            options, m_target_msc, 0, 0, 0, nullptr);
++                                            options, target_msc, 0, 0, 0, nullptr);
+    xcb_discard_reply(m_connection, cookie.sequence);
+    xcb_flush(m_connection);
+ 
+@@ -642,7 +659,9 @@
+    image_data->pending_completions.push_back({ serial, pending_present.present_id });
+    m_thread_status_cond.notify_all();
+ 
+-   if (m_present_mode == VK_PRESENT_MODE_FIFO_KHR)
++   // In negotiated mode the two-slot gate and distinct MSC reservations
++   // enforce FIFO ordering. Legacy/timer mode retains its existing wait.
++   if (m_present_mode == VK_PRESENT_MODE_FIFO_KHR && !m_display_clock_fps)
+    {
+       while (image_data->pending_completions.size() > 0)
+       {

@@ -65,15 +65,15 @@ Trae 使用 `bin/trae-start`：只在启动最初 8 秒遇到精确 Oilpan cage 
 | Rootfs | `/data/linux/debian` | 当前 Termux 共享脚本的配置 |
 | Display | `:1` | `DEBIAN_DISPLAY=:N` 可选择本机显示号；另一个 display 不保证隔离 APK renderer |
 | X11 DPI | `120` | `X11_DPI` 可覆盖，与 Android 系统 DPI 不等同 |
-| `X11_MAX_FPS` | `60` | Termux 启动参数，允许 1–240，只在新建 X server 时生效 |
+| `X11_MAX_FPS` | `120` | Termux 启动参数，允许 1–240，只在新建 X server 时生效 |
 | `PAD_GPU_SKIA_BACKEND` | `native` | Chromium/Electron 二维后端；`angle` 是硬件回退 |
-| `PAD_GPU_MAX_FPS` | `60` | 每个 WSI 交换链的提交上限；允许 1–240，0 关闭此上限 |
+| `PAD_GPU_MAX_FPS` | `120` | 每个 WSI 交换链的提交上限；允许 1–240，0 关闭此上限 |
 | `PAD_GPU_X11_COLOR_MODE` | `bgra` | 当前 Termux:X11 使用的统一字节契约 |
 | `HYBRIS_VULKANPLATFORM` | `null` | 避免选择未配置的 Wayland 平台 |
 
 当前显示链路使用 Xorg BGRA 字节契约。WSI 公开真实 BGRA 渲染格式，以 GPU 复制字节到私有 RGBA gralloc AHB，避免显示端再次交换通道。`native` 保留给开发验证，未经配套改造的当前 APK 不应使用；sRGB 交换链暂不宣称支持。
 
-应用级限帧使用可被关闭事件唤醒的等待，降低持续提交频率，不做内容去重，不能说静止窗口已停止渲染。X11 与应用级上限现均为 60，长期功耗和双重节拍的延迟仍需同条件测量。会话移除了旧 `vblank_mode=0`，不伪装 OpenGL 版本。Mesa/Zink 基线曾报告 Mali 硬件 OpenGL 3.2，同时提示缺少 `fillModeNonSolid`、`shaderClipDistance`；高版本功能仍以真实驱动能力为准。
+应用级限帧使用可被关闭事件唤醒的等待，降低持续提交频率，不做内容去重，不能说静止窗口已停止渲染。X11 与应用级上限自 2026-10-16 起均为 120；当前协作时钟下最多两个按顺序预约 MSC 的在途请求，保留较低用户上限及显式 timer 策略。长期功耗和输入延迟仍需同条件测量。会话移除了旧 `vblank_mode=0`，不伪装 OpenGL 版本。Mesa/Zink 基线曾报告 Mali 硬件 OpenGL 3.2，同时提示缺少 `fillModeNonSolid`、`shaderClipDistance`；高版本功能仍以真实驱动能力为准。
 
 当前 APK 已更新：原生 Copy 批处理和输入接口修正已在前端运行；X server 已正常重开并加载显示 tick 更新；后续升级同样需要重开。详见 CURRENT-STATE。
 
@@ -113,6 +113,6 @@ bash ~/debian-stop.sh
 
 ## 显示时钟候选
 
-r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。对应 APK 未安装，当前默认与用户会话不受影响。见 [显示效率候选](r3.4-display-efficiency.md)。
+r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。本段最初为 r3.4.2 候选说明；截至 2026-10-17，配套 APK c62abdc5… 已安装并在两端加载，WSI 有界两在途策略已设为新启动应用的默认，完整状态见 CURRENT-STATE。见 [显示效率候选](r3.4-display-efficiency.md)。
 
 当前显示/区域复制协商、硬件回退和实装范围见 [r3.5](r3.5-efficiency.md)。旧“APK 未安装”说明仅对应当时历史候选。新区域路径需能力位 8；旧 APK 自动继续完整 X11 Copy。

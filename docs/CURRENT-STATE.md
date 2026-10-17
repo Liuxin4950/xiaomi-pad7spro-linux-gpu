@@ -1,4 +1,12 @@
-# 当前运行基线：r3.5 可复现构建版（2026-10-15）
+# 当前运行基线：r3.5 FPS 修复版（2026-10-17）
+
+默认 `gpu-run` / `gpu-launcher` 已切到 `/opt/pad7spro-gpu-fps-20261017`；Termux:X11 已安装且两端实际映射 APK `c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`。原厂 Mali 保留，120 配置 `[1,120,15]` 正常。新栈完整 3000 帧 FIFO 探针 **116.84 次提交/秒**，默认入口复测 600 帧 **119.31/s**；隔离 Chromium **119.45 rAF/s**，缩放后 **115.11 rAF/s**，GaneshVulkan / ANGLE Vulkan / Mali、WebGL 回读和 GPU 崩溃计数 0 均确认。独立 SurfaceFlinger 内容层快照约 **111.95 次呈现/秒**；这些指标不等于逐帧屏幕新内容计数。
+
+已修复：超过 16 块的可见区域 GPU 原子分批；纯 GPU 根缓冲不再反复 CPU 映射；CPU 弹窗绘制等待先前排队 GPU 所有权栅栏；WSI 最多两个有序 tick 在途，避免每帧串行等待。后者曾在 APK 804ecfc9 上暴露 800 像素遮挡覆盖，原失败证据保留；最新 APK 与新前缀联合检查 **712704 个物理像素零差异**，增量/空列表、窗口重建/oldSwapchain 和实际 Flip 路径通过。独立采样 1047 个 Present 没有 CopyFallback，WSI 在途数最多 2。
+
+**现有已打开应用不会热换库**：快照中一个 GPU 进程仍映射旧 `/opt/pad7spro-gpu-r3.5-repro-20261015`，正常关闭并从统一入口重开该应用后才加载新 WSI；不需要重启桌面或运行 zink 脚本。本轮没有停止桌面、没有终止当前助手，三份 Termux 入口文件保持原内容、UID/GID 和 0700。旧前缀、APK 和链接回退记录保留。当前剩余验收项为该现有应用的正常重开与映射核对；功耗、精确输入延迟和长期稳定性未测。完整证据：[FPS 修复交付](../evidence/fps120-release-2026-10-17.json)。
+
+## 先前阶段记录（以下“尚未加载/未达标”均为当时快照）
 
 2026-10-17（0009 实测与 0010 候选安装）：用户重启后，分批版 `88ce7f61…` 已在两端实际加载；完整无追踪 600 帧、640×480 探针 **81.98 次提交/秒，P95 20.87 ms**，X server CPU 282.34 ms/s。独立诊断中 822 个 Present 已卸载 GPU，其中 240 个 25 矩形 Present 各用两项；**没有 CopyFallback 事件，pixman 软件拷贝热点未再采到**。相较此前约 43.73/s 已有改善，但桌面负载不同，不是严格 A/B，尚未达到预期 110～120。带调用链的独立采样证明剩余热点在 `lorieRedraw` 的整屏 AHB CPU lock/unlock（children 73%，缓存清理/失效占 self 样本约 63%）。据此增加 0010：AHB 根缓冲发布后不立即重新 CPU 映射，真实 CPU 绘制仍按 EXA access 映射并在释放 GPU 锁前刷新；GPU flip 不新建 CPU 映射，保留 legacy FD 路径及 GPU 栅栏。生产函数 UBSan 回归、故意错误的刷新顺序负向对照、干净 arm64 构建与包校验通过。已直接安装/打开 `804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39`，未停桌面、未运行 zink；**服务端仍是 `88ce7f61…`，0010 尚待用户保存工作后重启及实机验收，目标仍未完成**。见 [根缓冲 CPU 访问证据](../evidence/scoped-root-cpu-access-2026-10-17.json)。
 
@@ -20,7 +28,7 @@
 
 更新：2026-10-13。接手先读本页，再核对设备；历史文档、旧记忆和 build 目录名称不能代替运行状态。
 
-- 默认入口（2026-10-15）：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-r3.5-repro-20261015/bin/`。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
+- 默认入口（2026-10-17）：gpu-run / gpu-launcher → `/opt/pad7spro-gpu-fps-20261017/bin/`；`/opt/pad7spro-gpu-r3.5-repro-20261015` 保留回退。r3.3、r3.4.1、r3.4.3 独立前缀保留。最新检查见 [r3.5 迭代](r3.5-efficiency.md)。
 - 原厂 Mali-G925 / Vulkan 1.3.278 保留。Chromium/Electron：二维 Skia 原生 Vulkan，WebGL ANGLE Vulkan。普通 OpenGL：Mesa Zink。CC Switch：WebKit 专用硬件策略和 SHM。
 - 原生分辨率；新会话默认 `X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120`（2026-10-16 配置更新；已确认运行态为 120）、`PAD_GPU_X11_COLOR_MODE=bgra`、`PAD_GPU_SKIA_BACKEND=native`。诊断默认关闭。没有零拷贝的承诺。
 - **r3.4 回归已确认，已撤下默认入口**：用户报告浏览器与 Trae 闪烁/错位。`rectangleCount==0` 实为全图更新，旧实现错误跳帧；damage 只累计当前 AHB，没有跟踪其他轮换缓冲。独立逐像素回归在旧版稳定报出 stale pixels。原件与原前缀保留，历史统计不改值。
@@ -28,7 +36,7 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装 APK SHA-256：`804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39`；状态 `installed-server-restart-pending`，renderer 已更新，X server 仍映射 `88ce7f61960a3a991d20fda5256e9aab8eaedbc700ba606d6cc1b167324756a7`。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009 已实测消除本场景矩形回退，帧率约 82/s；0010 服务端尚待加载验收。
+- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`；新 Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`，已有进程须正常重开加载新库。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009 已实测消除本场景矩形回退，帧率约 82/s；0010 服务端尚待加载验收。
 - 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
 
 ## 已验证和边界

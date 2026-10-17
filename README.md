@@ -4,6 +4,8 @@
 
 **状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
 
+2026-10-17：当前新默认已更新为 **r3.5 FPS 修复版**。联合验收的 3000 帧 FIFO 探针约 116.84 次提交/秒，真实 Chromium 约 119.45 rAF/s，遮挡/增量等 712704 个物理像素零差异；已有应用正常重开后加载新 WSI，无须为 Linux 前缀切换重启桌面。完整状态和范围见 [CURRENT-STATE](docs/CURRENT-STATE.md) 与 [交付证据](evidence/fps120-release-2026-10-17.json)。
+
 2026-10-12 已将 [r3.3 原生 GPU 渲染](docs/r3.3-native-rendering.md)设为默认，替换 r2：二维 Skia 直接使用 Vulkan/Mali，保留 WSI 命令复用、空闲休眠及固定节奏限帧，并部署 Termux:X11 前端 GPU 批处理与输入法接口修正。Chromium / Trae 已实机核对；[r3.2 记录](docs/r3.2-gpu-replacement.md)保留。
 
 当前唯一配置与后续 AI 接手入口：[CURRENT-STATE](docs/CURRENT-STATE.md)、[AGENTS.md](AGENTS.md)。

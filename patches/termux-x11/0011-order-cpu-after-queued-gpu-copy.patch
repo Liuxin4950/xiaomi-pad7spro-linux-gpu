@@ -1,0 +1,41 @@
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -1338,11 +1338,36 @@
+            LorieBuffer_hasGpuCopyPending(priv->buffer);
+ }
+ 
++/* state->lock excludes an active renderer, but it does not order CPU drawing after
++ * GPU copies that were published before the renderer acquired that lock. Drain that
++ * already-published ownership watermark first, otherwise an old clip can overwrite a
++ * popup painted by this CPU access. Never wait for the main-thread Ack counters here. */
++static Bool lorieLockGpuForCpuAccess(void) {
++    const uint64_t serial = pvfb->gpuCopySerialCounter;
++    const uint64_t deadline = lorieMonotonicNanos() + UINT64_C(2000000000);
++    for (;;) {
++        lorie_mutex_lock(&pvfb->state->lock, &pvfb->state->lockingPid);
++        if (lorieGpuCopyIsDone(serial))
++            return TRUE;
++        lorie_mutex_unlock(&pvfb->state->lock, &pvfb->state->lockingPid);
++        // Renderer completion is published independently of X server work items.
++        // Release the mutex so it can drain, including on its offscreen surface.
++        if (!lorieConnectionAlive() || lorieMonotonicNanos() >= deadline) {
++            dprintf(2, "CPU access refused before queued GPU ownership fence %llu completed\n",
++                    (unsigned long long) serial);
++            return FALSE;
++        }
++        pthread_cond_signal(rendererCond);
++        const struct timespec pause = { .tv_sec = 0, .tv_nsec = 1000000 };
++        nanosleep(&pause, NULL);
++    }
++}
++
+ Bool loriePrepareAccess(PixmapPtr pPix, int index) {
+     LoriePixmapPriv *priv = exaGetPixmapDriverPrivate(pPix);
+     Bool gpuLock = lorieNeedsGpuLock(pPix, priv, index);
+-    if (gpuLock)
+-        lorie_mutex_lock(&pvfb->state->lock, &pvfb->state->lockingPid);
++    if (gpuLock && !lorieLockGpuForCpuAccess())
++        return FALSE;
+ 
+     if (!priv->locked && !priv->mem) {
+         int err = LorieBuffer_lock(priv->buffer, &priv->locked);
