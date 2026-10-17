@@ -4,7 +4,7 @@
 
 已修复：超过 16 块的可见区域 GPU 原子分批；纯 GPU 根缓冲不再反复 CPU 映射；CPU 弹窗绘制等待先前排队 GPU 所有权栅栏；WSI 最多两个有序 tick 在途，避免每帧串行等待。后者曾在 APK 804ecfc9 上暴露 800 像素遮挡覆盖，原失败证据保留；最新 APK 与新前缀联合检查 **712704 个物理像素零差异**，增量/空列表、窗口重建/oldSwapchain 和实际 Flip 路径通过。独立采样 1047 个 Present 没有 CopyFallback，WSI 在途数最多 2。
 
-**现有已打开应用不会热换库**：快照中一个 GPU 进程仍映射旧 `/opt/pad7spro-gpu-r3.5-repro-20261015`，正常关闭并从统一入口重开该应用后才加载新 WSI；不需要重启桌面或运行 zink 脚本。本轮没有停止桌面、没有终止当前助手，三份 Termux 入口文件保持原内容、UID/GID 和 0700。旧前缀、APK 和链接回退记录保留。当前剩余验收项为该现有应用的正常重开与映射核对；功耗、精确输入延迟和长期稳定性未测。完整证据：[FPS 修复交付](../evidence/fps120-release-2026-10-17.json)。
+**应用重开后的生效检查已通过**：用户正常重开助手后，新 GPU 进程 PID 22446（start_ticks 44231138）实际映射 `/opt/pad7spro-gpu-fps-20261017` 中的 WSI、sysvk 桥接及原厂 Mali；此前旧进程快照保留在证据中。安装清单再次核验通过，本轮 FPS 修复验收已完成。本轮没有停止桌面、没有运行 zink 脚本；三份 Termux 入口文件保持原内容、UID/GID 和 0700。旧前缀、APK 和链接回退记录保留。功耗、精确输入延迟和长期稳定性未测。完整证据：[FPS 修复交付](../evidence/fps120-release-2026-10-17.json)。
 
 ## 先前阶段记录（以下“尚未加载/未达标”均为当时快照）
 
@@ -36,8 +36,8 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`；新 Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`，已有进程须正常重开加载新库。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009 已实测消除本场景矩形回退，帧率约 82/s；0010 服务端尚待加载验收。
-- 当前进程/库/APK 映射见 [r3.5 全域替换](../evidence/r3.5-global-switch-2026-10-13.json)，PID 每次重新核对。
+- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`；新 Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`，已有进程须正常重开加载新库。两包 versionName 同为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；0009–0011 与 WSI 0012 已联合验收，服务端及当前助手均已加载修复版。
+- 当前进程/库/APK 映射见 [FPS 修复交付](../evidence/fps120-release-2026-10-17.json)，PID 每次重新核对。
 
 ## 已验证和边界
 

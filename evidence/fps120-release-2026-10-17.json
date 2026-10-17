@@ -1,6 +1,6 @@
 {
   "date": "2026-10-17",
-  "state": "active-default-existing-app-restart-pending",
+  "state": "installed-active-and-accepted",
   "scope": "Joint FPS repair: exact clipped GPU copy batches, scoped and ordered CPU/GPU ownership, bounded two-request WSI display pipeline.",
   "deployment": {
     "date": "2026-10-17",
@@ -571,8 +571,8 @@
       "/usr/local/bin/gpu-run",
       "/usr/local/bin/gpu-launcher"
     ],
-    "existing_processes": "The single GPU process listed in deployment.existing_gpu_processes still maps the prior prefix and must normally restart to load the new WSI. No current application was terminated.",
-    "restart_existing_app_gate": "pending"
+    "existing_processes": "The user normally restarted the current assistant. The new GPU process maps the repaired WSI, sysvk bridge and factory Mali; prior deployment.existing_gpu_processes is a preserved historical snapshot.",
+    "restart_existing_app_gate": "passed"
   },
   "rollback": {
     "linux_links": "python3 scripts/activate-release.py --restore build/wsi-pipeline-20261017/activation-backup --apply",
@@ -596,7 +596,7 @@
     "physical_clip_and_incremental_pixels": "passed",
     "resize_and_flip": "passed",
     "bounded_queue_and_cleanup": "passed",
-    "existing_current_app_loading_new_prefix": "pending normal application restart"
+    "existing_current_app_loading_new_prefix": "passed"
   },
   "artifacts": {
     "directory": "build/wsi-pipeline-20261017",
@@ -621,7 +621,48 @@
       "activation-result.json": "14efd78c5795e00b2bc7c92738bff66fc1e5c1be862dc573cb0b0baf200a85b0",
       "activation-backup/restore-plan.json": "14efd78c5795e00b2bc7c92738bff66fc1e5c1be862dc573cb0b0baf200a85b0",
       "entry-files-check.json": "101da0cd95c92a4ee6d8bd10c9c0ebd36da486e581a524e3b357de84426adb5b",
-      "deployment-final.json": "c0e0817fa60b88fcdfc67d059d2266d10417762b4e7e94e70a6df140b9a9af4f"
+      "deployment-final.json": "c0e0817fa60b88fcdfc67d059d2266d10417762b4e7e94e70a6df140b9a9af4f",
+      "post-application-restart.json": "c3d29b713f36df3b6fbb2e93af6398b4cc3d6702221517fcae8a0fdbee6e5dc6"
     }
+  },
+  "deployment_snapshot_scope": "Pre-application-restart historical snapshot. Current application activation is recorded in post_application_restart.",
+  "post_application_restart": {
+    "observed_at_utc": "2026-10-17T02:58:59.630592+00:00",
+    "state": "passed",
+    "scope": "Current assistant after user-managed normal application restart; no new performance sample.",
+    "links": {
+      "gpu-run": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-run",
+      "gpu-launcher": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-launcher"
+    },
+    "gpu_processes": [
+      {
+        "pid": 22446,
+        "start_ticks": 44231138,
+        "executable": "/usr/lib/chatgpt/ChatGPT",
+        "mapped_library_paths": [
+          "/opt/pad7spro-gpu-fps-20261017/android-override/libc.so",
+          "/opt/pad7spro-gpu-fps-20261017/lib/libahb-wrapper.so.1.0.0",
+          "/opt/pad7spro-gpu-fps-20261017/lib/libhardware.so.2.0.0",
+          "/opt/pad7spro-gpu-fps-20261017/lib/libhybris-common.so.1.0.0",
+          "/opt/pad7spro-gpu-fps-20261017/lib/libhybris/linker/q.so",
+          "/opt/pad7spro-gpu-fps-20261017/lib/libsysvk.so",
+          "/opt/pad7spro-gpu-fps-20261017/share/vulkan/implicit_layer.d/libVkLayer_window_system_integration.so",
+          "/vendor/lib64/egl/libGLES_mali.so",
+          "/vendor/lib64/hw/vulkan.mali.so"
+        ],
+        "prefixes_mapped": [
+          "/opt/pad7spro-gpu-fps-20261017"
+        ],
+        "new_wsi_mapped": true,
+        "new_bridge_mapped": true,
+        "vendor_mali_mapped": true
+      }
+    ],
+    "prefix_release_status": "installed-and-active",
+    "prefix_manifest_sha256": "792580a5298c3f9c1242d9ff296245896e86e70f57ba044b28b23cf23a660766",
+    "install_manifest_verified": true,
+    "wsi_library_sha256": "d011bb7b220ab83bfb7c136e1e1b3190def27c013cb24775167c405073d77636",
+    "desktop_stop_invoked": false,
+    "zink_script_invoked": false
   }
 }
