@@ -1,12 +1,12 @@
 # 平板 / 后续 AI 接手
 
-2026-10-17 会话保护更新：继续优化期间两次 APK 安装均伴随当前会话中断，用户已明确要求先通知、由其安排重启 Termux。后续完成候选构建、验证和备份后协调切换，不再自动安装 APK/重启服务端。当前在测包已为 `9c6276b8…`，实际映射与验收以新增证据为准；下方 `c62abdc5…` 为上一轮已验收基线。
+2026-10-17 会话保护更新：继续优化期间两次 APK 安装均伴随当前会话中断，用户已明确要求先通知、由其安排重启 Termux。后续完成候选构建、验证和备份后协调切换，不再自动安装 APK/重启服务端。当前在测包已为 `88346b58…`，实际映射与验收以新增证据为准；下方 `9c6276b8…` / `c62abdc5…` 为先前已验收基线。
 
-2026-10-17 当前在测包 `9c6276b8…` 已在两端加载，包含新的 tick 许可时机修复和最终绘制合并；无追踪提交约 119/s、SF 内容层短快照 117.18/s、712704 像素零差异。持续独立页面内容 120 帧目标仍未完成，见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
+2026-10-17 上一轮快照：当时在测包 `9c6276b8…` 已在两端加载，包含新的 tick 许可时机修复和最终绘制合并；无追踪提交约 119/s、SF 内容层短快照 117.18/s、712704 像素零差异。持续独立页面内容 120 帧目标仍未完成，见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
 
-新候选 **88346b58… 尚未安装**：`build/x11-copy-wake-20261017/candidate.apk`，含 0014 的 tick 内 enqueue 通知延后，复用原有许可、队列和 fence。旧包原件为 `build/copy-wake-20261017/rollback/current.apk`，已核对 `9c6276b8…`。生产函数 UBSan 回归、提前唤醒/先唤醒后开许可/删除 CPU 必要唤醒三个负向对照、正式构建及包校验通过。没有新实机收益结论；先由用户保存工作并安排切换，再安装，由用户重启 Termux，之后重取 PID、核对两端 APK SHA、定向复核合并拷贝/实际提交与遮挡像素。不要自动安装，也不要运行 zink 或停止脚本。[完整候选证据](../evidence/deferred-copy-wake-2026-10-17.json)。
+**0014 已安装并在两端加载**：用户授权安装 `88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411` 后自行重启 Termux。新 server PID 31181 / start_ticks 45904410，renderer PID 1283 / start_ticks 45404303（后续须重取，不能照抄）。712704 个物理像素零差异；独立拷贝比例从旧诊断 17.47% 降到 0.47%。无追踪 native 提交 117.01/s，默认原生 Vulkan 页面约 112–116 rAF/s，尚非稳定 120。显式 ACK 的 3000 帧样本 119.79 rAF/s；app-tags 诊断关联的新 WSI 来源已显示帧 105.52/s，有采样影响且并非逐帧像素解码。原生后端与默认参数保持；无新功耗/输入延迟结论。旧包备份 `build/copy-wake-20261017/rollback/current.apk`（`9c6276b8…`）保留。[完整安装与验收证据](../evidence/deferred-copy-wake-2026-10-17.json)。
 
-切换后的单次诊断已准备：`python3 build/copy-wake-20261017/acceptance/capture.py`。它先重取 PID/start ticks 并核对两端 APK 均为 `88346b58…`，再创建独立窗口和追踪；已验证旧包会在任何窗口/追踪启动前被拒绝。诊断沿用旧样本显式的 `NoCompositorFrameAcks:pending_frames/2`，不改变默认启动器；日常无追踪样本仍另测。结束后自动用已有埋点关联 WSI pixmap/serial → GPU copy serial → Surface frame ID → `EGL_DISPLAY_PRESENT_TIME_ANDROID`，过滤重复来源、未完成时间戳和未匹配帧。旧诊断样本约 4.89 秒内得到 530 个新 WSI 来源的已呈现帧，约 108.14/s；带采样，不能当日常帧率，也不能代替逐帧像素比较。脚本、结果与哈希见候选证据的 `prepared_acceptance`。
+本次已执行的单次诊断：`python3 build/copy-wake-20261017/acceptance/capture.py`。它先重取 PID/start ticks 并核对两端 APK 均为 `88346b58…`，再创建独立窗口和追踪；已验证旧包会在任何窗口/追踪启动前被拒绝。诊断沿用旧样本显式的 `NoCompositorFrameAcks:pending_frames/2`，不改变默认启动器；日常无追踪样本仍另测。结束后自动用已有埋点关联 WSI pixmap/serial → GPU copy serial → Surface frame ID → `EGL_DISPLAY_PRESENT_TIME_ANDROID`，过滤重复来源、未完成时间戳和未匹配帧。旧诊断样本约 4.89 秒内得到 530 个新 WSI 来源的已呈现帧，约 108.14/s；带采样，不能当日常帧率，也不能代替逐帧像素比较。当前诊断结果为 515 个新来源帧 / 约 4.83 秒；后续 3000 帧轻量 app-tags 样本关联 2631 个新来源帧 / 约 24.93 秒。复测必须用新输出目录，不能覆盖已有 profile 或样本。脚本、结果与哈希见验收证据的 `prepared_acceptance` / `post_restart_acceptance`。
 
 页面节拍后续核对：原生 Vulkan / ANGLE 同会话对比未支持切换默认；optimal AHB 候选没有页面速率收益，未登记为生产补丁，独立实验前缀已清理。不要加入 `--disable-frame-rate-limit`：已测到 630–902 rAF/s 和约 4.6 核浏览器 CPU 开销，不能代表屏幕内容更新。Chromium 的 `Swap throttled` 是队列状态，不是掉帧计数；原生 Vulkan 输出后端固定一次交换在途，WSI 已有四缓冲、两次显示提交上限，不要据此盲目扩大队列。接下来用已有 frame-sequence / Scheduler 追踪定位未更新帧的主线程准备与显示等待，详见同一证据的 `pacing_review`。本轮未安装 APK、未重启会话。
 

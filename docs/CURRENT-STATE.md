@@ -1,14 +1,18 @@
 # 当前运行基线：r3.5 FPS 修复版（2026-10-17）
 
-2026-10-17 继续优化进行中：当前 APK 为 `9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac`，已核对 server / renderer 两端实际映射；Linux 前缀仍为 `/opt/pad7spro-gpu-fps-20261017`。新增 Termux 0012 在渲染开始前领取 tick 许可，避免 GPU 等待后覆盖新 tick；0013 先完成离屏拷贝，再合并根画面和光标为一次显式 flush，保留所有权栅栏。生产函数回归、负向对照和干净构建通过。两次 1200 帧客户端提交约 119.01 / 118.87 次/秒；独立 SF 内容层短快照约 **117.18 次呈现/秒**，P95 8.40 ms，最长 16.71 ms。遮挡/增量/空区域 **712704 个物理像素零差异**。不同阶段间桌面已重启，不能把 CPU/帧率差异当严格交替 A/B；**持续的独立页面内容 120 帧仍未证实，优化目标继续进行**。见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
+2026-10-17 最新：用户授权安装并自行重启后，APK **`88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411` 已在 X server / renderer 两端实际加载**；Linux 前缀仍为 `/opt/pad7spro-gpu-fps-20261017`。0014 的通知时序改动生效：匹配浏览器拷贝中 standalone 从旧诊断 113/647（17.47%）降到 3/639（0.47%）；遮挡/增量/空区域共 **712704 个物理像素零差异**。无追踪 1200 帧探针约 **117.01 次提交/秒**，默认 Chromium 原生 Vulkan 页面约 **112.79 / 115.51 / 111.74 rAF/s**。显式 ACK 参数的 3000 帧试验约 119.79 rAF/s，但轻量 app-tags 追踪关联的新 WSI 来源已显示帧约 **105.52/s**，仍有采样影响；**尚未证实稳定真实页面 120 帧**，不把回调率当完成。没有更改默认 ACK 参数、Linux 库或驱动。当前安装清单和 release 元数据已同步，旧包可回退，见[切换与验收证据](../evidence/deferred-copy-wake-2026-10-17.json)。不同阶段间桌面重启，不构成严格 A/B；没有新功耗或输入延迟结论。
+
+以下 `9c6276b8…` 段落为上一轮快照；0014 准备时记录也保留历史语义。
+
+2026-10-17 上一轮快照：当时 APK 为 `9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac`，已核对 server / renderer 两端实际映射；Linux 前缀仍为 `/opt/pad7spro-gpu-fps-20261017`。新增 Termux 0012 在渲染开始前领取 tick 许可，避免 GPU 等待后覆盖新 tick；0013 先完成离屏拷贝，再合并根画面和光标为一次显式 flush，保留所有权栅栏。生产函数回归、负向对照和干净构建通过。两次 1200 帧客户端提交约 119.01 / 118.87 次/秒；独立 SF 内容层短快照约 **117.18 次呈现/秒**，P95 8.40 ms，最长 16.71 ms。遮挡/增量/空区域 **712704 个物理像素零差异**。不同阶段间桌面已重启，不能把 CPU/帧率差异当严格交替 A/B；**持续的独立页面内容 120 帧仍未证实，优化目标继续进行**。见 [本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
 
 **会话保护更新**：两次 APK 安装均伴随当前对话中断。用户已明确要求先通知、由其安排重启 Termux；后续先完成候选构建、验证和备份，不再自动替换 APK 或重启 X server。当前包已加载，这轮无需再重启。普通验证只使用独立窗口。
 
 **页面节拍复核**：同会话原生 Vulkan → ANGLE Vulkan → 原生 Vulkan 对比未证明切换收益，ANGLE 出现 83–92 ms 长停顿。独立 optimal AHB 布局候选显示/遮挡像素通过，但页面速率未提高，未纳入生产补丁。`--disable-frame-rate-limit` 把 rAF 拉高到 630–902/s，并把浏览器相关 CPU 用量推到约 4.6 核，已拒绝；不能用回调空转冒充屏幕 120 帧。当前默认和 APK 保持，实验前缀已在进程退出后清理；详细追踪、CPU 范围及后续定位见同一份[本轮证据](../evidence/display-permit-surface-submit-2026-10-17.json)的 `followup_review.pacing_review`。
 
-**后续候选已准备、未安装**：0014 只延后 tick 内 GPU 队列通知，先开放已有绘制许可，再唤醒 renderer，减少 copy-only 和 root 各自一次 flush/fence 的机会；其他 enqueue 与 CPU 所有权等待仍可立即唤醒。独立浏览器诊断中，647 个匹配的 Present copy 有 113 个走了 standalone 路径。生产函数回归、三个负向对照、干净 arm64 构建、签名/CRC/16 KiB 对齐通过；候选 APK SHA-256 `88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411`，位置 `build/x11-copy-wake-20261017/candidate.apk`。旧 `9c6276b8…` 已备份，安装和 Linux 默认未改，须用户保存工作后协调 APK 切换与 Termux 重启。另测现有 `NoCompositorFrameAcks` 可使 rAF 接近 120，但实际 X11 请求仍约 115/s，未加到启动器。候选的实际收益、像素正确性与持续新内容率均待切换后验证，见[候选证据](../evidence/deferred-copy-wake-2026-10-17.json)。
+**0014 切换前准备快照（现已安装并验收）**：0014 只延后 tick 内 GPU 队列通知，先开放已有绘制许可，再唤醒 renderer，减少 copy-only 和 root 各自一次 flush/fence 的机会；其他 enqueue 与 CPU 所有权等待仍可立即唤醒。独立浏览器诊断中，647 个匹配的 Present copy 有 113 个走了 standalone 路径。生产函数回归、三个负向对照、干净 arm64 构建、签名/CRC/16 KiB 对齐通过；候选 APK SHA-256 `88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411`，位置 `build/x11-copy-wake-20261017/candidate.apk`。旧 `9c6276b8…` 已备份，安装和 Linux 默认未改，须用户保存工作后协调 APK 切换与 Termux 重启。另测现有 `NoCompositorFrameAcks` 可使 rAF 接近 120，但实际 X11 请求仍约 115/s，未加到启动器。候选的实际收益、像素正确性与持续新内容率均待切换后验证，见[候选证据](../evidence/deferred-copy-wake-2026-10-17.json)。
 
-已为切换后准备带两端 APK 映射校验的单次诊断，旧包会在创建窗口/追踪前被拒绝。已有埋点还可关联指定浏览器的新 WSI 来源帧与 EGL 报告的实际显示时间，比整层 SF 呈现计数更具体；它仍是有采样开销的来源关联，不是逐帧像素解码。命令和旧样本结果见[交接](tablet-handoff.md)与候选证据 `prepared_acceptance`；没有再次安装或重启。
+该轮准备的两端 APK 映射校验和单次诊断现已执行；旧包拒绝测试也已保留。已有埋点还可关联指定浏览器的新 WSI 来源帧与 EGL 报告的实际显示时间，比整层 SF 呈现计数更具体；它仍是有采样开销的来源关联，不是逐帧像素解码。命令、旧样本与当前结果见[交接](tablet-handoff.md)及验收证据 `prepared_acceptance` / `post_restart_acceptance`；安装经用户明确授权，重启由用户完成。
 
 ## 前一轮已验收基线（以下 c62abdc5 与旧 PID 为历史快照）
 
@@ -52,8 +56,8 @@
 - 正常使用不创建逐帧日志。`PAD_GPU_WSI_TRACE=1` 才记录复制像素预算、提示数量，首帧及每 128 次 Copy 输出一次有界快照，能够核查应用是否实际进入局部路径。
 - 入口契约不变：gpu-run 为 0755，桌面/菜单/URL/XFCE helper/CLI（chromium/chatgpt/ChatGPT/trae/trae-cn/cc-switch）/旧 gpu-app 兼容入口共用 gpu-run。LibreOffice 图标进入相同硬件环境，但不承诺其所有二维内容已硬件化。
 - Termux 的 `debian-desktop.sh`、Widget `debian-zink.sh`、手动 `mali-work/desktop-zink.sh` 共用当前 GPU 桌面入口；三个设备文件与仓库参考文件逐字节一致（UID/GID 10305、0700）。命令行/TUI 与 MySQL 不属于图形渲染任务。
-- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac`；Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`。versionName 仍为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；包含 0009–0013，与 WSI 0012 联合检查通过。当前映射复核见本轮证据；下方 FPS 修复交付中的 `c62abdc5…` 与 PID 为前一轮快照。
-- 当前进程/库/APK 映射见 [FPS 修复交付](../evidence/fps120-release-2026-10-17.json)，PID 每次重新核对。
+- 当前已安装且 X server / renderer 均实际映射的 APK SHA-256：`88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411`；Linux 默认前缀为 `/opt/pad7spro-gpu-fps-20261017`。versionName 仍为 `1.03.01-d55f1b7-gpu-r3.5-repro`，以哈希区分。仅 arm64 新构建；包含 0009–0014，与 WSI 0012 联合检查通过。当前映射复核见本轮证据；下方 FPS 修复交付中的 `c62abdc5…` 与 PID 为前一轮快照。
+- 当前 APK 映射和新测试进程见[0014 验收证据](../evidence/deferred-copy-wake-2026-10-17.json)；[FPS 修复交付](../evidence/fps120-release-2026-10-17.json)为先前快照，PID 每次重新核对。
 
 ## 已验证和边界
 

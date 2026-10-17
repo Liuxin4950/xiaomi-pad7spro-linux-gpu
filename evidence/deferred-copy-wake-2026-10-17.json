@@ -1,6 +1,6 @@
 {
   "observed_at_utc": "2026-10-17T07:22:32.489697+00:00",
-  "state": "candidate-built-offline-validated-not-installed",
+  "state": "installed-loaded-correctness-validated-120fps-goal-incomplete",
   "problem": "GPU queue publication wakes a sleeping renderer inside the tick vblank loop, before the tick reopens the redraw permit. This can send the copy through the standalone flush/fence path followed by another flush/fence for the root Surface.",
   "diagnosis": {
     "owned_browser_copy_split": {
@@ -228,11 +228,11 @@
     "scope": "Current installed Chromium 152.0.7977.82, independent private profile and real-size window; rAF/WSI diagnostic rates are separate from physical-screen unique content and power."
   },
   "deployment": {
-    "installed_apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+    "installed_apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
     "linux_prefix": "/opt/pad7spro-gpu-fps-20261017",
     "default_launcher_changed": false,
-    "apk_installed": false,
-    "session_restarted": false,
+    "apk_installed": true,
+    "session_restarted": true,
     "rollback_apk": "build/copy-wake-20261017/rollback/current.apk",
     "required_coordination": "User saves work and arranges Termux restart; no automatic APK install or X server restart.",
     "runtime_before_switch": [
@@ -255,12 +255,38 @@
         ]
       }
     ],
-    "tracing_on_after": "0"
+    "tracing_on_after": "0",
+    "previous_installed_apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+    "session_restart_by": "user",
+    "assistant_restarted_session": false,
+    "runtime_after_restart": [
+      {
+        "pid": 1283,
+        "start_ticks": "45404303",
+        "command": "com.termux.x11",
+        "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+        "mali_libraries": [
+          "/vendor/lib64/egl/libGLES_mali.so"
+        ]
+      },
+      {
+        "pid": 31181,
+        "start_ticks": "45904410",
+        "command": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+        "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+        "mali_libraries": [
+          "/vendor/lib64/egl/libGLES_mali.so"
+        ]
+      }
+    ],
+    "install_receipt": "build/copy-wake-20261017/install-state.json",
+    "linux_metadata_updated": true,
+    "linux_libraries_changed": false
   },
   "remaining": [
-    "After coordinated switch, recheck server and renderer mappings by SHA.",
-    "Repeat only the necessary combined/standalone trace, untraced page/WSI rates and physical clipping/incremental correctness checks.",
-    "Compare actual unique page-content presentation and CPU cost; keep original sustained efficient 120/s objective active until proven."
+    "Original sustained efficient 120/s page-content objective remains unproven.",
+    "Locate remaining downstream pacing/GPU ownership wait losses; do not promote callback-only gains.",
+    "Power and precise input latency remain unmeasured."
   ],
   "primary_sources": [
     {
@@ -354,12 +380,57 @@
     "build/copy-wake-20261017/acceptance/capture.py": "e26fa3dd354badaf0ba131ab2ab36b8a37fda4c8d7cd67441bc39e10ddbf5c19",
     "build/copy-wake-20261017/acceptance/run.py": "b5e83cc132c0e09064422c738922d09b14ed3d9a2668efb405adb443ca7b0614",
     "build/copy-wake-20261017/acceptance/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
-    "build/copy-wake-20261017/acceptance/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800"
+    "build/copy-wake-20261017/acceptance/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/copy-wake-20261017/install-state.json": "bc195dfe42932ce6512f54982489fce23e241d9c09b9b399ea52757ded3b7340",
+    "build/copy-wake-20261017/install.log": "7fc0023a6402c7bd7abd98bb3e580968de4833eed07d88d1cc8d70819d69c7a0",
+    "build/copy-wake-20261017/install-authorized.py": "3d484281f649d3923307b677c5873d81ba1cb5769183d14d929089b2828ca9c1",
+    "build/copy-wake-20261017/post-restart-runtime.json": "7988c2bfe2b90a34bf471afca9855884bcbbe997a0eded57d289b98ca72309ca",
+    "build/copy-wake-20261017/native-1200/summary.json": "96e7b32a642b92ea06a0224595d6ec4bdb0a71f3611ab979dfc7e5422ddd48f4",
+    "build/copy-wake-20261017/native-1200/timings.csv": "981543baea0e31a3d2129480f6abf901dc59b577c0b585338c8df5c768f82124",
+    "build/copy-wake-20261017/native-1200/probe.log": "c70c4d3ec91f59010946d5d750a58b84e9c6f65c3b9bf7d75b85c6b4750e2dd5",
+    "build/copy-wake-20261017/page-native/run.py": "bb580c8599a8f54bfc2d3a66a4cbd0037e30bff8d92f24765d656f31cbd15cb8",
+    "build/copy-wake-20261017/page-native/check.mjs": "e56150986058611ae4e4dd8e1a4cb95ace44791efd7d0aaad485af14e596fb63",
+    "build/copy-wake-20261017/page-native/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/copy-wake-20261017/page-native/report.json": "33cfe557727fbf29017c532f639c09283c32a169b3237d4d157e91791ae803b0",
+    "build/copy-wake-20261017/page-native/report.maps": "9e59f69373685b6ea159b808ced6b0944e27f8fb178b937892b4693de15ab004",
+    "build/copy-wake-20261017/page-native/run.log": "e9ebe0543f909478973827a45a604917b85e57ead6d1ef822f121bfaacfad67e",
+    "build/copy-wake-20261017/acceptance/capture.log": "93f564ddd253d6e3118338cfc898c2b3d6ff18d1535bd3549c4a40ac17e584d9",
+    "build/copy-wake-20261017/acceptance/runtime.json": "f258b267ce1337e1dd866d66eb6a220a20ebd3791e5a540c0b2919bb2f66909f",
+    "build/copy-wake-20261017/acceptance/report.json": "46621ba2d657907bb7abeac7ea005af84aa13ab3643adec13b3e3add6ceb44ce",
+    "build/copy-wake-20261017/acceptance/report.trace.json": "d365c05f6af9c8c6a6831d6b737c8c437469dfb9318d6a596fb6e8a2ae5caa7c",
+    "build/copy-wake-20261017/acceptance/atrace.txt": "c4db0b8e22c42df6dd1033656713145e7a14c71d93244ba8d3b805d0700db305",
+    "build/copy-wake-20261017/acceptance/copy-wake-analysis.json": "4e1cbad49e5ec34ea015f42222961f99a65a11a1ab551596df1e537bcb877966",
+    "build/copy-wake-20261017/acceptance/owned-copy-wake-summary.json": "6923eaad8e1772365c8e1b40ba998a5feb19676ec295c1daf3eab41776fa2b12",
+    "build/copy-wake-20261017/acceptance/presented-content-lineage.json": "ce24ae77e59cb45ac19243bd24fd070116d833cb174884fbde743afd0b954612",
+    "build/copy-wake-20261017/acceptance/analyse-copy-wake.py": "0f874a81f6b19ad047a64d9961c35480d21b454a60498ae6db3ead91f1b8d63c",
+    "build/copy-wake-20261017/present-3000/capture.py": "c2a5ee543ed0289d988131bcb802cc6b5421f196cb03d4d6a7f55925a1331dc9",
+    "build/copy-wake-20261017/present-3000/run.py": "2242e87982d0d237fbc27b754362faa3270f56b1e3bba2a7da7988daacc0fdcc",
+    "build/copy-wake-20261017/present-3000/check.mjs": "668fa83f6ce3f503fbc6ff122f7a42123800cfa69c23b5bbd02437bc9ea8f470",
+    "build/copy-wake-20261017/present-3000/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/copy-wake-20261017/present-3000/report.json": "2ea1a2b708e3d74e024baa069803d33afd69ef2f2859456358734bf6a13a1a48",
+    "build/copy-wake-20261017/present-3000/atrace.txt": "8022a4c5b3dbf4fa916b24940ffc5509f3ce1661b446cf3bb40578c65be33cae",
+    "build/copy-wake-20261017/present-3000/presented-content-lineage.json": "0ba11475ab74ef9e83f33b17794b202e3a11fb72afd45df94436f8c4817ce65e",
+    "build/copy-wake-20261017/present-3000/capture.log": "1d02db8329d2be1926d5cf0c339796afd228067f3dbb439b037c371efdf43b31",
+    "build/copy-wake-20261017/correctness/clip-screen-check.json": "da430df02f5d02b99184c200b4b71e81adc3b633bf9bb9b06a4575777f778bbc",
+    "build/copy-wake-20261017/correctness/regions-screen-check.json": "af7e1022e81d3245a96391402b65b5aad62e9a915f6549d7b5d7bff236070b51",
+    "build/copy-wake-20261017/correctness/empty-screen-check.json": "5edf72b1eb371879fb998406d93c0ec4b7e5c49ad14ee4619646cf4c0b91223c",
+    "build/copy-wake-20261017/correctness/clip-run.log": "cb5c870cd6735000da0e51e2d79b859e547fbf711f18fa07ebd56b3c83e6ebe0",
+    "build/copy-wake-20261017/correctness/regions-run.log": "c829db14d45c2509796b2f83ec220772aff5e33d25eb76b10988cfb25bceb1ac",
+    "build/copy-wake-20261017/correctness/empty-run.log": "8738b57aec37f20d9c87bd837b0fe4a050b82e0d4b65a7e01dc5d9a6e96488d7",
+    "build/copy-wake-20261017/acceptance/timeline/wsi-3788-48234497-204626888903096.csv": "2c56eea2480d11a0a72aa5e454072138ed065967aa2181e02c1da8b73f0d8fb8",
+    "build/copy-wake-20261017/acceptance/timeline/wsi-3788-48234497-204627177297888.csv": "305d11982caa799a977fa969e17cb561689d62450758241f2b20c217a2f7474e",
+    "build/copy-wake-20261017/present-3000/timeline/wsi-4444-48234497-204713764747173.csv": "8f96120eabd234b9e7976226750f86dedae4cf40143ed3e9b94abe6082c53fc2",
+    "build/copy-wake-20261017/present-3000/timeline/wsi-4444-48234497-204713923086808.csv": "13d67d6a5337c501cc9bf0c64029209c24f1eee329c9441c86d8ead9d60a51a9",
+    "/opt/pad7spro-gpu-fps-20261017/release.json": "c4c383cdd29a8b98ae7e5fabab7a075fa3872090cec7e07e96d3eee799c62b83",
+    "/opt/pad7spro-gpu-fps-20261017/install-manifest.json": "192a8749e014f95048d717a5f749b3f26958f539cd20a5ceacdf06784c5f61f2",
+    "build/copy-wake-20261017/termux-resources-after.json": "996a618e4841232fbe9f791a8c8983ce4397843a448bc90baabe3ccdb8b2337c",
+    "build/copy-wake-20261017/metadata-backup/release.json": "a3da56fd3f56bfd6681cf4a668bea7d37d40936942993b92e5c23509a40cbe1b",
+    "build/copy-wake-20261017/metadata-backup/install-manifest.json": "0a584d569420367daa1ccf415484d50a89d98d7c8f4ff612d83449dc05a6e102"
   },
   "prepared_acceptance": {
     "prepared_at_utc": "2026-10-17T07:31:00.355047+00:00",
     "command": "python3 build/copy-wake-20261017/acceptance/capture.py",
-    "state": "ready-not-run; old-package preflight rejected before starting trace or window",
+    "state": "executed-after-user-coordinated-install-and-restart",
     "expected_apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
     "runtime_guard": "Re-read PIDs/start ticks and hash both executable APK mappings. Candidate required on both ends; default Linux prefix checked; existing trace must be off.",
     "controlled_diagnostic": "Same private-profile canvas workload and explicit NoCompositorFrameAcks:pending_frames/2 as the baseline diagnostic. That flag remains absent from default launcher. This is diagnostic acceptance, not untraced throughput.",
@@ -407,5 +478,417 @@
     "primary_spec_url": "https://registry.khronos.org/EGL/extensions/ANDROID/EGL_ANDROID_get_frame_timestamps.txt",
     "scope": "Correlates owned WSI -> server GPU serial -> root Surface frame ID -> EGL display-present timestamp. Deduplicates repeated source lineage and ignores unmatched/pending timestamps. Not independent optical/pixel-content verification.",
     "remaining": "After coordinated switch, perform this targeted diagnostic plus the already-planned untraced native page/WSI and physical-pixel checks. Do not promote on rAF or this metadata alone."
+  },
+  "post_restart_acceptance": {
+    "observed_at_utc": "2026-10-17T07:42:07.943860+00:00",
+    "default_native_page": {
+      "scenes": [
+        {
+          "mode": "canvas",
+          "frames": 600,
+          "raf_hz": 112.79115747453255,
+          "p50_ms": 8.300000000000182,
+          "p95_ms": 16.599999999999454,
+          "p99_ms": 16.800000000000182,
+          "max_ms": 25.09999999999991,
+          "over_12ms": 32,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        },
+        {
+          "mode": "scroll",
+          "frames": 600,
+          "raf_hz": 115.51218759642084,
+          "p50_ms": 8.300000000001091,
+          "p95_ms": 8.400000000001455,
+          "p99_ms": 16.700000000000728,
+          "max_ms": 25,
+          "over_12ms": 21,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        },
+        {
+          "mode": "edit",
+          "frames": 600,
+          "raf_hz": 111.73705417101927,
+          "p50_ms": 8.30000000000291,
+          "p95_ms": 16.600000000002183,
+          "p99_ms": 16.799999999999272,
+          "max_ms": 25,
+          "over_12ms": 40,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        }
+      ],
+      "cpu_ms_per_second": {
+        "browser": 107.11836461155531,
+        "renderer": 672.0647395099984,
+        "GPU": 640.6502191191097,
+        "network.mojom.NetworkService": 19.569701227111068,
+        "storage.mojom.StorageService": 0.0
+      },
+      "backend": "GaneshVulkan",
+      "gpu_crash_count": 0,
+      "hardware_checks": {
+        "new_wsi_mapped": true,
+        "new_bridge_mapped": true,
+        "mali_mapped": true
+      }
+    },
+    "native_probe": {
+      "label": "native-1200",
+      "frames": 1200,
+      "submissions_per_second": 117.01244569638918,
+      "interval_ms": {
+        "50": 8.318047,
+        "95": 15.190372599999993,
+        "99": 23.113518999999997
+      },
+      "max_interval_ms": 36.881745,
+      "intervals_over_30ms": 2,
+      "cpu_ms_per_second": {
+        "renderer": 393.1558141853526,
+        "server": 162.55480778817463
+      },
+      "pids": {
+        "renderer": 1283,
+        "server": 31181
+      },
+      "exit_code": 0,
+      "instrumentation": "No trace/profiler/SurfaceFlinger polling during measurement; endpoint process CPU counters only.",
+      "scope": "Native client submission timestamps, not unique physical-screen contents."
+    },
+    "physical_pixels": {
+      "checked": 712704,
+      "mismatches": 0,
+      "clip": {
+        "server_pid": 31181,
+        "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+        "captures": [
+          {
+            "capture": 0,
+            "screen_size": [
+              3200,
+              2136
+            ],
+            "format": 1,
+            "color_space_id": 2,
+            "screen_origin": [
+              0,
+              82
+            ],
+            "logical_origin": [
+              0,
+              0
+            ],
+            "red": [
+              234,
+              51,
+              35,
+              255
+            ],
+            "green": [
+              117,
+              251,
+              76,
+              255
+            ],
+            "checked_pixels": 307200,
+            "protected_hole_pixels": 6400,
+            "pixel_mismatches": 0,
+            "first_mismatches": []
+          },
+          {
+            "capture": 1,
+            "screen_size": [
+              3200,
+              2136
+            ],
+            "format": 1,
+            "color_space_id": 2,
+            "screen_origin": [
+              0,
+              82
+            ],
+            "logical_origin": [
+              0,
+              0
+            ],
+            "red": [
+              234,
+              51,
+              35,
+              255
+            ],
+            "green": [
+              117,
+              251,
+              76,
+              255
+            ],
+            "checked_pixels": 307200,
+            "protected_hole_pixels": 6400,
+            "pixel_mismatches": 0,
+            "first_mismatches": []
+          }
+        ]
+      },
+      "regions": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          61,
+          113,
+          210
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1591,
+          1044,
+          1654,
+          1139
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "android_overlay_wait_s": 0.5758891669975128,
+        "android_overlay_seen": false,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      },
+      "empty": {
+        "screen_width": 3200,
+        "screen_height": 2136,
+        "format": 1,
+        "expected_screen_color": [
+          24,
+          63,
+          12
+        ],
+        "screen_color_space_id": 2,
+        "color_bounds": [
+          1472,
+          996,
+          1727,
+          1187
+        ],
+        "window_origin": [
+          1472,
+          996
+        ],
+        "checked_pixels": 49152,
+        "pixel_mismatches": 0,
+        "android_overlay_wait_s": 0.5849521099880803,
+        "android_overlay_seen": false,
+        "probe_exit": 0,
+        "bridge_mapped": true,
+        "mali_mapped": true
+      }
+    },
+    "copy_wake_diagnostic": {
+      "owned_present_copy_serials": 639,
+      "owned_copy_serials_observed": 639,
+      "owned_standalone_copy_serials": 3,
+      "owned_combined_copy_serials": 636,
+      "standalone_examples": [
+        {
+          "serial": 12676,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 459273.070667,
+          "enqueue_trace_seconds": 459273.070572,
+          "tick_trace_seconds": 459273.07054,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 12938,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 459275.547167,
+          "enqueue_trace_seconds": 459275.546957,
+          "tick_trace_seconds": 459275.546919,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 13115,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 459277.161975,
+          "enqueue_trace_seconds": 459277.161923,
+          "tick_trace_seconds": 459277.1619,
+          "frame_begin_trace_seconds": null
+        }
+      ],
+      "qualification": "Owned pixmaps matched; diagnostic captures across a user restart, not strict alternating A/B."
+    },
+    "old_copy_wake_diagnostic": {
+      "owned_copy_serials_observed": 647,
+      "owned_standalone_copy_serials": 113
+    },
+    "display_lineage_full_diagnostic": {
+      "state": "metadata-lineage-analysed",
+      "renderer_pid": 1283,
+      "timeline": "/opt/pad7spro-gpu-release-test/repository/build/copy-wake-20261017/acceptance/timeline/wsi-3788-48234497-204627177297888.csv",
+      "owned_requests": 652,
+      "eligible_client_serial_range": [
+        121,
+        650
+      ],
+      "owned_present_copy_mappings": 639,
+      "all_matching_surface_frames": {
+        "frames": 515,
+        "duration_s": 4.833303676,
+        "rate_per_second": 106.34548012207293,
+        "p50_interval_ms": 8.33711,
+        "p95_interval_ms": 16.683334,
+        "max_interval_ms": 16.897448
+      },
+      "fresh_owned_wsi_frames": {
+        "frames": 515,
+        "duration_s": 4.833303676,
+        "rate_per_second": 106.34548012207293,
+        "p50_interval_ms": 8.33711,
+        "p95_interval_ms": 16.683334,
+        "max_interval_ms": 16.897448
+      },
+      "repeated_owned_lineage_frames": 0,
+      "unmatched_surface_frame_ids": 1,
+      "duplicate_timestamp_observations_are_deduplicated": true,
+      "source": "EGL_DISPLAY_PRESENT_TIME_ANDROID (0x343A), not requested/latch/render-complete time",
+      "assumptions": [
+        "Controlled visible page changes content every frame.",
+        "Xfwm composition disabled; owned Present copies target the root.",
+        "CopyIssued -> root draw -> SurfaceSubmit ordering is validated by the renderer implementation."
+      ],
+      "limits": [
+        "Diagnostic capture includes instrumentation overhead.",
+        "New owned WSI lineage does not independently decode or compare displayed pixels.",
+        "Pending/unavailable frame timestamps and unmatched frame IDs are excluded; counts do not prove a sustained uninstrumented rate."
+      ]
+    },
+    "display_lineage_long_app_tags_only": {
+      "state": "metadata-lineage-analysed",
+      "renderer_pid": 1283,
+      "timeline": "/opt/pad7spro-gpu-release-test/repository/build/copy-wake-20261017/present-3000/timeline/wsi-4444-48234497-204713923086808.csv",
+      "owned_requests": 2838,
+      "eligible_client_serial_range": [
+        121,
+        2836
+      ],
+      "owned_present_copy_mappings": 2781,
+      "all_matching_surface_frames": {
+        "frames": 2631,
+        "duration_s": 24.925099941,
+        "rate_per_second": 105.51612656420441,
+        "p50_interval_ms": 8.339583,
+        "p95_interval_ms": 16.684401,
+        "max_interval_ms": 25.193073
+      },
+      "fresh_owned_wsi_frames": {
+        "frames": 2631,
+        "duration_s": 24.925099941,
+        "rate_per_second": 105.51612656420441,
+        "p50_interval_ms": 8.339583,
+        "p95_interval_ms": 16.684401,
+        "max_interval_ms": 25.193073
+      },
+      "repeated_owned_lineage_frames": 0,
+      "unmatched_surface_frame_ids": 1,
+      "duplicate_timestamp_observations_are_deduplicated": true,
+      "source": "EGL_DISPLAY_PRESENT_TIME_ANDROID (0x343A), not requested/latch/render-complete time",
+      "assumptions": [
+        "Controlled visible page changes content every frame.",
+        "Xfwm composition disabled; owned Present copies target the root.",
+        "CopyIssued -> root draw -> SurfaceSubmit ordering is validated by the renderer implementation."
+      ],
+      "limits": [
+        "Diagnostic capture includes instrumentation overhead.",
+        "New owned WSI lineage does not independently decode or compare displayed pixels.",
+        "Pending/unavailable frame timestamps and unmatched frame IDs are excluded; counts do not prove a sustained uninstrumented rate."
+      ]
+    },
+    "long_page_callback_sample": [
+      {
+        "mode": "canvas",
+        "frames": 3000,
+        "raf_hz": 119.78750599137243,
+        "p50_ms": 8.300000000001091,
+        "p95_ms": 8.400000000001455,
+        "p99_ms": 8.400000000001455,
+        "max_ms": 16.700000000000728,
+        "over_12ms": 4,
+        "visibility": "visible",
+        "focus": true,
+        "inner_size": [
+          1707,
+          971
+        ],
+        "device_pixel_ratio": 1.875
+      }
+    ],
+    "assessment": "Tick-local notification ordering is effective: standalone owned copies 113/647 (17.47%) in previous diagnostic vs 3/639 (0.47%) now. No stable 120 page-content presentation established; untraced default page rAF 111.74-115.51, native submissions 117.01/s, 3000-frame explicit-ACK trial rAF 119.79 but metadata-linked display lineage 105.52/s with app-only tracing. Different desktop restarts and instrumentation preclude strict A/B FPS or power attribution. No default ACK feature change.",
+    "remaining": "Original efficient sustained actual 120/s goal remains incomplete; investigate downstream deadline/GPU wait losses without blindly enlarging queues or removing fences.",
+    "termux_resources": [
+      {
+        "reference": "reference/termux/desktop-zink.sh",
+        "termux_relative_path": "mali-work/desktop-zink.sh",
+        "sha256": "e31afa2d24de986e07ff7d937d0cea5ed4a0009ea706a8888c86504dc3724430",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0700"
+      },
+      {
+        "reference": "reference/termux/debian-desktop.sh",
+        "termux_relative_path": "debian-desktop.sh",
+        "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0700"
+      },
+      {
+        "reference": "reference/termux/debian-zink-widget.sh",
+        "termux_relative_path": ".shortcuts/debian-zink.sh",
+        "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0700"
+      },
+      {
+        "reference": "reference/termux/debian-shell.sh",
+        "termux_relative_path": "debian-shell.sh",
+        "sha256": "dafd703509c5ab855cc8b5ad0be6e5e66fb2df46d843c696089510fc75574a4e",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0700"
+      },
+      {
+        "reference": "reference/termux/debian-stop.sh",
+        "termux_relative_path": "debian-stop.sh",
+        "sha256": "1c0a31373b14ae0f2dd119e04b55ac86b8f25ace6fc04911a7bc40f5247e97c4",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": "0700"
+      }
+    ],
+    "copy_fallback_diagnostic_counts": {
+      "4.0.0": 4
+    }
   }
 }
