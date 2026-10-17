@@ -1,5 +1,7 @@
 # 配置、启动和停止
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
 更新：2026-10-17。本文描述当前作者设备的已部署入口；构建、安装和首次接入步骤见 [复现流程](setup.md)。
@@ -24,7 +26,7 @@
 su -c '/system/bin/am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity'
 ```
 
-本机两次 X11 APK 更新已中断承载对话的会话。后续须先准备并验证候选、保存原件，再通知用户，由用户安排 Termux 重启；不自动换包或重启服务端。当前继续优化包为 `9c6276b8…`，实测范围见 [最新证据](../evidence/display-permit-surface-submit-2026-10-17.json)。
+本机两次 X11 APK 更新已中断承载对话的会话。后续须先准备并验证候选、保存原件，再通知用户，由用户安排 Termux 重启；不自动换包或重启服务端。当前定版包为 `88346b58…`，实测范围见 [最终验收](../evidence/deferred-copy-wake-2026-10-17.json)。
 
 打开 Activity、安装 APK、重载独立 X server、重开 Linux 应用是四件不同的事：APK 更新后打开 Activity 可能形成新 renderer / 旧 server；Linux 前缀链接切换后，已有应用仍保留原库。分别检查 APK 映射和应用 GPU PID。无需为 Linux 应用换库重启整个桌面。Termux / Widget / X11 的版本、脚本位置与备份见 [配套资源](../reference/README.md)。
 
@@ -123,6 +125,6 @@ bash ~/debian-stop.sh
 
 ## 显示时钟候选
 
-r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。本段最初为 r3.4.2 候选说明；截至 2026-10-17，配套 APK c62abdc5… 已安装并在两端加载，WSI 有界两在途策略已设为新启动应用的默认，完整状态见 CURRENT-STATE。见 [显示效率候选](r3.4-display-efficiency.md)。
+r3.4.2 新增 `PAD_GPU_PRESENT_CLOCK=auto|timer`，默认 auto 仅在新 Termux:X11 发布版本化时钟能力且其节拍不高于 WSI 上限时启用事件节拍；否则保留 timer。timer 是单应用硬件兼容回退，不切换软件渲染。仅改 WSI 上限或 RandR 数字不会强制取消等待。本段最初为 r3.4.2 候选说明；最终 r3.5 的配套 APK 88346b58… 已安装并在两端加载，WSI 有界两在途策略已设为新启动应用的默认，完整状态见 CURRENT-STATE。见 [显示效率候选](r3.4-display-efficiency.md)。
 
 当前显示/区域复制协商、硬件回退和实装范围见 [r3.5](r3.5-efficiency.md)。旧“APK 未安装”说明仅对应当时历史候选。新区域路径需能力位 8；旧 APK 自动继续完整 X11 Copy。

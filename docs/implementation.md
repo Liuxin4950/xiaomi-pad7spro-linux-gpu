@@ -1,5 +1,7 @@
 # 实现机制与流程
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
 本文对应 2026-10-07 的源码开发更新，入口与依赖分别见 [配置](configuration.md)、[sources.lock.json](../sources.lock.json)。作者已从 Widget 重启会话并反馈正常；这不等于干净新 rootfs、长时负载或整机续航验收。

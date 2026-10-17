@@ -1,0 +1,69 @@
+{
+  "format": 1,
+  "release": "r3.5",
+  "release_id": "r3.5-final-20261017",
+  "status": "finalized-current-results",
+  "finalized_at_utc": "2026-10-17T08:03:38.150608+00:00",
+  "user_instruction": "先以目前的结果为最终版本的r3.5版本",
+  "code_revision": "fb99d593bab2e8e3739295fd22642c5bc58298d7",
+  "source_tag": "r3.5-final-20261017",
+  "scope": "Current tested device results accepted as final r3.5; not a claim that the original sustained actual 120/s target was achieved.",
+  "linux_prefix": "/opt/pad7spro-gpu-fps-20261017",
+  "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+  "wsi_sha256": "d011bb7b220ab83bfb7c136e1e1b3190def27c013cb24775167c405073d77636",
+  "repository_lock_sha256": "bb5533f4c24d89cdd92efce94713c9c0ce8917a50c8a499d71820d6bae1b2c85",
+  "linux_build_lock_sha256": "b87a71a8333cb9f9428dfd1467fc7ee79fe96c96f9bc132ef7445f3b0414b371",
+  "runtime": [
+    {
+      "pid": 1283,
+      "start_ticks": "45404303",
+      "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411"
+    },
+    {
+      "pid": 31181,
+      "start_ticks": "45904410",
+      "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411"
+    }
+  ],
+  "tests": {
+    "evidence": "evidence/deferred-copy-wake-2026-10-17.json",
+    "physical_pixels_checked": 712704,
+    "pixel_mismatches": 0,
+    "native_untraced_submissions_per_second": 117.01244569638918,
+    "default_page_raf_per_second": [
+      112.79115747453255,
+      115.51218759642084,
+      111.73705417101927
+    ],
+    "owned_standalone_copy_ratio_before": "113/647",
+    "owned_standalone_copy_ratio_after": "3/639",
+    "explicit_ack_trial_raf_per_second": 119.78750599137243,
+    "diagnostic_display_lineage_per_second": 105.51612656420441
+  },
+  "limitations": [
+    "Stable actual 120 unique page images/s remains unproven.",
+    "rAF, WSI submissions, SF whole-layer presents and EGL lineage attribution are separate measurements.",
+    "No controlled power/input-latency/long-term thermal or new-rootfs/other-device guarantee.",
+    "Explicit ACK and other rejected experiments remain off by default."
+  ],
+  "retention": {
+    "original_build_data_kept": true,
+    "archive_directory": "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017",
+    "inventory_file": "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/test-data-manifest.json",
+    "raw_file_count": 374,
+    "hashed_public_build_artifact_count": 193,
+    "verified_public_hash_references": 194,
+    "raw_archive_verified_member_count": 374,
+    "source_snapshot": "source-r3.5-final-20261017.tar.gz (created from the release tag after commit)",
+    "profiles_sdk_caches_signing_keys_excluded": true,
+    "uncommitted_probe_patch": "uncommitted-probe-present.patch; excluded from release source"
+  },
+  "artifacts_sha256": {
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/termux-x11-r3.5-final.apk": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/linux-prefix.tar.gz": "40f9bce1f00b3b740d2a32aa8e76e334e7740d2fcf4618edd7ea0d0b9be77357",
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/raw-test-data.tar.gz": "676e1eab316912e26aef5dd047a71ba7f53abdbdbaa99ae89ed043ebb2f568c9",
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/test-data-manifest.json": "ba70ea7c0c992373c92f68f9c930e32d48dee5c9e82f846e9f14e9ac224757be",
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/release.json": "eba65f2a8680d00f6ba9718e30c9c35dd62e729df9e8c37604673efa175ed66b",
+    "/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/uncommitted-probe-present.patch": "389821fe0c2c73cb004492bb7b58d29fdb0815e86f56f48d584e24722932c3f1"
+  }
+}

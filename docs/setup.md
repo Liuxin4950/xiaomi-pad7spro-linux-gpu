@@ -1,5 +1,7 @@
 # 复现与设备接入流程
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
 更新：2026-10-17。固定源码构建、完整前缀安装和作者设备的日常入口迁移已实现；用户已从 Termux Widget 重启并确认桌面启动成功。本流程以已有 root chroot/XFCE 环境为起点，不是从 Android 原厂状态开始的全自动安装器。
@@ -81,7 +83,7 @@ python3 scripts/activate-desktop.py --apply
 
 ## 显示端与回退
 
-当前 APK 为 `9c6276b8…`，最新实测见 [继续优化证据](../evidence/display-permit-surface-submit-2026-10-17.json)。后续 X11 包替换先完成构建、校验和备份并通知用户，由用户安排 Termux 重启；不能继续自动安装。
+当前定版 APK 为 `88346b58…`，最新实测见 [最终验收](../evidence/deferred-copy-wake-2026-10-17.json)。后续 X11 包替换先完成构建、校验和备份并通知用户，由用户安排 Termux 重启；不能继续自动安装。
 
 已安装的基础修复：可见裁剪、前端 GPU 批处理和输入接口修正已部署；新 X server 已重开并映射当前 APK 的原生 tick 门控代码；以后升级仍需正常重开才会加载。桥接、入口、已安装 APK 和已运行进程分别核对，不把更新文件当成热更新。仅显示已有桌面可直接打开 Termux:X11；仅 Linux 应用换库时正常重开该应用。
 

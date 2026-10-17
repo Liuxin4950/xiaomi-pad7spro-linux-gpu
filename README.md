@@ -2,15 +2,11 @@
 
 让已 root 的小米平板 7S Pro 中的 Debian arm64 chroot 图形软件调用 Android 原厂 Mali Vulkan 驱动，并通过 Termux:X11 显示。
 
-**状态：功能可用的源码开发版。** 2026-10-07 已完成独立构建安装、软件启动入口迁移，作者随后从 Termux:Widget 重启会话并反馈正常。Vulkan、OpenGL/Zink、Chromium、ChatGPT、Trae 和 CC Switch 有本机短时验证记录；尚未完成干净新 rootfs 的全流程验收、长期稳定性或受控续航测试。
+2026-10-17：用户明确以当前结果作为 **r3.5 最终版本**，发行标识 `r3.5-final-20261017`。本轮优化已收尾；未达到稳定真实 120 帧、长期功耗/输入延迟等项目作为已知限制保留，不再自动执行旧计划或更换 APK。
 
-2026-10-17：当前新默认已更新为 **r3.5 FPS 修复版**。联合验收的 3000 帧 FIFO 探针约 116.84 次提交/秒，真实 Chromium 约 119.45 rAF/s，遮挡/增量等 712704 个物理像素零差异；当前助手正常重开后也已确认加载新 WSI、桥接和原厂 Mali，无须为 Linux 前缀切换重启桌面。完整状态和范围见 [CURRENT-STATE](docs/CURRENT-STATE.md) 与 [交付证据](evidence/fps120-release-2026-10-17.json)。
+当前身份、结果与边界见 [最终 r3.5 说明](docs/r3.5-efficiency.md)、[CURRENT-STATE](docs/CURRENT-STATE.md) 和[最终清单](evidence/r3.5-final-2026-10-17.json)。默认页面约 112–116 rAF/s，712704 个物理像素零差异；定版不代表稳定真实显示 120 帧或长期续航已验收。
 
-2026-10-12 已将 [r3.3 原生 GPU 渲染](docs/r3.3-native-rendering.md)设为默认，替换 r2：二维 Skia 直接使用 Vulkan/Mali，保留 WSI 命令复用、空闲休眠及固定节奏限帧，并部署 Termux:X11 前端 GPU 批处理与输入法接口修正。Chromium / Trae 已实机核对；[r3.2 记录](docs/r3.2-gpu-replacement.md)保留。
-
-2026-10-17 继续优化：显示许可与最终绘制提交重排后，当前 APK `9c6276b8…` 的 SF 内容层短快照约 117.18/s，712704 像素零差异；持续独立页面 120 帧仍待证明。APK 更新已实测中断当前对话，后续先通知用户安排 Termux 重启。见 [本轮证据](evidence/display-permit-surface-submit-2026-10-17.json)。
-
-当前唯一配置与后续 AI 接手入口：[CURRENT-STATE](docs/CURRENT-STATE.md)、[AGENTS.md](AGENTS.md)。
+数据位置：公开证据和校验在 `evidence/`、`evidence/SHA256SUMS`；原始 CSV/JSON/trace/截图与 APK 仍保留在 `build/`。另有仓库外本地归档 `/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/`，包含源码快照、最终 APK、Linux 前缀、原始数据清单和压缩包、SHA256SUMS。该归档是本机私有备份，不自动发布到互联网；不含用户 profile、SDK 缓存或签名私钥。
 
 ## 日常使用
 
@@ -64,7 +60,7 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
 | Termux:Widget | `0.15.0`，桌面快捷入口追随统一 gpu-run |
-| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `9c6276b8…`，以完整哈希区分同名构建 |
+| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `88346b58…`，以完整哈希区分同名构建 |
 | 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
 设备型号/固件基线来自 2026-10-01；Termux、Widget、X11 和入口清单已于 2026-10-17 重新核对，见 [Termux 配套资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
@@ -92,7 +88,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
 
 依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
 
-当前 Termux:X11 已从固定提交和子模块干净构建，0009–0013 与 WSI 0012 已安装；前一轮联合验收及最新继续优化记录分别见下方证据。构建、签名、APK 哈希及两端实际映射见 [交付证据](evidence/fps120-release-2026-10-17.json)，补丁顺序见 [补丁说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
+当前 Termux:X11 从固定提交及子模块干净构建，已部署至 0014，配合 WSI 0012；签名、完整哈希、两端映射与最终测试见[验收证据](evidence/deferred-copy-wake-2026-10-17.json)。本次为作者设备的 r3.5 定版及本地归档，不代表通用公开二进制包或其他设备已验证。
 
 ## 文档
 

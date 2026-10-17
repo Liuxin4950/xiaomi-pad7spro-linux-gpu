@@ -1,6 +1,6 @@
 {
   "captured_on": "2026-10-01",
-  "status": "Five Termux session entries synchronized and verified; latest APK/runtime in deferred-copy-wake-2026-10-17.json",
+  "status": "Final r3.5: five Termux entries synchronized and verified; release identity and retention in r3.5-final-2026-10-17.json",
   "files": {
     "reference/termux/desktop-zink.sh": {
       "bytes": 5796,

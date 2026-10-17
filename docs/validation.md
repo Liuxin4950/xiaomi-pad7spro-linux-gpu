@@ -1,5 +1,7 @@
 # GPU 与显示验证
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前已部署 r3.5，最新配置及范围见 [CURRENT-STATE](CURRENT-STATE.md)，原生二维实测见 [交付报告](r3.3-native-rendering.md)。下文早期数据保留其日期，不作为新版本功耗结论。
 
 窗口能显示、命令行有 Vulkan 参数、进程打开了 `/dev/mali0`，都不能单独证明目标应用稳定使用 GPU。验证时组合渲染器、进程、日志、实际负载和画面证据。

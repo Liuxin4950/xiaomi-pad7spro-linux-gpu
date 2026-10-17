@@ -1,5 +1,7 @@
 # 架构与组件
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
 ## 两条数据路径

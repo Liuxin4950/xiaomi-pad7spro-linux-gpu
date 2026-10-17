@@ -1,5 +1,7 @@
 # 从固定源码构建
 
+> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
 更新：2026-10-15。构建入口为 `scripts/build.sh`，安装入口为 `scripts/install.sh`。当前实装版本及前缀统一读 [CURRENT-STATE](CURRENT-STATE.md)。新构建在独立源码/对象目录执行，并在 stage 内保存 `build-info.json`，包含工具版本、源码文件哈希、锁定依赖和目标前缀；输入文件构建期间变化会失败。构建成功不等同于所有应用或长期功耗达标。

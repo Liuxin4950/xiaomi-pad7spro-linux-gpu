@@ -1,5 +1,7 @@
 # Termux 配套组件与启动资源
 
+2026-10-17：配套资源随 [r3.5 最终版本](../docs/r3.5-efficiency.md)收尾，当前 APK `88346b58…`，五份入口及原始测试均保留。
+
 更新：2026-10-17。当前默认桥接为 `/opt/pad7spro-gpu-fps-20261017`；运行状态见 [CURRENT-STATE](../docs/CURRENT-STATE.md)。本目录保存作者设备的入口参考，精确内容及部署校验见 [资源清单](../evidence/reference-manifest.json)和 [本次同步证据](../evidence/termux-resources-2026-10-17.json)。
 
 ## 已安装组件
@@ -11,7 +13,7 @@
 | Termux:X11 (`com.termux.x11`) | `1.03.01-d55f1b7-gpu-r3.5-repro`，APK SHA-256 `88346b58…` | Android 显示端和独立 X server 使用的原生实现 |
 | Termux `termux-x11-nightly` 包 | 1.03.01-5 | Termux 侧 `termux-x11` 命令；包版本与 Android APK 版本分别记录 |
 
-这些是设备已安装版本，不表示已检查上游最新版本。本次对齐已验收修复版及配套资源；没有替换 Termux/Widget APK。Termux:API、Termux:Boot 未安装，本方案不依赖它们。本次继续优化中的当前包与测量范围见 [显示许可/最终提交证据](../evidence/display-permit-surface-submit-2026-10-17.json)。更新 X11 时应使用包含本项目补丁的匹配构建，不能用无补丁的上游 APK 覆盖后仍沿用现有验收结论。
+这些是设备已安装版本，不表示已检查上游最新版本。本次对齐已验收修复版及配套资源；没有替换 Termux/Widget APK。Termux:API、Termux:Boot 未安装，本方案不依赖它们。当前定版包与测量范围见[最终验收](../evidence/deferred-copy-wake-2026-10-17.json)。更新 X11 时应使用包含本项目补丁的匹配构建，不能用无补丁的上游 APK 覆盖后仍沿用现有验收结论。
 
 ## 文件位置与职责
 

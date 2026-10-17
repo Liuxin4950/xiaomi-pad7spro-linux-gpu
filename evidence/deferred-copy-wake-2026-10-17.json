@@ -1,6 +1,6 @@
 {
   "observed_at_utc": "2026-10-17T07:22:32.489697+00:00",
-  "state": "installed-loaded-correctness-validated-120fps-goal-incomplete",
+  "state": "final-r3.5-current-results-accepted",
   "problem": "GPU queue publication wakes a sleeping renderer inside the tick vblank loop, before the tick reopens the redraw permit. This can send the copy through the standalone flush/fence path followed by another flush/fence for the root Surface.",
   "diagnosis": {
     "owned_browser_copy_split": {
@@ -421,11 +421,11 @@
     "build/copy-wake-20261017/acceptance/timeline/wsi-3788-48234497-204627177297888.csv": "305d11982caa799a977fa969e17cb561689d62450758241f2b20c217a2f7474e",
     "build/copy-wake-20261017/present-3000/timeline/wsi-4444-48234497-204713764747173.csv": "8f96120eabd234b9e7976226750f86dedae4cf40143ed3e9b94abe6082c53fc2",
     "build/copy-wake-20261017/present-3000/timeline/wsi-4444-48234497-204713923086808.csv": "13d67d6a5337c501cc9bf0c64029209c24f1eee329c9441c86d8ead9d60a51a9",
-    "/opt/pad7spro-gpu-fps-20261017/release.json": "c4c383cdd29a8b98ae7e5fabab7a075fa3872090cec7e07e96d3eee799c62b83",
-    "/opt/pad7spro-gpu-fps-20261017/install-manifest.json": "192a8749e014f95048d717a5f749b3f26958f539cd20a5ceacdf06784c5f61f2",
     "build/copy-wake-20261017/termux-resources-after.json": "996a618e4841232fbe9f791a8c8983ce4397843a448bc90baabe3ccdb8b2337c",
     "build/copy-wake-20261017/metadata-backup/release.json": "a3da56fd3f56bfd6681cf4a668bea7d37d40936942993b92e5c23509a40cbe1b",
-    "build/copy-wake-20261017/metadata-backup/install-manifest.json": "0a584d569420367daa1ccf415484d50a89d98d7c8f4ff612d83449dc05a6e102"
+    "build/copy-wake-20261017/metadata-backup/install-manifest.json": "0a584d569420367daa1ccf415484d50a89d98d7c8f4ff612d83449dc05a6e102",
+    "build/r3.5-final-20261017/before-finalization/release.json": "c4c383cdd29a8b98ae7e5fabab7a075fa3872090cec7e07e96d3eee799c62b83",
+    "build/r3.5-final-20261017/before-finalization/install-manifest.json": "192a8749e014f95048d717a5f749b3f26958f539cd20a5ceacdf06784c5f61f2"
   },
   "prepared_acceptance": {
     "prepared_at_utc": "2026-10-17T07:31:00.355047+00:00",
@@ -890,5 +890,19 @@
     "copy_fallback_diagnostic_counts": {
       "4.0.0": 4
     }
+  },
+  "metadata_snapshot_preservation": {
+    "reason": "User finalized current results as r3.5; deployment metadata will change to final status. Acceptance-time bytes and all measured numbers retained.",
+    "relocated": {
+      "/opt/pad7spro-gpu-fps-20261017/release.json": "build/r3.5-final-20261017/before-finalization/release.json",
+      "/opt/pad7spro-gpu-fps-20261017/install-manifest.json": "build/r3.5-final-20261017/before-finalization/install-manifest.json"
+    }
+  },
+  "release_disposition": {
+    "release_id": "r3.5-final-20261017",
+    "status": "finalized-by-user",
+    "measurement_values_unchanged": true,
+    "stable_actual_120fps_verified": false,
+    "remaining_items": "Known limitations / archived future work; not scheduled for automatic execution."
   }
 }
