@@ -6,6 +6,8 @@
 
 新候选 **88346b58… 尚未安装**：`build/x11-copy-wake-20261017/candidate.apk`，含 0014 的 tick 内 enqueue 通知延后，复用原有许可、队列和 fence。旧包原件为 `build/copy-wake-20261017/rollback/current.apk`，已核对 `9c6276b8…`。生产函数 UBSan 回归、提前唤醒/先唤醒后开许可/删除 CPU 必要唤醒三个负向对照、正式构建及包校验通过。没有新实机收益结论；先由用户保存工作并安排切换，再安装，由用户重启 Termux，之后重取 PID、核对两端 APK SHA、定向复核合并拷贝/实际提交与遮挡像素。不要自动安装，也不要运行 zink 或停止脚本。[完整候选证据](../evidence/deferred-copy-wake-2026-10-17.json)。
 
+切换后的单次诊断已准备：`python3 build/copy-wake-20261017/acceptance/capture.py`。它先重取 PID/start ticks 并核对两端 APK 均为 `88346b58…`，再创建独立窗口和追踪；已验证旧包会在任何窗口/追踪启动前被拒绝。诊断沿用旧样本显式的 `NoCompositorFrameAcks:pending_frames/2`，不改变默认启动器；日常无追踪样本仍另测。结束后自动用已有埋点关联 WSI pixmap/serial → GPU copy serial → Surface frame ID → `EGL_DISPLAY_PRESENT_TIME_ANDROID`，过滤重复来源、未完成时间戳和未匹配帧。旧诊断样本约 4.89 秒内得到 530 个新 WSI 来源的已呈现帧，约 108.14/s；带采样，不能当日常帧率，也不能代替逐帧像素比较。脚本、结果与哈希见候选证据的 `prepared_acceptance`。
+
 页面节拍后续核对：原生 Vulkan / ANGLE 同会话对比未支持切换默认；optimal AHB 候选没有页面速率收益，未登记为生产补丁，独立实验前缀已清理。不要加入 `--disable-frame-rate-limit`：已测到 630–902 rAF/s 和约 4.6 核浏览器 CPU 开销，不能代表屏幕内容更新。Chromium 的 `Swap throttled` 是队列状态，不是掉帧计数；原生 Vulkan 输出后端固定一次交换在途，WSI 已有四缓冲、两次显示提交上限，不要据此盲目扩大队列。接下来用已有 frame-sequence / Scheduler 追踪定位未更新帧的主线程准备与显示等待，详见同一证据的 `pacing_review`。本轮未安装 APK、未重启会话。
 
 2026-10-17 前一轮已验收基线：默认链接已切到 `/opt/pad7spro-gpu-fps-20261017`，APK `c62abdc5…` 已在 server / renderer 两端加载。联合验收：3000 帧 FIFO 116.84 次提交/秒，默认入口复测 119.31/s；Chromium 119.45 rAF/s、缩放后 115.11，Mali / GaneshVulkan / ANGLE 和 WebGL / 0 崩溃通过；SF 内容层快照 111.95 次呈现/秒。712704 个物理像素零差异，包含 25 矩形遮挡、增量和空列表；oldSwapchain/缩放/Flip 通过。详细 source/build/hash、早前 800 像素失败及修复、回退见 [交付证据](../evidence/fps120-release-2026-10-17.json)。

@@ -347,6 +347,65 @@
     "build/page-120-20261017/chromium-source-152/components/viz/service/frame_sinks/compositor_frame_sink_support.cc": "c34f9889ac4151c7129f1646836a456cd6d3f3b05df6e22082b0a4832d738034",
     "build/x11-copy-wake-20261017/build-report.json": "c7f34f72ec7acc1d5e7cc1f9a7d2703487a9569302a96bf64f7e17e3f271c61b",
     "build/x11-copy-wake-20261017/candidate.apk": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
-    "build/page-120-20261017/pipeline-trace/report.trace.json": "3010f0ca7e5c5c9acde4278a9a0294d601b0b3230071c4d4ce2b79e26a5af3c6"
+    "build/page-120-20261017/pipeline-trace/report.trace.json": "3010f0ca7e5c5c9acde4278a9a0294d601b0b3230071c4d4ce2b79e26a5af3c6",
+    "build/page-120-20261017/ack-clock-diagnostic/presented-content-lineage.json": "2a8242fa49fc25ca478ec3c69865754e3bdc876a13eb71837b383e118cb9d849",
+    "build/copy-wake-20261017/analyse-presented-content.py": "0127cc555f1c9a9db7d4d3b094833eee9fddd4799f27a83c5d724a2f7cf9341c",
+    "build/copy-wake-20261017/acceptance-preflight-old-package.log": "a544f3733f80200f23739004b76ceb5dc34b248532c412fb8b021eb848f30418",
+    "build/copy-wake-20261017/acceptance/capture.py": "e26fa3dd354badaf0ba131ab2ab36b8a37fda4c8d7cd67441bc39e10ddbf5c19",
+    "build/copy-wake-20261017/acceptance/run.py": "b5e83cc132c0e09064422c738922d09b14ed3d9a2668efb405adb443ca7b0614",
+    "build/copy-wake-20261017/acceptance/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
+    "build/copy-wake-20261017/acceptance/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800"
+  },
+  "prepared_acceptance": {
+    "prepared_at_utc": "2026-10-17T07:31:00.355047+00:00",
+    "command": "python3 build/copy-wake-20261017/acceptance/capture.py",
+    "state": "ready-not-run; old-package preflight rejected before starting trace or window",
+    "expected_apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+    "runtime_guard": "Re-read PIDs/start ticks and hash both executable APK mappings. Candidate required on both ends; default Linux prefix checked; existing trace must be off.",
+    "controlled_diagnostic": "Same private-profile canvas workload and explicit NoCompositorFrameAcks:pending_frames/2 as the baseline diagnostic. That flag remains absent from default launcher. This is diagnostic acceptance, not untraced throughput.",
+    "lineage_analysis": {
+      "state": "metadata-lineage-analysed",
+      "renderer_pid": 29634,
+      "timeline": "build/page-120-20261017/ack-clock-diagnostic/timeline/wsi-18530-48234497-203226655436351.csv",
+      "owned_requests": 662,
+      "eligible_client_serial_range": [
+        121,
+        660
+      ],
+      "owned_present_copy_mappings": 647,
+      "all_matching_surface_frames": {
+        "frames": 531,
+        "duration_s": 4.891666905,
+        "rate_per_second": 108.34752453366406,
+        "p50_interval_ms": 8.337605,
+        "p95_interval_ms": 16.664818,
+        "max_interval_ms": 17.00375
+      },
+      "fresh_owned_wsi_frames": {
+        "frames": 530,
+        "duration_s": 4.891666905,
+        "rate_per_second": 108.1430952420911,
+        "p50_interval_ms": 8.337656,
+        "p95_interval_ms": 16.66625,
+        "max_interval_ms": 17.00375
+      },
+      "repeated_owned_lineage_frames": 1,
+      "unmatched_surface_frame_ids": 2,
+      "duplicate_timestamp_observations_are_deduplicated": true,
+      "source": "EGL_DISPLAY_PRESENT_TIME_ANDROID (0x343A), not requested/latch/render-complete time",
+      "assumptions": [
+        "Controlled visible page changes content every frame.",
+        "Xfwm composition disabled; owned Present copies target the root.",
+        "CopyIssued -> root draw -> SurfaceSubmit ordering is validated by the renderer implementation."
+      ],
+      "limits": [
+        "Diagnostic capture includes instrumentation overhead.",
+        "New owned WSI lineage does not independently decode or compare displayed pixels.",
+        "Pending/unavailable frame timestamps and unmatched frame IDs are excluded; counts do not prove a sustained uninstrumented rate."
+      ]
+    },
+    "primary_spec_url": "https://registry.khronos.org/EGL/extensions/ANDROID/EGL_ANDROID_get_frame_timestamps.txt",
+    "scope": "Correlates owned WSI -> server GPU serial -> root Surface frame ID -> EGL display-present timestamp. Deduplicates repeated source lineage and ignores unmatched/pending timestamps. Not independent optical/pixel-content verification.",
+    "remaining": "After coordinated switch, perform this targeted diagnostic plus the already-planned untraced native page/WSI and physical-pixel checks. Do not promote on rAF or this metadata alone."
   }
 }

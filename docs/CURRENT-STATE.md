@@ -8,6 +8,8 @@
 
 **后续候选已准备、未安装**：0014 只延后 tick 内 GPU 队列通知，先开放已有绘制许可，再唤醒 renderer，减少 copy-only 和 root 各自一次 flush/fence 的机会；其他 enqueue 与 CPU 所有权等待仍可立即唤醒。独立浏览器诊断中，647 个匹配的 Present copy 有 113 个走了 standalone 路径。生产函数回归、三个负向对照、干净 arm64 构建、签名/CRC/16 KiB 对齐通过；候选 APK SHA-256 `88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411`，位置 `build/x11-copy-wake-20261017/candidate.apk`。旧 `9c6276b8…` 已备份，安装和 Linux 默认未改，须用户保存工作后协调 APK 切换与 Termux 重启。另测现有 `NoCompositorFrameAcks` 可使 rAF 接近 120，但实际 X11 请求仍约 115/s，未加到启动器。候选的实际收益、像素正确性与持续新内容率均待切换后验证，见[候选证据](../evidence/deferred-copy-wake-2026-10-17.json)。
 
+已为切换后准备带两端 APK 映射校验的单次诊断，旧包会在创建窗口/追踪前被拒绝。已有埋点还可关联指定浏览器的新 WSI 来源帧与 EGL 报告的实际显示时间，比整层 SF 呈现计数更具体；它仍是有采样开销的来源关联，不是逐帧像素解码。命令和旧样本结果见[交接](tablet-handoff.md)与候选证据 `prepared_acceptance`；没有再次安装或重启。
+
 ## 前一轮已验收基线（以下 c62abdc5 与旧 PID 为历史快照）
 
 默认 `gpu-run` / `gpu-launcher` 已切到 `/opt/pad7spro-gpu-fps-20261017`；Termux:X11 已安装且两端实际映射 APK `c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4`。原厂 Mali 保留，120 配置 `[1,120,15]` 正常。新栈完整 3000 帧 FIFO 探针 **116.84 次提交/秒**，默认入口复测 600 帧 **119.31/s**；隔离 Chromium **119.45 rAF/s**，缩放后 **115.11 rAF/s**，GaneshVulkan / ANGLE Vulkan / Mali、WebGL 回读和 GPU 崩溃计数 0 均确认。独立 SurfaceFlinger 内容层快照约 **111.95 次呈现/秒**；这些指标不等于逐帧屏幕新内容计数。
