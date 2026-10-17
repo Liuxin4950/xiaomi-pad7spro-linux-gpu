@@ -2,6 +2,8 @@
 
 更新：2026-10-17。当前 APK SHA-256 `9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac` 已干净构建、安装，X server / Android renderer 两端映射核对通过。补丁完整顺序以 `sources.lock.json` 的 `termux_x11.patches` 为准；0009–0011 与 WSI 0012 为前一轮联合验收基线；新增 0012/0013 的实际结果和边界见文末。下文早期阶段的构建命令、60 FPS、候选未安装和 swap 后预热说明均为历史，请使用 [当前构建流程](../../docs/build.md)与 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
 
+后续 0014 已登记并构建为独立候选 `88346b58…`，尚未安装；部署中的包仍只到 0013。此次源码/补丁更新不代表运行进程已更新。
+
 上游：[termux/termux-x11](https://github.com/termux/termux-x11)。
 
 固定基线：`d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f`。
@@ -160,3 +162,11 @@ CPU access 现在等待此前发布的 GPU serial ownership watermark，等待�
 `tests/run-x11-copy-regression.py` 直接提取实际 `Renderer::redrawLocked` 执行 GL/所有权 stub 回归，覆盖 tick 与等待交错、忙许可、无效根缓冲排空，以及 copy→clear→root/cursor→fence→flush→wait→unlock 顺序；旧绘制顺序和晚覆盖许可的负向对照均失败。干净 arm64 构建、同 v2 证书、CRC/16 KiB 对齐及两端实际映射通过。当前短样本 SF 内容层约 117.18/s，712704 物理像素零差异；持续独立页面 120 帧目标尚未完成，不能据此声称长期流畅或省电。
 
 两次 APK 替换均伴随当前会话中断；后续先完成候选和备份，再通知用户安排 Termux 重启。原始测量、候选版本及回退见 [本轮证据](../../evidence/display-permit-surface-submit-2026-10-17.json)。
+
+## 2026-10-17：tick 内的 GPU 拷贝通知
+
+[0014-defer-tick-copy-wake.patch](0014-defer-tick-copy-wake.patch) 在 0013 后应用。tick 的 vblank 循环曾在许可仍关闭时发布并通知 GPU copy，renderer 可能先走 standalone 拷贝与栅栏，再为 root 绘制另做一次提交。匹配独立浏览器 pixmap 的诊断记录中，647 个 copy serial 有 113 个 standalone；这包含合法的独立排空，不等于全部都是可消除的开销。
+
+0014 只在服务器线程局部延后普通 enqueue 通知：照常 release 发布队列，vblank 循环结束后先开放已有 byte 许可，再为尚未排空的队列通知一次。循环外的 enqueue、CPU 等待既有 GPU watermark 的唤醒、已运行的 renderer 排空均保留，避免 CPU fallback 等待停住；共享 ABI、引用、队列容量与所有权栅栏不变。
+
+实际生产 C enqueue/CPU/tick 函数和 C++ redraw 的 UBSan 回归通过，三个故意错误版本被拒绝；主机测试输入与正式构建源码逐字节一致。干净 arm64 构建的 APK SHA-256 为 `88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411`，同 v2 证书、CRC、包内库哈希和 16 KiB 对齐通过。当前未安装、没有新帧率/功耗/像素正确性结论；切换由用户安排，旧包备份与后续验收见[候选证据](../../evidence/deferred-copy-wake-2026-10-17.json)。

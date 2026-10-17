@@ -1,0 +1,352 @@
+{
+  "observed_at_utc": "2026-10-17T07:22:32.489697+00:00",
+  "state": "candidate-built-offline-validated-not-installed",
+  "problem": "GPU queue publication wakes a sleeping renderer inside the tick vblank loop, before the tick reopens the redraw permit. This can send the copy through the standalone flush/fence path followed by another flush/fence for the root Surface.",
+  "diagnosis": {
+    "owned_browser_copy_split": {
+      "owned_present_copy_serials": 647,
+      "owned_copy_serials_observed": 647,
+      "owned_standalone_copy_serials": 113,
+      "owned_combined_copy_serials": 534,
+      "standalone_examples": [
+        {
+          "serial": 94117,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.345793,
+          "enqueue_trace_seconds": 457871.345673,
+          "tick_trace_seconds": 457871.345648,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94124,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.428452,
+          "enqueue_trace_seconds": 457871.428317,
+          "tick_trace_seconds": 457871.428269,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94129,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.487057,
+          "enqueue_trace_seconds": 457871.486967,
+          "tick_trace_seconds": 457871.486931,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94132,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.513247,
+          "enqueue_trace_seconds": null,
+          "tick_trace_seconds": null,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94141,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.607538,
+          "enqueue_trace_seconds": 457871.607415,
+          "tick_trace_seconds": 457871.607395,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94168,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.870872,
+          "enqueue_trace_seconds": 457871.870793,
+          "tick_trace_seconds": 457871.870776,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94169,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.878781,
+          "enqueue_trace_seconds": 457871.878653,
+          "tick_trace_seconds": 457871.878566,
+          "frame_begin_trace_seconds": null
+        },
+        {
+          "serial": 94171,
+          "inside_surface_frame": false,
+          "issue_trace_seconds": 457871.896789,
+          "enqueue_trace_seconds": 457871.896706,
+          "tick_trace_seconds": 457871.896657,
+          "frame_begin_trace_seconds": null
+        }
+      ],
+      "qualification": "Owned browser pixmaps matched from WSI timeline to PresentCopy markers; instrumented diagnostic, not ordinary frame-rate acceptance. Deferring tick-local notifications cannot prevent a renderer already running from independently draining work."
+    },
+    "clock_control": "In the active diagnostic interval 673 accepted ticks spanned 5.600019512 s, every adjacent MSC advanced by one, approximately 119.9996 ticks/s. Missing Choreographer ticks were not observed in this interval.",
+    "qualification": "Instrumented diagnostic includes startup/warmup. The standalone path is legitimate for offscreen/CPU ownership progress; the change targets avoidable notification ordering, not deletion of that path.",
+    "renderer_ack_throttling": {
+      "trace": "build/page-120-20261017/pipeline-trace/report.trace.json",
+      "renderer_pid": 10633,
+      "did_not_produce_reason_counts": {
+        "{'reason': 2}": 1,
+        "{'reason': 3}": 28
+      },
+      "did_not_submit_state_counts": {
+        "{'has_pending_tree': True, 'is_waiting_on_main': False}": 1,
+        "{'has_pending_tree': False, 'is_waiting_on_main': False}": 28
+      },
+      "interpretation": "28 reason=3 cases have no pending tree and are not waiting on main; pinned Scheduler::FinishImplFrame labels this remaining condition draw throttling."
+    }
+  },
+  "implementation": {
+    "patch": "patches/termux-x11/0014-defer-tick-copy-wake.patch",
+    "patch_sha256": "5e6f06f65829e002e1a2bede13e1e1836a01e0256ed18f6b0f7e4bf351106c42",
+    "scope": "One server-thread-local boolean defers ordinary enqueue notifications only while performing tick-local vblanks. The existing byte permit is opened before one conditional notification of outstanding copy work.",
+    "invariants": [
+      "Queue release-publication, capacity, references, completion/Idle and ownership fences unchanged.",
+      "Enqueues outside the tick retain immediate notification.",
+      "The already-existing CPU ownership wait still signals the renderer directly while ordinary tick notifications are deferred.",
+      "Already-running renderer drains remain possible; no claim that every copy will be combined.",
+      "No shared ABI, new application setting, protocol, system service or factory-driver change."
+    ]
+  },
+  "validation": {
+    "production_functions": "C enqueue/CPU/tick functions and actual Renderer::redrawLocked tested with UBSan; test export byte-identical to files used in native build.",
+    "coverage": [
+      "One/two tick-local jobs notify once after opening the permit.",
+      "Empty/already-drained queues do not add notifications.",
+      "Outside-tick enqueue retains immediate notification.",
+      "CPU fallback within the tick still wakes, drains the published fence and flushes before releasing ownership.",
+      "Existing clipping/chunks, wrapping, grouped failure, root/redirected references and renderer ordering remain covered."
+    ],
+    "negative_controls": {
+      "early-wake": "rejected",
+      "wake-before-gate": "rejected",
+      "cpu-wake-removed": "rejected"
+    }
+  },
+  "build": {
+    "base_commit": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+    "abis": [
+      "arm64-v8a"
+    ],
+    "native_objects": "fresh",
+    "apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+    "native_sha256": "b82d6c7977ad3a5f8e26cbda26126cba5de31bd3e6ede539768e424fbad6eb08",
+    "v2_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "crc_native_match_16k_alignment": "passed",
+    "apk_path": "build/x11-copy-wake-20261017/candidate.apk"
+  },
+  "browser_ack_trial": {
+    "flag": "--enable-features=NoCompositorFrameAcks:pending_frames/2",
+    "scenes": [
+      {
+        "mode": "canvas",
+        "frames": 600,
+        "raf_hz": 119.94873643317716,
+        "p50_ms": 8.300000000000182,
+        "p95_ms": 8.400000000000546,
+        "p99_ms": 8.400000000000546,
+        "max_ms": 8.5,
+        "over_12ms": 0,
+        "visibility": "visible",
+        "focus": true,
+        "inner_size": [
+          1707,
+          971
+        ],
+        "device_pixel_ratio": 1.875
+      },
+      {
+        "mode": "scroll",
+        "frames": 600,
+        "raf_hz": 119.74491733802448,
+        "p50_ms": 8.300000000001091,
+        "p95_ms": 8.400000000001455,
+        "p99_ms": 8.400000000001455,
+        "max_ms": 16.799999999999272,
+        "over_12ms": 1,
+        "visibility": "visible",
+        "focus": true,
+        "inner_size": [
+          1707,
+          971
+        ],
+        "device_pixel_ratio": 1.875
+      },
+      {
+        "mode": "edit",
+        "frames": 600,
+        "raf_hz": 119.74731118307943,
+        "p50_ms": 8.300000000001091,
+        "p95_ms": 8.400000000001455,
+        "p99_ms": 8.400000000001455,
+        "max_ms": 16.700000000000728,
+        "over_12ms": 1,
+        "visibility": "visible",
+        "focus": true,
+        "inner_size": [
+          1707,
+          971
+        ],
+        "device_pixel_ratio": 1.875
+      }
+    ],
+    "cpu_ms_per_second": {
+      "browser": 117.05043574289878,
+      "renderer": 715.4913959495503,
+      "GPU": 685.2671050300224,
+      "network.mojom.NetworkService": 26.37756298431522,
+      "storage.mojom.StorageService": 0.0
+    },
+    "backend": "GaneshVulkan",
+    "gpu_crash_count": 0,
+    "trace_comparison": {
+      "joint-trace": {
+        "renderer_pid": 6879,
+        "renderer_ack_callbacks": 719,
+        "did_not_produce_reason_counts": {
+          "{'reason': 2}": 1,
+          "{'reason': 3}": 34
+        },
+        "x11_request_rate_after_first_second": 114.93231784272187,
+        "display_queue_depth_counts": {
+          "1": 12,
+          "2": 705
+        }
+      },
+      "ack-window-2-trace": {
+        "renderer_pid": 17355,
+        "renderer_ack_callbacks": 0,
+        "did_not_produce_reason_counts": {
+          "{'reason': 1}": 3,
+          "{'reason': 0}": 1,
+          "{'reason': 2}": 1
+        },
+        "x11_request_rate_after_first_second": 115.02509193773508,
+        "display_queue_depth_counts": {
+          "1": 21,
+          "2": 654
+        }
+      }
+    },
+    "decision": "Not added to launcher: rAF approaches 120 but instrumented X11 request rate remains near 115/s. Consider only with actual downstream/unique-content evidence, not as goal completion.",
+    "scope": "Current installed Chromium 152.0.7977.82, independent private profile and real-size window; rAF/WSI diagnostic rates are separate from physical-screen unique content and power."
+  },
+  "deployment": {
+    "installed_apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+    "linux_prefix": "/opt/pad7spro-gpu-fps-20261017",
+    "default_launcher_changed": false,
+    "apk_installed": false,
+    "session_restarted": false,
+    "rollback_apk": "build/copy-wake-20261017/rollback/current.apk",
+    "required_coordination": "User saves work and arranges Termux restart; no automatic APK install or X server restart.",
+    "runtime_before_switch": [
+      {
+        "pid": 24735,
+        "start_ticks": "45568550",
+        "command": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+        "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+        "mali_libraries": [
+          "/vendor/lib64/egl/libGLES_mali.so"
+        ]
+      },
+      {
+        "pid": 29634,
+        "start_ticks": "44498494",
+        "command": "com.termux.x11",
+        "apk_sha256": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+        "mali_libraries": [
+          "/vendor/lib64/egl/libGLES_mali.so"
+        ]
+      }
+    ],
+    "tracing_on_after": "0"
+  },
+  "remaining": [
+    "After coordinated switch, recheck server and renderer mappings by SHA.",
+    "Repeat only the necessary combined/standalone trace, untraced page/WSI rates and physical clipping/incremental correctness checks.",
+    "Compare actual unique page-content presentation and CPU cost; keep original sustained efficient 120/s objective active until proven."
+  ],
+  "primary_sources": [
+    {
+      "path": "build/page-120-20261017/chromium-source/cc/scheduler/scheduler.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/cc/scheduler/scheduler.cc"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source/cc/scheduler/scheduler_state_machine.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/cc/scheduler/scheduler_state_machine.cc"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source/cc/scheduler/scheduler_settings.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/cc/scheduler/scheduler_settings.h"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source/cc/trees/layer_tree_settings.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/cc/trees/layer_tree_settings.h"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source/cc/base/features.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/cc/base/features.cc"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source-152/components/viz/common/features.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/components/viz/common/features.cc"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source-152/components/viz/service/frame_sinks/compositor_frame_sink_support.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/components/viz/service/frame_sinks/compositor_frame_sink_support.cc"
+    },
+    {
+      "path": "build/page-120-20261017/chromium-source-152/components/viz/common/frame_sinks/begin_frame_args.h",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/152.0.7977.82/components/viz/common/frame_sinks/begin_frame_args.h"
+    }
+  ],
+  "artifacts_sha256": {
+    "build/copy-wake-20261017/build.log": "210440da2af47a94fa90a2c4cca512b6028f5d8f3629fc23190faf9a66c84e9b",
+    "build/copy-wake-20261017/negative-controls/cpu-wake-removed.log": "8613776efe7985b2bd8b103db8e18968f0d66bb65e124d9e9460ad7cc5f03551",
+    "build/copy-wake-20261017/negative-controls/early-wake.log": "28448b64713baa9c4f2ddebe42e6bcc673805bffa7ef10b16cfd6f1ad777d286",
+    "build/copy-wake-20261017/negative-controls/wake-before-gate.log": "70a377e67bdcffb32d6b3cc9ff0ce0dcac206c78a843a7f539cfab0cdb3cd8c6",
+    "build/copy-wake-20261017/regression.log": "15221845111d9a0ebf4a84b6151a2b941ea655863d59dd65f81ee1890f013bcb",
+    "build/copy-wake-20261017/rollback/current.apk": "9c6276b8d3cce95709f8aba385ae5a2b1962cee30917d717e17478c671d60bac",
+    "build/copy-wake-20261017/rollback/gpu-run-link.txt": "d46b448058726d2cf5a8973e38f279a51c144e7a8b4ddb9249a5c7f53bd16d2b",
+    "build/copy-wake-20261017/rollback/release.json": "a3da56fd3f56bfd6681cf4a668bea7d37d40936942993b92e5c23509a40cbe1b",
+    "build/copy-wake-20261017/signature.log": "bbe4ea3885dc2b5b20fa141377332b5779ed69080b7f33a11af63b769622f544",
+    "build/copy-wake-20261017/zipalign.log": "399a0ad610622097ac9b1b1b755471c819f567ecc6c0e4187f45753b5ca4e262",
+    "build/page-120-20261017/ack-clock-diagnostic/analyse-copy-wake.py": "0f874a81f6b19ad047a64d9961c35480d21b454a60498ae6db3ead91f1b8d63c",
+    "build/page-120-20261017/ack-clock-diagnostic/atrace.txt": "a4afa78ce399286862282b973edd360b46c8694cc6f16a402035d49e1a001754",
+    "build/page-120-20261017/ack-clock-diagnostic/browser.log": "0d3f46712ca43e1245621d9d58d546737101d6bcc5aba55daf15893f4ceff303",
+    "build/page-120-20261017/ack-clock-diagnostic/capture.py": "10a585efbcc56911f5eeeb68483b1780db121eccb9a7f4921732657290592153",
+    "build/page-120-20261017/ack-clock-diagnostic/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
+    "build/page-120-20261017/ack-clock-diagnostic/copy-wake-analysis.json": "a28b0b51c5045a31514dc34b9f378eb93d29c07a2975775f96d7934fccaf0ea9",
+    "build/page-120-20261017/ack-clock-diagnostic/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/page-120-20261017/ack-clock-diagnostic/owned-copy-wake-summary.json": "f81b540765d8220d60a413d0d13557f0a890201e2a33b7a996f84cf0f5058009",
+    "build/page-120-20261017/ack-clock-diagnostic/report.json": "b60d6e05f9d071977a82f46d67f9ffd5433342997ce04ffe0722affb98eb9865",
+    "build/page-120-20261017/ack-clock-diagnostic/report.trace.json": "802ac3e1e8c3adf0fd58d3621e2e50aa359a2145034f6763201f76e75a147661",
+    "build/page-120-20261017/ack-clock-diagnostic/run.log": "9e98cd364afbd1e208f29465746fcf6834f8904471ed4b7a1a76cf0d1c761100",
+    "build/page-120-20261017/ack-clock-diagnostic/run.py": "8889d69efb8d77ceccadbef9d7301b0e46b71eb45176221ee432909b6aebc1ab",
+    "build/page-120-20261017/ack-clock-diagnostic/ticks.json": "45be03778b9da8e2e43764abf496c2e85182e2ed780720e6a1ac8691cb230c51",
+    "build/page-120-20261017/ack-clock-diagnostic/timeline/wsi-18530-48234497-203226371774059.csv": "ad92715217c52408cbb26477e4c53c090102fb5518cea665074f09c9c17e4e3e",
+    "build/page-120-20261017/ack-clock-diagnostic/timeline/wsi-18530-48234497-203226655436351.csv": "bb6dff35feb76d0051ea08a628c7181fd2e17edd1d29e639e53d0bf516c549b8",
+    "build/page-120-20261017/ack-window-2/browser.log": "8f1287fa68b42a3cc3e0c88750dfcd679f299ab4ab1600118f901ec5d4720c84",
+    "build/page-120-20261017/ack-window-2/check.mjs": "e56150986058611ae4e4dd8e1a4cb95ace44791efd7d0aaad485af14e596fb63",
+    "build/page-120-20261017/ack-window-2/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/page-120-20261017/ack-window-2/report.json": "90dfe0a3159c02dd501be0f3514e2d47e92edfc7c137113c968276f7ce41e550",
+    "build/page-120-20261017/ack-window-2/run.log": "21fa710d67eda5cc0b178d6cdd6731bd3228dd00ed767c652cf40e791152e534",
+    "build/page-120-20261017/ack-window-2/run.py": "ab375aa75459a5c1f854eeada61a96922c7318ae6d9197713d1d2a8276a6b351",
+    "build/page-120-20261017/ack-window-2-trace/browser.log": "5926301235d8596dd6efcd8fe6e3c58b60d190d364f602306a54afb5c6ac0a91",
+    "build/page-120-20261017/ack-window-2-trace/check.mjs": "ac278380ff045639d1ae7d50a49d436102cfb8b6b0070852845058ba71dea1b9",
+    "build/page-120-20261017/ack-window-2-trace/fps-real-app.html": "d573ed45cf934d2138143cb59fc11e8beba3abc7d86c6b0a32d0f47b32822800",
+    "build/page-120-20261017/ack-window-2-trace/report.json": "1e4f421e81c942b59885683a31c2f6a22c04bc936d8d7dc74ace0f08b70a8a27",
+    "build/page-120-20261017/ack-window-2-trace/report.trace.json": "3106733a251693d183117f383ef7a36055e94915b313a5e6222c7dc54b357a39",
+    "build/page-120-20261017/ack-window-2-trace/run.log": "7e06c69f1f2f2ba967171523f1f28f3045a2c410ab61682d749a3765cb4291e7",
+    "build/page-120-20261017/ack-window-2-trace/run.py": "8889d69efb8d77ceccadbef9d7301b0e46b71eb45176221ee432909b6aebc1ab",
+    "build/page-120-20261017/ack-window-2-trace/timeline/wsi-17291-48234497-203062702307059.csv": "f4197908df6984cdf27711f5edb47aebee87e864978164280234a25453fc9560",
+    "build/page-120-20261017/ack-window-2-trace/timeline/wsi-17291-48234497-203062933183205.csv": "6e1ddfe950b044fc3ae5eda0fa7a4ec88c3b67109c479b52e895b347ccf31ece",
+    "build/page-120-20261017/chromium-source/cc/base/features.cc": "72089faaece4309b0b993aa9ab3d31da125ef0710db226e222244c80250e66ba",
+    "build/page-120-20261017/chromium-source/cc/scheduler/scheduler.cc": "344c3f95bc6551f71edd06e3e557601d2d4992a5c3559981b68c1cc9a5792626",
+    "build/page-120-20261017/chromium-source/cc/scheduler/scheduler_settings.h": "9c2773f1cf65b226fe2f50319b753ed17fc320136db47804bd96f17417cb75bd",
+    "build/page-120-20261017/chromium-source/cc/scheduler/scheduler_state_machine.cc": "bf9afd1bd2f9fa80d9ba7f3830f8f2e0607b70dbc64f25d79a89b55c2cb9338f",
+    "build/page-120-20261017/chromium-source/cc/trees/layer_tree_settings.h": "d0eba06449e114717d4a591137531ef708d5c5361ad2f91851a83e4c73f77af4",
+    "build/page-120-20261017/chromium-source-152/components/viz/common/features.cc": "0dea7d3a703800bb9d76714bca02dc6ed0460f053019d3da9e7cb2303d0bbc9f",
+    "build/page-120-20261017/chromium-source-152/components/viz/common/frame_sinks/begin_frame_args.h": "f4ff9598b4a3412878fd7d1a9b4d0b2e635fbebb2375e845a2090abd5f25837a",
+    "build/page-120-20261017/chromium-source-152/components/viz/service/frame_sinks/compositor_frame_sink_support.cc": "c34f9889ac4151c7129f1646836a456cd6d3f3b05df6e22082b0a4832d738034",
+    "build/x11-copy-wake-20261017/build-report.json": "c7f34f72ec7acc1d5e7cc1f9a7d2703487a9569302a96bf64f7e17e3f271c61b",
+    "build/x11-copy-wake-20261017/candidate.apk": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+    "build/page-120-20261017/pipeline-trace/report.trace.json": "3010f0ca7e5c5c9acde4278a9a0294d601b0b3230071c4d4ce2b79e26a5af3c6"
+  }
+}

@@ -34,24 +34,28 @@ def main():
     types = header[start:header.index('struct lorie_shared_server_state', start)]
     end = header.index('    } gpuCopyQueue;') + len('    } gpuCopyQueue;')
     start = header.rfind('    struct {', 0, end)
-    queue = 'struct test_server_state { int lock, lockingPid;\n' + header[start:end] + '\n};\n'
+    queue = 'struct test_server_state { int lock, lockingPid; uint8_t waitForNextFrame;\n' + header[start:end] + '\n};\n'
     names = ['lorieTryScheduleGpuCopy', 'lorieGpuCopyIsDone', 'lorieGpuCopyFailed', 'lorieGpuCopyAck']
     scoped = 'static void lorieReleaseCpuMapping(' in implementation
     ordered = 'static Bool lorieLockGpuForCpuAccess(' in implementation
+    deferred_wake = 'static void loriePerformFrameVblanks(' in implementation
     if scoped:
         names = ['lorieGpuCopyIsDone', 'lorieReleaseCpuMapping', 'lorieNeedsGpuLock',
                  *(['lorieLockGpuForCpuAccess'] if ordered else []),
                  'loriePrepareAccess', 'lorieFinishAccess', 'lorieTryScheduleGpuCopy',
                  'lorieGpuCopyFailed', 'lorieGpuCopyAck']
+    if deferred_wake:
+        names.append('loriePerformFrameVblanks')
     with tempfile.TemporaryDirectory(prefix='x11-copy-regression-') as directory:
         out = Path(directory)
-        (out / 'production-types.h').write_text(('#define TEST_QUEUED_CPU_GPU_ORDER 1\n' if ordered else '')
+        (out / 'production-types.h').write_text(('#define TEST_DEFERRED_COPY_WAKE 1\n' if deferred_wake else '')
+                                               + ('#define TEST_QUEUED_CPU_GPU_ORDER 1\n' if ordered else '')
                                                + ('#define TEST_SCOPED_CPU_ACCESS 1\n' if scoped else '')
                                                + types + queue)
         (out / 'production-copy.h').write_text('\n'.join(function(implementation, name) for name in names))
         binary = out / 'regression'
         subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-fsanitize=undefined',
-                        '-fno-sanitize-recover=all', '-I', str(out),
+                        '-fno-sanitize-recover=all', '-I', str(out), '-I', str(cpp / 'lorie'),
                         str(Path(__file__).with_name('x11-copy-regression.c')), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True, timeout=10)
         # Exercise the complete production renderer method, including tick

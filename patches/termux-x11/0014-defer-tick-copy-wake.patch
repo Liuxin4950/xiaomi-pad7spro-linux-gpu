@@ -1,0 +1,52 @@
+--- a/lorie/src/main/cpp/lorie/InitOutput.c
++++ b/lorie/src/main/cpp/lorie/InitOutput.c
+@@ -110,6 +110,8 @@
+ static pthread_mutex_t frameTickLock = PTHREAD_MUTEX_INITIALIZER;
+ static uint64_t latestFrameTimeNanos;
+ static Bool frameWorkQueued;
++/* Server-thread-only notification deferral, never a GPU/CPU ownership gate. */
++static Bool deferGpuCopyWake;
+ static Bool frameCallbackPending, displayClockPublished;
+ static AChoreographer *displayChoreographer;
+ static uint64_t displayClockEpochNanos;
+@@ -559,6 +561,19 @@
+ 
+ static void loriePerformVblanks(void);
+ 
++static void loriePerformFrameVblanks(void) {
++    /* Enqueue wakes used to race the still-closed frame permit, splitting a
++     * copy and its root draw into two flush/fence round trips. Already-running
++     * drains remain allowed, including those needed by a CPU fallback. */
++    deferGpuCopyWake = TRUE;
++    loriePerformVblanks();
++    deferGpuCopyWake = FALSE;
++    lorieFrameGateTick(&pvfb->state->waitForNextFrame);
++    if (__atomic_load_n(&pvfb->state->gpuCopyQueue.writeIndex, __ATOMIC_ACQUIRE) !=
++        __atomic_load_n(&pvfb->state->gpuCopyQueue.readIndex, __ATOMIC_ACQUIRE))
++        pthread_cond_signal(rendererCond);
++}
++
+ static Bool lorieRedraw(__unused ClientPtr pClient, __unused void *closure) {
+     int status, nonEmpty;
+     LoriePixmapPriv* priv;
+@@ -580,9 +595,7 @@
+     if (maxFramerate) lorieUpdateMSC(frameTimeNanos);
+     else pvfb->current_msc++;
+     lorieTraceEvent("Tick", pvfb->current_msc, frameTimeNanos);
+-    loriePerformVblanks();
+-
+-    lorieFrameGateTick(&pvfb->state->waitForNextFrame);
++    loriePerformFrameVblanks();
+ 
+     if (!lorieConnectionAlive() || !pvfb->state->surfaceAvailable)
+         return TRUE;
+@@ -1185,7 +1198,8 @@
+     /* One release publishes every chunk; the renderer can never consume a partial Present.
+      * Its final fence covers all chunks, including any failed chunk carrying the same serial. */
+     __atomic_store_n(&pvfb->state->gpuCopyQueue.writeIndex, writeIndex + chunks, __ATOMIC_RELEASE);
+-    pthread_cond_signal(rendererCond);
++    if (!deferGpuCopyWake)
++        pthread_cond_signal(rendererCond);
+ 
+     lorieTraceEvent("CopyEnqueue", serial, desc->id);
+     lorieTraceEvent("CopyChunks", serial, chunks);

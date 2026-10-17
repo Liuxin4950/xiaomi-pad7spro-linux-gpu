@@ -76,7 +76,23 @@ static void lorieTraceEvent(const char *stage, uint64_t a, uint64_t b) {
     if (!strcmp(stage, "CopyFallback")) fallback_reason = (unsigned)a;
 }
 static void FatalError(const char *format, int status) { (void)format; (void)status; abort(); }
-static int signal_renderer(void *condition) { (void)condition; ++signals; return 0; }
+#ifdef TEST_DEFERRED_COPY_WAKE
+#include "frame-pacing.h"
+static Bool deferGpuCopyWake;
+static unsigned vblank_copy_count;
+static Bool expect_tick_wake, drain_during_vblanks, cpu_during_vblanks;
+static void loriePerformVblanks(void);
+#endif
+static int signal_renderer(void *condition) {
+    (void)condition;
+#ifdef TEST_DEFERRED_COPY_WAKE
+    if (expect_tick_wake) {
+        assert(!deferGpuCopyWake);
+        assert(lorieFrameGateReady(&state.waitForNextFrame));
+    }
+#endif
+    ++signals; return 0;
+}
 #define pthread_cond_signal signal_renderer
 #ifdef TEST_SCOPED_CPU_ACCESS
 #define EXA_PREPARE_DEST 1
@@ -97,14 +113,48 @@ static int wait_queued_gpu(const struct timespec *pause, struct timespec *remain
     (void)remaining;
     assert(!gpu_lock_depth && !dst.cpu_locked);
     assert(pause->tv_sec==0 && pause->tv_nsec==1000000);
+#ifdef TEST_DEFERRED_COPY_WAKE
+    if (cpu_during_vblanks) {
+        assert(deferGpuCopyWake && signals==1);
+        assert(!lorieFrameGateReady(&state.waitForNextFrame));
+    }
+#endif
     ++gpu_wait_calls;
     test_clock_ns += expire_queued_on_wait ? UINT64_C(2100000000) : UINT64_C(1000000);
-    if (finish_queued_on_wait) state.gpuCopyQueue.completedSerial=server.gpuCopySerialCounter;
+    if (finish_queued_on_wait) {
+        state.gpuCopyQueue.completedSerial=server.gpuCopySerialCounter;
+        state.gpuCopyQueue.readIndex=state.gpuCopyQueue.writeIndex;
+    }
     return 0;
 }
 #define nanosleep wait_queued_gpu
 #endif
 #include "production-copy.h"
+
+#ifdef TEST_DEFERRED_COPY_WAKE
+static void loriePerformVblanks(void) {
+    assert(deferGpuCopyWake);
+    assert(!lorieFrameGateReady(&state.waitForNextFrame));
+    for (unsigned i=0; i<vblank_copy_count; ++i) {
+        uint64_t serial=0; void *held=NULL;
+        assert(lorieTryScheduleGpuCopy(&source,&destination,NULL,0,0,&serial,&held));
+        assert(signals==0); /* No consumer wake while this tick's gate is closed. */
+        assert(state.gpuCopyQueue.writeIndex==i+1); /* Publication/drains are not blocked. */
+        if (drain_during_vblanks)
+            state.gpuCopyQueue.readIndex=state.gpuCopyQueue.writeIndex;
+    }
+    if (cpu_during_vblanks) {
+        /* The existing CPU ownership wait must still wake a sleeping renderer,
+         * even while normal tick-copy notifications are deferred. */
+        expect_tick_wake=FALSE;
+        cpu_requires_fence=finish_queued_on_wait=1;
+        assert(loriePrepareAccess(&destination,EXA_PREPARE_DEST));
+        flush_requires_gpu_lock=1;
+        lorieFinishAccess(&destination,EXA_PREPARE_DEST);
+        expect_tick_wake=TRUE;
+    }
+}
+#endif
 
 static BoxRec boxes[129];
 static void reset(uint32_t read, uint32_t write, int redirected) {
@@ -186,6 +236,35 @@ static void capacity(void) {
     assert(fallback_reason==4 && state.gpuCopyQueue.writeIndex==0 && src.refs==1);
 }
 
+#ifdef TEST_DEFERRED_COPY_WAKE
+static void deferred_tick_wake(void) {
+    for (vblank_copy_count=0; vblank_copy_count<=2; ++vblank_copy_count) {
+        for (drain_during_vblanks=0; drain_during_vblanks<=1; ++drain_during_vblanks) {
+            reset(0,0,0);
+            state.waitForNextFrame=1;
+            expect_tick_wake=TRUE;
+            loriePerformFrameVblanks();
+            expect_tick_wake=FALSE;
+            assert(!deferGpuCopyWake && lorieFrameGateReady(&state.waitForNextFrame));
+            assert(signals==((vblank_copy_count && !drain_during_vblanks) ? 1u : 0u));
+            for (unsigned i=0; i<vblank_copy_count; ++i) lorieGpuCopyAck(&source,NULL);
+            assert(src.refs==1 && src.pending==0 && !server.rootGpuCopyPending);
+        }
+    }
+    reset(0,0,0);
+    state.waitForNextFrame=1;
+    vblank_copy_count=1; drain_during_vblanks=FALSE;
+    cpu_during_vblanks=expect_tick_wake=TRUE;
+    screen.GetScreenPixmap=get_screen_pixmap;
+    loriePerformFrameVblanks();
+    cpu_during_vblanks=expect_tick_wake=FALSE;
+    assert(signals==1 && gpu_wait_calls==1 && !gpu_lock_depth);
+    assert(map_begins==1 && map_ends==1 && lorieFrameGateReady(&state.waitForNextFrame));
+    lorieGpuCopyAck(&source,NULL);
+    puts("X11_DEFERRED_TICK_WAKE_OK: gate precedes one batched wake; empty/already-drained queues stay quiet; other enqueue paths retain immediate wake");
+}
+#endif
+
 #ifdef TEST_SCOPED_CPU_ACCESS
 static void scoped_cpu_access(void) {
     reset(0,0,0); screen.GetScreenPixmap=get_screen_pixmap;
@@ -254,6 +333,9 @@ int main(void) {
         for (int redirected=0;redirected<2;++redirected) accepted(counts[i],0,redirected);
     accepted(25,UINT32_MAX-1,0); accepted(128,UINT32_MAX-3,1);
     capacity();
+#ifdef TEST_DEFERRED_COPY_WAKE
+    deferred_tick_wake();
+#endif
 #ifdef TEST_SCOPED_CPU_ACCESS
     scoped_cpu_access();
     puts("X11_SCOPED_CPU_ACCESS_OK: lazy root mapping, CPU writes/reads, flush before GPU release, mapping failure unlock");

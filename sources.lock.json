@@ -143,6 +143,10 @@
       {
         "path": "patches/termux-x11/0013-coalesce-final-surface-submission.patch",
         "sha256": "55ce3643df246e6edf932dde50b3ce2cee487a6c57cea19f6c5984bea5ff4b45"
+      },
+      {
+        "path": "patches/termux-x11/0014-defer-tick-copy-wake.patch",
+        "sha256": "5e6f06f65829e002e1a2bede13e1e1836a01e0256ed18f6b0f7e4bf351106c42"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"
