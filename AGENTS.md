@@ -2,7 +2,7 @@
 
 先读 `docs/CURRENT-STATE.md`、`docs/tablet-handoff.md`。当前已部署 r3.5（具体范围见 docs/CURRENT-STATE.md 与 docs/r3.5-efficiency.md），实际前缀与 `release.json`、系统链接、APK 和进程共同核对；旧记忆里的 r2/canary 不是当前基线。
 
-1. 用户目标是实际 Mali GPU 渲染、流畅和低功耗。优先实施有证据的必要修复，避免反复扩大测试或凭调用链长度猜瓶颈。
+1. 用户目标是实际 Mali GPU 渲染、流畅和低功耗。优先实施有证据的必要修复，避免反复扩大测试或凭调用链长度猜瓶颈。 优先采用现成、较新且实测更高效的实现；不为追新或未证实的收益新增协议、开关及框架。
 2. 所有正常图形入口用 `/usr/local/bin/gpu-run`，不要在桌面、Widget 或 shell 中写死 r2/旧 canary 库路径。保留现有参数、文件/URL 占位符、用户配置与会话。
 3. 不冻结、卸载、禁用系统服务，不改系统分区和 SELinux 策略，不换原厂 Mali。Root 身份不替代正确的 binderfs/命名空间。用户进一步明确授权优先。
 4. 不自动改成软件渲染。原生 Skia 的硬件回退是 `PAD_GPU_SKIA_BACKEND=angle`；软件须显式请求。WebKit 不套 Electron 参数。

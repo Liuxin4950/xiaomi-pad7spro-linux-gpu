@@ -522,5 +522,164 @@
     "build/frame-submit-20261017/signature.txt": "bbe4ea3885dc2b5b20fa141377332b5779ed69080b7f33a11af63b769622f544",
     "build/x11-frame-gate-20261017/build-report.json": "dfb7223f386bd67f659ae2af85c2b85198415b82c43e548e87bdbbe075a64737",
     "build/x11-frame-submit-20261017/build-report.json": "a9b52676a86f9be3ee6721297282b1b0934ff6a78765076d2d2c874035f911d4"
+  },
+  "followup_review": {
+    "observed_at_utc": "2026-10-17T03:44:42.848515+00:00",
+    "user_priority": "Prefer existing, newer implementations only where demonstrably efficient; avoid unnecessary protocols/switches/frameworks. Notify user before APK change/restart.",
+    "deployment_changed": false,
+    "large_surface_repair_experiment": "Removed from production patch directory; never registered in sources.lock, built as APK or installed. Standalone BufferQueue experiment remains under build/.",
+    "standalone_surface_repair": {
+      "capabilities": [
+        "EGL_KHR_partial_update",
+        "EGL_KHR_swap_buffers_with_damage"
+      ],
+      "actual_window_age": 3,
+      "small_case_checked_pixels": 4718592,
+      "small_case_mismatches": 0,
+      "timings": {
+        "repair-small": {
+          "frames": 96,
+          "timing_valid_after_warmup": 67,
+          "gpu_ms_p50": 0.031226,
+          "gpu_ms_p95": 0.03978,
+          "painted_pixels": 441312,
+          "pixel_mismatches": 0
+        },
+        "full-large": {
+          "frames": 96,
+          "timing_valid_after_warmup": 34,
+          "gpu_ms_p50": 0.284895,
+          "gpu_ms_p95": 0.40495,
+          "painted_pixels": 630988800,
+          "pixel_mismatches": 0
+        },
+        "repair-large": {
+          "frames": 96,
+          "timing_valid_after_warmup": 67,
+          "gpu_ms_p50": 0.040612,
+          "gpu_ms_p95": 0.046202,
+          "painted_pixels": 19929696,
+          "pixel_mismatches": 0
+        }
+      },
+      "scope": "Independent AImageReader/GLES window experiment. Disjoint timer samples excluded. Not active desktop FPS or power evidence."
+    },
+    "upstream": {
+      "termux_x11_current_base": "d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f",
+      "termux_x11_latest_observed": "fa3a8b430e2896a19f44c99a9cb056254615ae06",
+      "termux_ahead_by": 18,
+      "termux_compare_url": "https://github.com/termux/termux-x11/compare/d55f1b7e575de0a7d2b03c5882d5e3d375d01a4f...fa3a8b430e2896a19f44c99a9cb056254615ae06",
+      "decision": "Compared actual native diff. Changes concern input/multiwindow/thread naming and a fence timeout; no demonstrated steady-state FPS gain. Do not replace working patched APK merely to update revision.",
+      "wsi_latest_observed": "d5624d42d8b2debbd910ad25662a05c751eb38b7",
+      "wsi_matches_locked_base": true,
+      "wsi_source_url": "https://github.com/xMeM/vulkan-wsi-layer/commit/d5624d42d8b2debbd910ad25662a05c751eb38b7"
+    },
+    "page_workload": {
+      "browser": "Chrome/152.0.7977.82",
+      "backend": "GaneshVulkan",
+      "geometry": {
+        "inner": [
+          1707,
+          971
+        ],
+        "outer": [
+          1707,
+          1027
+        ],
+        "screen": [
+          1707,
+          1096
+        ],
+        "available": [
+          1707,
+          1053
+        ],
+        "dpr": 1.875
+      },
+      "scenes": [
+        {
+          "mode": "canvas",
+          "frames": 600,
+          "raf_hz": 114.9579702913292,
+          "p50_ms": 8.300000000000182,
+          "p95_ms": 8.5,
+          "p99_ms": 16.700000000000273,
+          "max_ms": 16.800000000000182,
+          "over_12ms": 26,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        },
+        {
+          "mode": "scroll",
+          "frames": 600,
+          "raf_hz": 117.78354569765614,
+          "p50_ms": 8.300000000001091,
+          "p95_ms": 8.400000000001455,
+          "p99_ms": 16.699999999999818,
+          "max_ms": 16.799999999999272,
+          "over_12ms": 11,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        },
+        {
+          "mode": "edit",
+          "frames": 600,
+          "raf_hz": 112.61515322429032,
+          "p50_ms": 8.300000000001091,
+          "p95_ms": 16.600000000002183,
+          "p99_ms": 16.700000000000728,
+          "max_ms": 16.80000000000109,
+          "over_12ms": 39,
+          "visibility": "visible",
+          "focus": true,
+          "inner_size": [
+            1707,
+            971
+          ],
+          "device_pixel_ratio": 1.875
+        }
+      ],
+      "scope": "Untraced browser rAF under controlled full-resolution canvas, scrolling, full-text replacement stress; not physical-screen unique-content FPS. Earlier oversized-window test retained separately."
+    },
+    "new_backend_trial": {
+      "requested": "GraphiteDawnVulkan",
+      "initial_backend": "GraphiteDawnVulkan",
+      "initial_webgl": {
+        "pixel": [
+          26,
+          153,
+          204,
+          255
+        ],
+        "renderer": "ANGLE (ARM, Vulkan 1.3.278 (Mali-G925-Immortalis (0xD8300010)), Mali-G925-Immortalis)"
+      },
+      "state": "not accepted",
+      "error": "Error: CDP timeout Runtime.evaluate",
+      "completed_scenes": [],
+      "decision": "Do not change defaults. Initialized hardware backend alone is insufficient; first 600-frame workload did not complete within the CDP deadline. No GPU-crash or software-fallback claim is inferred from timeout.",
+      "source_url": "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/gpu/config/gpu_switches.cc"
+    },
+    "next_action": "Locate remaining paced-page delivery/CPU-GPU waiting using existing runtime instrumentation before selecting a small production change.",
+    "artifacts_sha256": {
+      "build/content-rate-20261017/egl-capabilities.txt": "ab9a3829c9e52bb2615a9b9cb6b6de50e4dfe003b5429a6150642c36b0f08a48",
+      "build/content-rate-20261017/window-age.txt": "eb3e71e2c92bdf9aca9859c6776780e3f0f28cc5ea43d31b5d39c434b622afed",
+      "build/content-rate-20261017/window-repair-summary.json": "0eadee08146c08ce0df8c83b6c5a34c026010f0fc488e93c0d9e0f800ecc13ff",
+      "build/upstream-review-20261017/termux-compare.json": "20477fc475df3452c6539ab4e0b6d3ac7193e5abb049570c3e3c9e2ce86b2e48",
+      "build/page-120-20261017/report.json": "ec74c16edca82dc25b5e0fa3ea448fd6f325bc357f8b49b2d37bec8651b42941",
+      "build/page-120-20261017/physical-screen/report.json": "e747c8c3f3b1ca5c4e957e47d770a18005385a92722876cc832717cf0675557a",
+      "build/page-120-20261017/graphite-vulkan/report.json": "a7f28ec21d0803e26585e63987883dda5a7da5b37a81e78f7a7f03eace70e4f9",
+      "build/page-120-20261017/graphite-dawn-vulkan/report.json": "3ee734dec3d173028c56f3dacf4a4e41e95c354e3b17abcccfae73e6c33b716d",
+      "build/page-120-20261017/graphite-dawn-vulkan/browser.log": "8784e7b867dcb0fb1f69c0259c8326c8d32e35f612b4aae776caa77596d5daab"
+    }
   }
 }
