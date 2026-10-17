@@ -98,6 +98,31 @@ class ReleaseRecoveryTests(unittest.TestCase):
         self.assertEqual(self.entry.read_text(), 'user-edit')
         self.assertEqual(str((self.links / 'gpu-run').readlink()), '/new/bin/gpu-run')
 
+    def test_partial_termux_helper_update_restores_all_planned_files(self):
+        # A desktop migration now includes shared shell/stop helpers. A failure
+        # after changing just one must restore both, including original modes.
+        helpers = []
+        for name in ('debian-shell.sh', 'debian-stop.sh'):
+            path = self.root / name
+            path.write_text('original-' + name)
+            path.chmod(0o700)
+            helpers.append(path)
+            self.plan['entries'].append(dict(path=str(path), before_sha256=release.digest(path),
+                after_sha256=hashlib.sha256(b'updated-helper').hexdigest()))
+        def fail_after_first_helper(*args, **kwargs):
+            self.migrate(*args, **kwargs)
+            helpers[0].write_text('updated-helper')
+            helpers[0].chmod(0o600)
+            raise subprocess.CalledProcessError(1, args[0])
+        with patch.object(release.subprocess, 'check_output', return_value=json.dumps(self.plan)), \
+                patch.object(release.subprocess, 'run', side_effect=fail_after_first_helper):
+            with self.assertRaisesRegex(RuntimeError, 'restored original'):
+                release.activate(Path('/new'), self.backup)
+        self.assert_original()
+        for path in helpers:
+            self.assertEqual(path.read_text(), 'original-' + path.name)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+
     def test_corrupt_backup_prevents_restore(self):
         with patch.object(release.subprocess, 'run', side_effect=self.migrate):
             report = release.activate(Path('/new'), self.backup)

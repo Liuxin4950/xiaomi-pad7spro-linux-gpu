@@ -2,11 +2,11 @@
 
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
-更新：2026-10-12。本文描述当前作者设备的已部署入口；构建、安装和首次接入步骤见 [复现流程](setup.md)。
+更新：2026-10-17。本文描述当前作者设备的已部署入口；构建、安装和首次接入步骤见 [复现流程](setup.md)。
 
 ## 当前路径与日常启动
 
-当前完整桥接安装在 `/opt/pad7spro-gpu-observe-20261012`。`/usr/local/bin/gpu-run`、`/usr/local/bin/gpu-launcher` 分别链接到该目录的 `bin/gpu-run`、`bin/gpu-launcher`。ICD、libhybris、AHB、WSI、修改版 bionic 和应用适配组件都取自同一前缀；旧主基线/canary 不再是默认运行依赖。
+当前完整桥接安装在 `/opt/pad7spro-gpu-fps-20261017`。`/usr/local/bin/gpu-run`、`/usr/local/bin/gpu-launcher` 分别链接到该目录的 `bin/gpu-run`、`bin/gpu-launcher`。ICD、libhybris、AHB、WSI、修改版 bionic 和应用适配组件都取自同一前缀；旧主基线/canary 不再是默认运行依赖。
 
 | 入口 | 所在环境 | 作用 |
 |---|---|---|
@@ -16,7 +16,15 @@
 | `/usr/local/bin/gpu-launcher` | Debian | 可选的程序输入框，不是运行普通应用的必经入口 |
 | `~/debian-stop.sh` | Termux | 保存工作后停止该 chroot 的全部进程并清理挂载 |
 
-实际 Termux 脚本已部署；用户已关闭旧会话并从 Widget 重启，确认启动成功。重启后读取到的 Termux:X11 命令含 `:1 -ac -dpi 120 -max-fps 60`。再次点击仍在运行的桌面只会复用现有会话，不热替换已加载的库。
+实际 Termux 脚本已部署；用户已关闭旧会话并从 Widget 重启，确认启动成功。当前 Termux:X11 命令含 `:1 -ac -dpi 120 -max-fps 120`，根窗口协商为 `[1,120,15]`。再次点击仍在运行的桌面只会复用现有会话，不热替换已加载的库。
+
+已运行桌面只需显示画面时，直接点 Android 的 Termux:X11 图标即可。需要 Termux 命令时可用：
+
+```sh
+su -c '/system/bin/am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity'
+```
+
+打开 Activity、安装 APK、重载独立 X server、重开 Linux 应用是四件不同的事：APK 更新后打开 Activity 可能形成新 renderer / 旧 server；Linux 前缀链接切换后，已有应用仍保留原库。分别检查 APK 映射和应用 GPU PID。无需为 Linux 应用换库重启整个桌面。Termux / Widget / X11 的版本、脚本位置与备份见 [配套资源](../reference/README.md)。
 
 在 Termux 手动启动的等价命令：
 

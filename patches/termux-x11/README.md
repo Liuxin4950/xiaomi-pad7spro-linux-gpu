@@ -1,6 +1,6 @@
 # Termux:X11 GPU Present 补丁
 
-更新：2026-10-12。当前 gpu-direct APK 已部署三个补丁的组合：前端批处理、可见裁剪和拒绝不可用光标几何接口已运行；老 X server 要正常重开桌面才能加载 tick 门控。以下带 2026-10-07 日期的“候选未安装”描述仅属于历史阶段。当前运行状态见 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
+更新：2026-10-17。当前 APK SHA-256 `c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4` 已干净构建、安装，X server / Android renderer 两端映射核对通过。补丁完整顺序以 `sources.lock.json` 的 `termux_x11.patches` 为准；0009–0011 与 WSI 0012 联合验收通过。下文早期阶段的构建命令、60 FPS、候选未安装和 swap 后预热说明均为历史，请使用 [当前构建流程](../../docs/build.md)与 [CURRENT-STATE](../../docs/CURRENT-STATE.md)。
 
 上游：[termux/termux-x11](https://github.com/termux/termux-x11)。
 
@@ -16,7 +16,7 @@
 
 1. GPU Present 直接写 screen pixmap 时，将更新区域与窗口可见 clip 相交，避免覆盖上层候选框和菜单。
 2. 对 redirected compositor pixmap 保留完整内容；临时 Region 在成功、回退及提前返回路径释放。
-3. 添加 `-max-fps N`，范围 1–240，限制 X11 RandR 报告值。原补丁中的 `vblank_interval` 仅被赋值，没有参与调度；真正的显示节拍限制由下面的第二阶段补丁补齐。项目参考配置使用 60。
+3. 添加 `-max-fps N`，范围 1–240，限制 X11 RandR 报告值。原补丁中的 `vblank_interval` 仅被赋值，没有参与调度；真正的显示节拍限制由下面的第二阶段补丁补齐。历史参考配置使用 60；2026-10-16 起当前默认已改为 120。
 4. 将逐矩形 GPU copy 日志限制为调试模式，减少正常运行时的日志开销。
 
 ## 第二阶段：显示节拍与 GPU copy 合并

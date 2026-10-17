@@ -1,10 +1,10 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# desktop-zink.sh — current GPU desktop session (r3.3, 2026-10-12).
-# 与 debian-desktop.sh 的差异：
-#   1) 会话经 /usr/local/bin/gpu-run 继承当前统一桥接配置（原来写死主基线）
-#   2) 额外挂载 system/vendor/apex 供 hybris 加载 Android Mali 驱动
-# 其余（挂载/看门狗/模式锁/图形栈启动）全部复用 debian-shell.sh。
-# 用法：bash ~/mali-work/desktop-zink.sh     （关闭 XFCE 或跑 debian-stop.sh 收尾）
+# desktop-zink.sh — shared GPU desktop entry (2026-10-17).
+# Widget 与 debian-desktop.sh 都转发到这里；名称保留兼容，不绑定某个旧前缀。
+# XFCE/OpenGL 经 Zink，Chromium/Electron 的二维经 native Skia Vulkan，WebGL 经 ANGLE。
+# 复用 debian-shell.sh 的挂载、看门狗和模式锁；已有 XFCE 只打开 X11，不重启。
+# 更新 APK 后打开 Activity 不会重载独立 X server；切换须另行保存工作安排。
+# 用法：bash ~/mali-work/desktop-zink.sh；停止整个 chroot 前先保存全部工作。
 set -Eeuo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -95,7 +95,7 @@ fi
 
 termux-wake-lock 2>/dev/null || true
 start_graphics
-say "render: /usr/local/bin/gpu-run -> zink -> Vulkan -> Mali-G925 on $X11_DISPLAY"
+say "GPU entry: /usr/local/bin/gpu-run (Skia Vulkan / ANGLE Vulkan / OpenGL Zink) on $X11_DISPLAY"
 say "requested X11 max FPS=$X11_MAX_FPS; per-swapchain max FPS=$PAD_GPU_MAX_FPS"
 say 'closing this session triggers cleanup'
 

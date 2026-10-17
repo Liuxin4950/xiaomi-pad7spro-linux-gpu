@@ -1,0 +1,225 @@
+{
+  "observed_at_utc": "2026-10-17T03:10:25.298006+00:00",
+  "state": "synchronized-and-verified",
+  "scope": "Termux/Widget/X11 integration resources; no Android APK replacement or desktop restart in this step.",
+  "installed_android_packages": [
+    {
+      "package": "com.termux",
+      "version_details": [
+        "versionCode=1002 minSdk=24 targetSdk=28",
+        "versionName=0.118.3",
+        "lastUpdateTime=2026-07-10 23:27:06"
+      ],
+      "apks": [
+        {
+          "android_path": "/data/app/~~SYKRTDpBCUSw8clk0pJBvQ==/com.termux-UOM4OctPknt8sf2xmiJeJw==/base.apk",
+          "sha256": "72fdb596045116bf5ba1b5bdf5b26fddb9acc0bd074ad9f2da9eb0ae85e83a4e"
+        }
+      ]
+    },
+    {
+      "package": "com.termux.widget",
+      "version_details": [
+        "versionCode=1001 minSdk=24 targetSdk=28",
+        "versionName=0.15.0",
+        "lastUpdateTime=2026-04-12 02:21:22"
+      ],
+      "apks": [
+        {
+          "android_path": "/data/app/~~babDT2l9IjwymLkuXwCGnA==/com.termux.widget-X4QNClw1tt-aKgWbpOshTw==/base.apk",
+          "sha256": "780ae459be479bedef2146eb00f7bc79f2a4f89dba2bffa7b55c470165bc66ed"
+        }
+      ]
+    },
+    {
+      "package": "com.termux.x11",
+      "version_details": [
+        "versionCode=15 minSdk=24 targetSdk=34",
+        "versionName=1.03.01-d55f1b7-gpu-r3.5-repro",
+        "lastUpdateTime=2026-10-17 10:15:04"
+      ],
+      "apks": [
+        {
+          "android_path": "/data/app/~~LT3vL2NKPsRispk4j-E1Qg==/com.termux.x11-UJSb_ZjEFh2j_v_aLj_EiA==/base.apk",
+          "sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4"
+        }
+      ]
+    }
+  ],
+  "installed_termux_packages": [
+    {
+      "Package": "termux-am",
+      "Status": "install ok installed",
+      "Version": "0.8.0-2"
+    },
+    {
+      "Package": "termux-am-socket",
+      "Status": "install ok installed",
+      "Version": "1.5.0-1"
+    },
+    {
+      "Package": "termux-tools",
+      "Status": "install ok installed",
+      "Version": "1.46.0+really1.45.0-1"
+    },
+    {
+      "Package": "termux-x11-nightly",
+      "Status": "install ok installed",
+      "Version": "1.03.01-5"
+    }
+  ],
+  "upstream_latest_versions_checked": false,
+  "entry_files": [
+    {
+      "reference": "reference/termux/desktop-zink.sh",
+      "device_path": "mali-work/desktop-zink.sh",
+      "sha256": "e31afa2d24de986e07ff7d937d0cea5ed4a0009ea706a8888c86504dc3724430",
+      "bytes": 5796,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700",
+      "matches_reference": true
+    },
+    {
+      "reference": "reference/termux/debian-desktop.sh",
+      "device_path": "debian-desktop.sh",
+      "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+      "bytes": 230,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700",
+      "matches_reference": true
+    },
+    {
+      "reference": "reference/termux/debian-zink-widget.sh",
+      "device_path": ".shortcuts/debian-zink.sh",
+      "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+      "bytes": 234,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700",
+      "matches_reference": true
+    },
+    {
+      "reference": "reference/termux/debian-shell.sh",
+      "device_path": "debian-shell.sh",
+      "sha256": "dafd703509c5ab855cc8b5ad0be6e5e66fb2df46d843c696089510fc75574a4e",
+      "bytes": 18892,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700",
+      "matches_reference": true
+    },
+    {
+      "reference": "reference/termux/debian-stop.sh",
+      "device_path": "debian-stop.sh",
+      "sha256": "1c0a31373b14ae0f2dd119e04b55ac86b8f25ace6fc04911a7bc40f5247e97c4",
+      "bytes": 3826,
+      "uid": 10305,
+      "gid": 10305,
+      "mode": "0700",
+      "matches_reference": true
+    }
+  ],
+  "runtime_after": [
+    {
+      "kind": "x_server",
+      "pid": 21225,
+      "start_ticks": 44229823,
+      "vendor_mali_mapped": true,
+      "mapped_apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4"
+    },
+    {
+      "kind": "current_assistant_gpu",
+      "pid": 22446,
+      "start_ticks": 44231138,
+      "vendor_mali_mapped": true,
+      "prefixes_mapped": [
+        "/opt/pad7spro-gpu-fps-20261017"
+      ],
+      "new_wsi_mapped": true
+    },
+    {
+      "kind": "android_renderer",
+      "pid": 31408,
+      "start_ticks": 44013241,
+      "vendor_mali_mapped": true,
+      "mapped_apk_sha256": "c62abdc50b9aca276a6f9e7956f8f099cbf39ee24b7abeea9ee3d3795f87c4b4"
+    }
+  ],
+  "activation_backup": "build/termux-resources-20261017/activation-backup",
+  "verification": {
+    "bash_syntax": "all five passed",
+    "activation_recovery_tests": "6 passed, including partial shared-helper rollback",
+    "post_activation_plan_entries": []
+  },
+  "desktop_start_script_executed": false,
+  "desktop_stopped": false,
+  "previous_reference_manifest_snapshot": {
+    "captured_on": "2026-10-01",
+    "status": "Active development configuration deployed to author device",
+    "files": {
+      "reference/termux/desktop-zink.sh": {
+        "bytes": 5691,
+        "sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518",
+        "source": "current device entry deployed 2026-10-12",
+        "changes": [
+          "All normal desktop paths select the current unified GPU release."
+        ]
+      },
+      "reference/termux/debian-shell.sh": {
+        "bytes": 18860,
+        "sha256": "521585f040d5321bc5cb9aa1401131350079ded70e99c2e4a61a8fe82dee83ee",
+        "source": "device snapshot captured 2026-10-01",
+        "changes": []
+      },
+      "reference/termux/debian-stop.sh": {
+        "bytes": 3822,
+        "sha256": "1e8417d7ba37a7767da6cba1f91c60c686994bb3afe80b5b3faaeadcb3fc5c50",
+        "source": "device snapshot captured 2026-10-01",
+        "changes": []
+      },
+      "reference/chroot/gpu-app.sh": {
+        "bytes": 446,
+        "sha256": "9f47ca56962561b5be355d277ae26913ff67d4aa149829815dfb2af2679a41e4",
+        "source": "device configuration updated and deployed 2026-10-07",
+        "changes": [
+          "Deployed as compatibility wrapper; desktop and URL handlers now use /usr/local/bin/gpu-run."
+        ]
+      },
+      "patches/termux-x11/termux-x11-gpu-popup-fix.patch": {
+        "bytes": 8551,
+        "sha256": "6af0f2604eb610d729fc70b8f90bf2fd63d5e22fa5aeb8af73fc13e7ad572f0e",
+        "source": "device snapshot captured 2026-10-01",
+        "changes": []
+      },
+      "reference/termux/debian-desktop.sh": {
+        "bytes": 230,
+        "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "source": "current device entry deployed 2026-10-12",
+        "changes": [
+          "All normal desktop paths select the current unified GPU release."
+        ]
+      },
+      "reference/termux/debian-zink-widget.sh": {
+        "bytes": 234,
+        "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "source": "current device entry deployed 2026-10-12",
+        "changes": [
+          "All normal desktop paths select the current unified GPU release."
+        ]
+      }
+    },
+    "updated_on": "2026-10-12"
+  },
+  "artifacts": {
+    "before.json": "c5b728904f63561e34a64866d6372f3a264cc20c33f888d7546fcebc4b13c030",
+    "activation-result.json": "d3309fa71c91d0a591a44f8224ca3bd44e3cf916e455c3a5fb5d90978dbf5767",
+    "after-plan.json": "0b09c2d1782b7e5f8bfc182637ab4ba8a8bb83e5f7f9c6b506e75407f880f309",
+    "activation-tests.log": "624f61b2bedbabf9226e980ab19c7376d6bb0a8767701637b9ca0d6ce2c58588"
+  },
+  "notes": [
+    "Current manifest regenerated from actual files. Historical FPS/pixel samples unchanged.",
+    "A separate frame-gate timing investigation has evidence only; no renderer change has been installed."
+  ]
+}

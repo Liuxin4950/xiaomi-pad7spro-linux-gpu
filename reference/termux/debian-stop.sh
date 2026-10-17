@@ -41,11 +41,11 @@ do_backup() {
 快照: $(basename "$out")   生成时间: $(date "+%F %H:%M")
 
 恢复步骤（Termux）:
-1. sh ~/debian-stop.sh                      # 确保无进程、无挂载
+1. bash ~/debian-stop.sh                      # 确保无进程、无挂载
 2. su -c "rm -rf /data/linux/debian"        # 清掉当前 rootfs
 3. su -c "mkdir -p /data/linux && tar -xzf /sdcard/linux-backup/$(basename "$out") -C /data/linux"
 4. su -c "chown -R 0:0 /data/linux/debian"  # 统一属主（root-only 容器）
-5. sh ~/debian-shell.sh                     # 冒烟: 能进 shell 即恢复成功
+5. bash ~/debian-shell.sh                     # 冒烟: 能进 shell 即恢复成功
 
 脚本全家（debian-*.sh）不在快照里, 需另备份或不删。
 EOF

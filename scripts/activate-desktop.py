@@ -92,6 +92,8 @@ def main():
         Path('/opt/mali-bridge-canary/bin/gpu-app.sh'): ROOT / 'reference/chroot/gpu-app.sh',
         args.termux_home / 'mali-work/desktop-zink.sh': ROOT / 'reference/termux/desktop-zink.sh',
         args.termux_home / 'debian-desktop.sh': ROOT / 'reference/termux/debian-desktop.sh',
+        args.termux_home / 'debian-shell.sh': ROOT / 'reference/termux/debian-shell.sh',
+        args.termux_home / 'debian-stop.sh': ROOT / 'reference/termux/debian-stop.sh',
         args.termux_home / '.shortcuts/debian-zink.sh': ROOT / 'reference/termux/debian-zink-widget.sh',
     }
     for path, source in fixed.items():

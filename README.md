@@ -12,7 +12,7 @@
 
 ## 日常使用
 
-1. 在 Android 的 Termux:Widget 中点 `debian-zink`，它调用 `~/mali-work/desktop-zink.sh`。
+1. 新建桌面时，在 Termux:Widget 中点 `debian-zink`；普通 `debian-desktop.sh` 调用相同入口。桌面已运行时可直接打开 Termux:X11。
 2. 进入 XFCE 后直接使用原来的应用图标。桌面、菜单和 URL 入口已统一到新 GPU 栈。
 3. 当前会话默认带有 Zink、Vulkan ICD/WSI 和 BGRA 传输配置。兼容的 OpenGL/Vulkan 软件通常可以直接继承这些设置；GPU 应用启动器是可选菜单工具。
 
@@ -38,7 +38,8 @@ gpu-run --software auto application  # 显式软件渲染
 ## 工作原理
 
 ```text
-Chromium / Electron → ANGLE Vulkan ─┐
+Chromium / Electron 二维 → Skia Vulkan ┐
+WebGL → ANGLE Vulkan ─────────────────┤
 OpenGL / WebKitGTK → Mesa Zink ─────┤
 原生 Vulkan ────────────────────────┤
                                    ↓
@@ -60,10 +61,11 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Linux | Debian 13 arm64、root chroot、XFCE，关闭 XFWM 合成器 |
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
-| 当前 Termux:X11 APK | `1.03.01-d55f1b7-29.09.26`，含已有 Present 裁剪补丁 |
+| Termux:Widget | `0.15.0`，桌面快捷入口追随统一 gpu-run |
+| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `c62abdc5…`，以完整哈希区分同名构建 |
 | 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
-设备版本基线来自 2026-10-01，新增软件验证和用户会话重启反馈来自 2026-10-07。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
+设备型号/固件基线来自 2026-10-01；Termux、Widget、X11 和入口清单已于 2026-10-17 重新核对，见 [Termux 配套资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
 
 | 应用/能力 | 当前状态 |
 |---|---|
@@ -88,7 +90,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
 
 依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
 
-Termux:X11 的第二阶段节拍/copy-fence 优化补丁已提供，并生成同证书原生增量候选 APK；**当前设备没有安装该候选 APK**。它不是干净全量 APK 构建，见 [补丁与验证说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
+当前 Termux:X11 已从固定提交和子模块干净构建，0009–0011 与新 WSI 0012 已安装并联合验收。构建、签名、APK 哈希及两端实际映射见 [交付证据](evidence/fps120-release-2026-10-17.json)，补丁顺序见 [补丁说明](patches/termux-x11/README.md)。本次公开的是源码开发更新，不是正式 `v0.1.0` 二进制发行。
 
 ## 文档
 

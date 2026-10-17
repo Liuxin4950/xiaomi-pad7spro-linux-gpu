@@ -6,6 +6,10 @@
 
 **应用重开后的生效检查已通过**：用户正常重开助手后，新 GPU 进程 PID 22446（start_ticks 44231138）实际映射 `/opt/pad7spro-gpu-fps-20261017` 中的 WSI、sysvk 桥接及原厂 Mali；此前旧进程快照保留在证据中。安装清单再次核验通过，本轮 FPS 修复验收已完成。本轮没有停止桌面、没有运行 zink 脚本；三份 Termux 入口文件保持原内容、UID/GID 和 0700。旧前缀、APK 和链接回退记录保留。功耗、精确输入延迟和长期稳定性未测。完整证据：[FPS 修复交付](../evidence/fps120-release-2026-10-17.json)。
 
+## Termux 配套资源（2026-10-17 同步）
+
+已重新核对 Termux 0.118.3、Widget 0.15.0、Termux 侧 termux-x11-nightly 1.03.01-5 与补丁 APK `c62abdc5…`。五份主要入口与仓库逐字节一致，UID/GID 10305、0700；共享 shell / stop 也纳入带备份的入口迁移。文档中的旧前缀、60 FPS 和未安装候选说明已修正或明确标为历史。只显示已有桌面时直接打开 Termux:X11，具体生效边界与备份见 [配套资源](../reference/README.md)和 [同步证据](../evidence/termux-resources-2026-10-17.json)。本次未安装其他 Android APK，未执行桌面启动或停止脚本。
+
 ## 先前阶段记录（以下“尚未加载/未达标”均为当时快照）
 
 2026-10-17（0009 实测与 0010 候选安装）：用户重启后，分批版 `88ce7f61…` 已在两端实际加载；完整无追踪 600 帧、640×480 探针 **81.98 次提交/秒，P95 20.87 ms**，X server CPU 282.34 ms/s。独立诊断中 822 个 Present 已卸载 GPU，其中 240 个 25 矩形 Present 各用两项；**没有 CopyFallback 事件，pixman 软件拷贝热点未再采到**。相较此前约 43.73/s 已有改善，但桌面负载不同，不是严格 A/B，尚未达到预期 110～120。带调用链的独立采样证明剩余热点在 `lorieRedraw` 的整屏 AHB CPU lock/unlock（children 73%，缓存清理/失效占 self 样本约 63%）。据此增加 0010：AHB 根缓冲发布后不立即重新 CPU 映射，真实 CPU 绘制仍按 EXA access 映射并在释放 GPU 锁前刷新；GPU flip 不新建 CPU 映射，保留 legacy FD 路径及 GPU 栅栏。生产函数 UBSan 回归、故意错误的刷新顺序负向对照、干净 arm64 构建与包校验通过。已直接安装/打开 `804ecfc9e0b068b1ef3a631c920f16f399d908b39b8d816b365afa0693debe39`，未停桌面、未运行 zink；**服务端仍是 `88ce7f61…`，0010 尚待用户保存工作后重启及实机验收，目标仍未完成**。见 [根缓冲 CPU 访问证据](../evidence/scoped-root-cpu-access-2026-10-17.json)。

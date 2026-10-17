@@ -5,7 +5,7 @@
 # 与旧版的差异仅三处：① 全 root（删 suid bind / 普通用户层；root 不受文件权限限制，
 # 连带 socket chmod 666 等 workaround 也不再需要）② 看门狗按 /proc/PID/root 匹配全杀
 # （旧版只杀会话进程组，setsid 逃逸守护进程会漏——修复"划掉 Termux 后持续耗电"）
-# ③ 桌面渲染调优变量在 debian-desktop.sh 里（mesa_glthread / vblank_mode）。
+# ③ 当前桌面入口统一由 mali-work/desktop-zink.sh 调用 gpu-run；不再设置旧 mesa_glthread / vblank_mode。
 set -Eeuo pipefail
 
 ROOTFS="/data/linux/debian"

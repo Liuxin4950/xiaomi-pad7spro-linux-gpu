@@ -1,26 +1,34 @@
 {
   "captured_on": "2026-10-01",
-  "status": "Active development configuration deployed to author device",
+  "status": "Five Termux session entries synchronized and verified; current runtime in termux-resources-2026-10-17.json",
   "files": {
     "reference/termux/desktop-zink.sh": {
-      "bytes": 5691,
-      "sha256": "af7d0f6e74058d59017dd58febbd0e68c6450014e6f00206f889ea197176c518",
-      "source": "current device entry deployed 2026-10-12",
+      "bytes": 5796,
+      "sha256": "e31afa2d24de986e07ff7d937d0cea5ed4a0009ea706a8888c86504dc3724430",
+      "source": "current device entry synchronized and verified 2026-10-17",
       "changes": [
-        "All normal desktop paths select the current unified GPU release."
-      ]
+        "All normal desktop paths select the current unified GPU release.",
+        "Shared current gpu-run entry, 120 FPS defaults; session behavior preserved."
+      ],
+      "device_path": "mali-work/desktop-zink.sh"
     },
     "reference/termux/debian-shell.sh": {
-      "bytes": 18860,
-      "sha256": "521585f040d5321bc5cb9aa1401131350079ded70e99c2e4a61a8fe82dee83ee",
-      "source": "device snapshot captured 2026-10-01",
-      "changes": []
+      "bytes": 18892,
+      "sha256": "dafd703509c5ab855cc8b5ad0be6e5e66fb2df46d843c696089510fc75574a4e",
+      "source": "current device entry synchronized and verified 2026-10-17",
+      "changes": [
+        "Shared shell/stop helpers included in recoverable migration; Bash restore instructions."
+      ],
+      "device_path": "debian-shell.sh"
     },
     "reference/termux/debian-stop.sh": {
-      "bytes": 3822,
-      "sha256": "1e8417d7ba37a7767da6cba1f91c60c686994bb3afe80b5b3faaeadcb3fc5c50",
-      "source": "device snapshot captured 2026-10-01",
-      "changes": []
+      "bytes": 3826,
+      "sha256": "1c0a31373b14ae0f2dd119e04b55ac86b8f25ace6fc04911a7bc40f5247e97c4",
+      "source": "current device entry synchronized and verified 2026-10-17",
+      "changes": [
+        "Shared shell/stop helpers included in recoverable migration; Bash restore instructions."
+      ],
+      "device_path": "debian-stop.sh"
     },
     "reference/chroot/gpu-app.sh": {
       "bytes": 446,
@@ -39,19 +47,23 @@
     "reference/termux/debian-desktop.sh": {
       "bytes": 230,
       "sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
-      "source": "current device entry deployed 2026-10-12",
+      "source": "current device entry synchronized and verified 2026-10-17",
       "changes": [
-        "All normal desktop paths select the current unified GPU release."
-      ]
+        "All normal desktop paths select the current unified GPU release.",
+        "Shared current gpu-run entry, 120 FPS defaults; session behavior preserved."
+      ],
+      "device_path": "debian-desktop.sh"
     },
     "reference/termux/debian-zink-widget.sh": {
       "bytes": 234,
       "sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
-      "source": "current device entry deployed 2026-10-12",
+      "source": "current device entry synchronized and verified 2026-10-17",
       "changes": [
-        "All normal desktop paths select the current unified GPU release."
-      ]
+        "All normal desktop paths select the current unified GPU release.",
+        "Shared current gpu-run entry, 120 FPS defaults; session behavior preserved."
+      ],
+      "device_path": ".shortcuts/debian-zink.sh"
     }
   },
-  "updated_on": "2026-10-12"
+  "updated_on": "2026-10-17"
 }

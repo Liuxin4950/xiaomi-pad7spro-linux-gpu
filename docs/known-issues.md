@@ -1,12 +1,13 @@
 # 已知界限与排查
 
-更新：2026-10-12，当前 [r3.3](CURRENT-STATE.md)。
+更新：2026-10-17，当前 [r3.5 FPS 修复版](CURRENT-STATE.md)。
 
 | 情况 | 已知事实 / 操作 |
 |---|---|
 | 开发/互联网/办公子菜单为空 | 曾因同步 gpu-run 时误复制 0664 权限而被 Garcon 自动隐藏，已恢复为 0755 并刷新面板；应用和分类未删除。后续同时检查入口可执行权限与内容哈希 |
 | 入口已更新但旧应用未变 | 单实例仍复用旧主进程；保存工作后完整重开，查实际 renderer/Skia |
-| X11 报 60 Hz 不代表实屏 60 张新画面 | 当前新 X server 已加载原生 tick 门控；WSI 上限仍保留，实际呈现需单独跟踪 |
+| 配置 120 Hz 不代表每秒 120 张新画面 | 当前 X11/WSI 均为 120，分别记录应用 rAF、WSI 提交、SF 呈现与屏幕独立内容率 |
+| 安装新 APK 后直接打开画面 | Activity renderer 与独立 X server 生命周期不同；分别核对映射哈希，不能据安装成功判断服务端已换版 |
 | 单核满载或 idle 5 W | 独立测进程/线程；曾由搜狗 CursorAnchorInfo/Hook 忙循环造成，不把它直接归因于 Mali |
 | daemon NullPointerException | 固件处理一条 NULL subclass 根事件不设防；已备份隔离，更新/新根事件可能复发 |
 | 原生二维路径应用兼容问题 | `PAD_GPU_SKIA_BACKEND=angle` 是原来的 Mali 硬件路径；不自动切 CPU |

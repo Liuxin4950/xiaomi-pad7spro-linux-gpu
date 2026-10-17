@@ -2,7 +2,7 @@
 
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
-更新：2026-10-12。固定源码构建、完整前缀安装和作者设备的日常入口迁移已实现；用户已从 Termux Widget 重启并确认桌面启动成功。本流程以已有 root chroot/XFCE 环境为起点，不是从 Android 原厂状态开始的全自动安装器。
+更新：2026-10-17。固定源码构建、完整前缀安装和作者设备的日常入口迁移已实现；用户已从 Termux Widget 重启并确认桌面启动成功。本流程以已有 root chroot/XFCE 环境为起点，不是从 Android 原厂状态开始的全自动安装器。
 
 ## 前置环境
 
@@ -19,7 +19,7 @@
 在 Debian chroot 中按 [构建说明](build.md)准备依赖。选择尚不存在的专用前缀，不覆盖正在使用的目录；以下 `next` 仅是下一次构建的示例名字：
 
 ```sh
-bridge_prefix=/opt/pad7spro-gpu-next
+bridge_prefix="/opt/pad7spro-gpu-candidate-$(date +%Y%m%d-%H%M%S)"
 bash scripts/build.sh --prefix "$bridge_prefix" --jobs 4
 bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 ```
@@ -60,7 +60,7 @@ ln -sfn "$bridge_prefix/bin/gpu-launcher" /usr/local/bin/gpu-launcher
 /usr/local/bin/gpu-run info
 ```
 
-当前作者设备这两个链接当前指向 `/opt/pad7spro-gpu-observe-20261012`。前缀由入口自身推导，不在各应用图标中分别写库路径。切换链接影响以后启动的进程，已有进程继续使用已加载组件。
+当前作者设备这两个链接指向 `/opt/pad7spro-gpu-fps-20261017`。前缀由入口自身推导，不在各应用图标中分别写库路径。切换链接影响以后启动的进程，已有进程继续使用已加载组件。
 
 普通软件可继承新桌面的 GPU 环境直接启动；Chromium/Electron、WebKitGTK/Tauri 的入口选择见 [配置说明](configuration.md)。自定义 `.desktop` 时，已知应用的 `Exec` 可分别调用 `/usr/local/bin/gpu-run chromium %U`、`chatgpt %U`、`trae %F`、`cc-switch`，保留原图标和 URL/文件占位符。
 
@@ -73,7 +73,7 @@ python3 scripts/activate-desktop.py
 python3 scripts/activate-desktop.py --apply
 ```
 
-它要求已安装并验证 `/usr/local/bin/gpu-run`，并要求作者原有兼容入口和 Termux 启动脚本存在。工具更新已知 `.desktop`、XFCE helper/面板入口、旧兼容转发脚本和 Termux 的 `desktop-zink.sh`，验证桌面文件并保留文件权限、所有者及可读的 SELinux 标签；不为干净 rootfs 创建完整桌面环境，也不改变默认浏览器/MIME 的选择。
+它要求已安装并验证 `/usr/local/bin/gpu-run`，并要求作者原有兼容入口和 Termux 启动脚本存在。工具更新已知 `.desktop`、XFCE helper/面板入口、旧兼容转发脚本和 Termux 的桌面、Widget、共享 shell 与停止脚本，验证桌面文件并保留文件权限、所有者及可读的 SELinux 标签；不为干净 rootfs 创建完整桌面环境，也不改变默认浏览器/MIME 的选择。
 
 作者设备已执行该迁移。Widget 的 `.shortcuts/debian-zink.sh` 继续调用 `~/mali-work/desktop-zink.sh`；该脚本经统一 GPU 入口启动 XFCE，并保留挂载、看门狗和既有会话复用逻辑。保存工作、正常结束旧会话后再从 Widget 启动，才采用新会话环境；用户已经完成这一步并确认成功。
 
@@ -81,11 +81,11 @@ python3 scripts/activate-desktop.py --apply
 
 ## 显示端与回退
 
-当前已安装 gpu-direct APK：可见裁剪、前端 GPU 批处理和输入接口修正已部署；新 X server 已重开并映射当前 APK 的原生 tick 门控代码；以后升级仍需正常重开才会加载。桥接、入口、已安装 APK 和已运行进程分别核对，不把更新文件当成热更新。
+当前已安装 gpu-direct APK：可见裁剪、前端 GPU 批处理和输入接口修正已部署；新 X server 已重开并映射当前 APK 的原生 tick 门控代码；以后升级仍需正常重开才会加载。桥接、入口、已安装 APK 和已运行进程分别核对，不把更新文件当成热更新。仅显示已有桌面可直接打开 Termux:X11；仅 Linux 应用换库时正常重开该应用。
 
 回退时将系统链接指回保留的、已核对的完整前缀，并在保存工作后正常重新建立会话。不要覆盖运行中库、强行替换活跃 mount namespace，或用全局进程清理代替应用回退。安装器目前不提供自动升级/卸载；`debian-stop.sh` 停止的是整个 chroot，不是桥接卸载器。
 
-当前已完成作者设备构建/安装、四类应用短验收和 Widget 重启确认；干净同机型 rootfs 的端到端复现、长时导航/休眠恢复、同条件功耗和候选 APK 验收仍需独立记录。
+当前已完成作者设备构建/安装、四类应用短验收和 Widget 重启确认；干净同机型 rootfs 的端到端复现、长时导航/休眠恢复、同条件功耗仍需独立记录；当前 APK/WSI 的帧率和像素联合验收见 [交付证据](../evidence/fps120-release-2026-10-17.json)。
 
 ## 2026-10-15：可恢复的入口切换
 
