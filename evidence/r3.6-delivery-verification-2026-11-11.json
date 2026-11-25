@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-11",
+  "release_id": "r3.6-rc1",
+  "status": "local-candidate-archive-verified-not-formally-released",
+  "delivery_directory": "build/r3.6-rc1-delivery-20261111",
+  "android_shared_copy": "/storage/emulated/0/Download/pad-gpu-r3.6-rc1-20261111",
+  "files": {
+    "SHA256SUMS": "866d0ab76c010085b964c41529a1bcfab9a4a7e3eae0565187e8f3839c2526fb",
+    "build-report.json": "db0a4d79a000716cfaf2861dacd348986c3ba3231fba86ae841b43429491d6bb",
+    "dependency-artifacts.json": "0fd2de574c9002536d6d0777794c98efe61d140f6afb988b729abeaf5ddf8071",
+    "pad-gpu-r3.6-rc1-termux.tar.gz": "5635cc3811b31c3f7d23699163740ce7cee9504db87b42856d0b2d65f508a95b",
+    "release.json": "c21e30868f3a71f87ea5d88d98469c532feaccdd3d0c18b3ef0a8b4a58f599f7",
+    "source-inventory.json": "367156423bb51ce7a91a8f8bb2485aea20595092892b90587de6e0ad0a35c7cd",
+    "termux-x11-corresponding-source.tar.gz": "5fcdbeb53cb6f96cabfc4b77a8a569155a3da3115a3d4ce272e2447f65d8dfb4"
+  },
+  "source_inventory_files": 203,
+  "archive_extracted_and_all_source_hashes_verified": true,
+  "bundled_apk_and_companion_hashes_verified": true,
+  "personal_adb_and_signing_keys_absent": true,
+  "extracted_migration_tests_passed": 7,
+  "bundle_test_log_sha256": "8e542716b547adc58cb2b548931fec808b6209a2513ebc607a10bca19c5382cc",
+  "package_installed": false,
+  "desktop_restarted": false,
+  "public_release_created": false
+}

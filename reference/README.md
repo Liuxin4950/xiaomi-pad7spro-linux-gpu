@@ -1,5 +1,7 @@
 # Termux 配套组件与启动资源
 
+> 以下版本表为 2026-10-17 历史记录。当前资源已参数化，使用 `scripts/bootstrap-termux.sh` / `configure-termux.py` 接入新 Termux；当前身份和资源校验见 [CURRENT-STATE](../docs/CURRENT-STATE.md) 与 [r3.6 发布说明](../docs/r3.6-release.md)，不再按旧五份资源哈希判断当前版本。
+
 2026-10-17：配套资源随 [r3.5 最终版本](../docs/r3.5-efficiency.md)收尾，当前 APK `88346b58…`，五份入口及原始测试均保留。
 
 更新：2026-10-17。当前默认桥接为 `/opt/pad7spro-gpu-fps-20261017`；运行状态见 [CURRENT-STATE](../docs/CURRENT-STATE.md)。本目录保存作者设备的入口参考，精确内容及部署校验见 [资源清单](../evidence/reference-manifest.json)和 [本次同步证据](../evidence/termux-resources-2026-10-17.json)。

@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "date": "2026-11-11",
+  "issue": "r3.6-final-20261111 APK crashed on every Termux:X11 launch (SIGSEGV)",
+  "root_cause": "The 00:29 finalize pass moved computeCursorOverlayRect() to the top of resendCursorOverlayBuffer(). resend is reached from refreshContext() -> ensureCursorOverlay() when the activity Surface arrives, before the X server has shared its state (state == nullptr); computeCursorOverlayRect dereferences state->cursor.width (offset 0x594) unconditionally.",
+  "crash_signature": {
+    "signal": "SIGSEGV SEGV_MAPERR, fault addr 0x594 (null pointer dereference)",
+    "frames": [
+      "Renderer::computeCursorOverlayRect(int*, int*, unsigned int*, unsigned int*)+4",
+      "Renderer::resendCursorOverlayBuffer()+64",
+      "Renderer::threadLoop()+636",
+      "Renderer::initThread()+1188"
+    ],
+    "occurrences": [
+      "2026-11-11T00:32",
+      "2026-11-11T10:14",
+      "2026-11-11T10:15"
+    ]
+  },
+  "fix": {
+    "summary": "guard state and cursorOverlayRenderTarget in resendCursorOverlayBuffer(); defensive null-state return in computeCursorOverlayRect()",
+    "source": "build/r3.6-cursor-final-20261110/source/lorie/src/main/cpp/lorie/renderer.cpp",
+    "patch": "patches/termux-x11/0015-cursor-surfacecontrol.patch",
+    "patch_sha256": "f795259c659f29499fd5e37db6bc15fc9c260ece01ae3d8468078b086b2fa1cf"
+  },
+  "artifacts": {
+    "native_sha256": "2439a66a9c8c71a6f1ce580533d5d3588c7e377c70fb0b3fee7e7cbf591b9a8f",
+    "apk": "build/r3.6-release-20261111/termux-x11-r3.6-final-fixed.apk",
+    "apk_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223",
+    "sign_cert_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "zipalign": "ok"
+  },
+  "install": {
+    "method": "cmd package install --user 0 -r",
+    "result": "Success",
+    "installed_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223",
+    "versionName": "1.03.01-d55f1b7-gpu-r3.6-final-20261111"
+  },
+  "runtime_check": {
+    "launch": "am start -W: COLD, status ok, TotalTime 677 ms",
+    "process_maps_fixed_apk": true,
+    "crash_buffer_after_relaunch": "empty",
+    "note": "X server was not running; launching the display app without a server shows a black screen, not a crash. Desktop session cold start not exercised here."
+  },
+  "rollback": {
+    "crashing_apk": "build/r3.6-release-20261111/previous-installed-crashing.apk (sha256 ba9310e30dfe1260112ed79aa9fee243e4ce58380a3be5fb5eae309429a28bb0)",
+    "prior_cursor_candidate": "build/r3.6-release-20261111/previous-installed-candidate.apk (sha256 d237fa10ef008d1671791553ce87d7e459c0b4d7d22704d74dca0ae28a796c54)",
+    "r3.5_production": "build/r3.6-research-20261110/rollback/"
+  }
+}

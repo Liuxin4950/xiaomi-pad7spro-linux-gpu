@@ -1,0 +1,66 @@
+--- a/lorie/src/main/cpp/lorie/renderer.cpp
++++ b/lorie/src/main/cpp/lorie/renderer.cpp
+@@ -1186,6 +1186,18 @@
+     state->renderedFrames++;
+ }
+ 
++// Cursor transactions do not read the root buffer or consume its frame permit.
++// Only a crop pan needs the desktop redraw path before publishing the new position.
++bool Renderer::canUpdateCursorOverlayOnly() {
++    if (!state || !state->surfaceAvailable ||
++        !(state->cursor.moved || state->cursor.updated) ||
++        sourceWidth <= 0.f || sourceHeight <= 0.f || !cursorOverlayUsable())
++        return false;
++    float left, top;
++    computePan((float) state->cursor.x, (float) state->cursor.y, &left, &top);
++    return left == panSourceLeft && top == panSourceTop;
++}
++
+ bool Renderer::shouldWait(bool *waitingForBuffers) {
+     bool buffersChanged, gpuCopyPending;
+     if (viewportChanged) {
+@@ -1207,6 +1219,10 @@
+             *waitingForBuffers = false;
+         lastRequestedBufferId = state->rootWindowTextureID;
+     }
++
++    // A stalled root permit/buffer must not hold the independent pointer layer.
++    if (canUpdateCursorOverlayOnly())
++        return false;
+ 
+     if (!state || !state->surfaceAvailable || !lorieFrameGateReady(&state->waitForNextFrame) || *waitingForBuffers)
+         // Even in the case if there are pending changes, we can not draw it without rendering surface
+@@ -1272,18 +1288,13 @@
+         // Prefer a full redraw over the standalone apply below so a pending GPU copy shares one
+         // lock+fence with the root/cursor draw, instead of two GPU round trips per frame.
+         bool gpuCopyPending = state && state->gpuCopyQueue.readIndex != state->gpuCopyQueue.writeIndex;
+-        bool overlayOnly = state && state->surfaceAvailable && !state->drawRequested &&
+-            !gpuCopyPending && (state->cursor.moved || state->cursor.updated) &&
+-            sourceWidth > 0.f && cursorOverlayUsable();
+-        if (overlayOnly) {
+-            float left, top;
+-            computePan((float)state->cursor.x, (float)state->cursor.y, &left, &top);
+-            overlayOnly = left == panSourceLeft && top == panSourceTop;
+-        }
+-        if (overlayOnly) {
++        if (canUpdateCursorOverlayOnly()) {
+             markCursorOverlayDirty(state->cursor.updated);
+             state->cursor.moved = state->cursor.updated = FALSE;
+-        } else if (state && state->surfaceAvailable && lorieFrameGateReady(&state->waitForNextFrame) &&
++        }
++        // Still service root/copy work on this iteration; continuous pointer input
++        // must neither bypass the root permit nor starve the desktop.
++        if (state && state->surfaceAvailable && lorieFrameGateReady(&state->waitForNextFrame) &&
+             (state->drawRequested || state->cursor.moved || state->cursor.updated || gpuCopyPending))
+             redrawLocked(&waitingForBuffers);
+         else if (gpuCopyPending)
+--- a/lorie/src/main/cpp/lorie/lorie.h
++++ b/lorie/src/main/cpp/lorie/lorie.h
+@@ -382,6 +382,7 @@
+     void finishGpuCopiesLocked(EGLSync fence, uint64_t serial);
+     void applyPendingGpuCopies();
+     void redrawLocked(bool* waitingForBuffers);
++    bool canUpdateCursorOverlayOnly();
+     bool shouldWait(bool* waitingForBuffers);
+     void threadLoop();
+     void bindTexture(GLuint id) const;

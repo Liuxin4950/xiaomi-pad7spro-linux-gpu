@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-11",
+  "installed_apk_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223",
+  "patch": {
+    "path": "patches/termux-x11/0015-cursor-surfacecontrol.patch",
+    "sha256": "f795259c659f29499fd5e37db6bc15fc9c260ece01ae3d8468078b086b2fa1cf"
+  },
+  "running": {
+    "9972": {
+      "cmd": "com.termux.x11                                                                                     ",
+      "starttime": "16185547",
+      "mapped_apk_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223"
+    },
+    "12234": {
+      "cmd": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120                                                                                                            ",
+      "starttime": "16203306",
+      "mapped_apk_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223"
+    },
+    "12392": {
+      "cmd": "xfce4-session ",
+      "starttime": "16203420"
+    },
+    "12766": {
+      "cmd": "/usr/bin/fcitx5 ",
+      "starttime": "16203491"
+    }
+  },
+  "null_state_regression": "passed",
+  "runtime_scope": "passive process and actual mapping verification only; no installation, launch or restart performed",
+  "pending": [
+    "final fixed package cursor overlay physical runtime acceptance",
+    "full session cold-start acceptance"
+  ],
+  "goal_complete": false,
+  "regression_log_sha256": "4101c4c8e2d893f61b992584cee32a105d94b8a054fa1221a8b976d96da30a51"
+}

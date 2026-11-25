@@ -80,6 +80,14 @@ struct Renderer {
     float hiddenPanSourceTop = -1, panSourceTop = 0, panSourceLeft = 0;
     float pinchAnchorSourceX = -1, pinchAnchorSourceY = -1;
     float pinchAnchorFracX = .5f, pinchAnchorFracY = .5f;
+#ifdef TEST_CURSOR_OVERLAY
+    float sourceWidth = 0, sourceHeight = 0, sourceLeft = 0, sourceTop = 0;
+    int renderViewportX = 0, renderViewportY = 0, renderViewportW = 0, renderViewportH = 0;
+    bool overlayAvailable = false;
+    bool cursorOverlayUsable() const { return overlayAvailable; }
+    void computePan(float, float, float*, float*) const;
+    void markCursorOverlayDirty(bool) { event("overlay-update"); }
+#endif
     struct { GLuint id = 1; } cursor;
     void redrawLocked(bool*);
     void applyPendingGpuCopies() { event("standalone-copy"); }
@@ -129,6 +137,15 @@ int main() {
     missingBuffer = true; renderer.redrawLocked(&waiting);
     assert(waiting && lorieFrameGateReady(&shared.waitForNextFrame));
     assert(events == std::vector<std::string>{"standalone-copy"});
+#ifdef TEST_CURSOR_OVERLAY
+    reset(); Renderer overlay; overlay.overlayAvailable = true;
+    shared.cursor.updated = true; waiting = false;
+    overlay.redrawLocked(&waiting);
+    const std::vector<std::string> overlayExpected = {"root-lock", "copy", "clear", "bind-root",
+        "root-draw", "overlay-update", "fence", "flush", "wait", "root-unlock", "swap"};
+    assert(events == overlayExpected);
+    assert(!shared.cursor.moved && !shared.cursor.updated && shared.renderedFrames == 1);
+#endif
     reset(); root.desc.height = 599; waiting = false;
     renderer.redrawLocked(&waiting);
     assert(waiting && lorieFrameGateReady(&shared.waitForNextFrame));

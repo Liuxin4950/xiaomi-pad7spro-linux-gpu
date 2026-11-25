@@ -60,7 +60,8 @@ int main(int argc, char **argv)
     const char *timings_path = NULL;
     FILE *timings = NULL;
     int replace = 0, bgra = 0, solid_red = 0, resize = 0, motion = 0, fullscreen = 0, prewait = 0;
-    int regions = 0, empty_regions = 0;
+    int regions = 0, empty_regions = 0, many_regions = 0;
+    unsigned many_cols = 6, many_rows = 4;
     unsigned rate = 0;
     VkPresentModeKHR mode = VK_PRESENT_MODE_FIFO_KHR;
     for (int i = 1; i < argc; ++i) {
@@ -75,6 +76,20 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--fullscreen")) fullscreen = 1;
         else if (!strcmp(argv[i], "--prewait-render")) prewait = 1;
         else if (!strcmp(argv[i], "--regions")) regions = 1;
+        else if (!strcmp(argv[i], "--many-regions")) {
+            /* Many small damage rectangles per present. Optional COLSxROWS
+             * overrides the default 6x4 grid (24 rectangles). */
+            many_regions = 1;
+            if (i + 1 < argc && strchr(argv[i + 1], 'x') && !strchr(argv[i + 1], '-')) {
+                char *end = NULL;
+                unsigned long c = strtoul(argv[i + 1], &end, 10);
+                unsigned long r = end && *end == 'x' ? strtoul(end + 1, &end, 10) : 0;
+                if (!end || *end || !c || !r || c > 64 || r > 64) return 64;
+                many_cols = (unsigned)c;
+                many_rows = (unsigned)r;
+                ++i;
+            }
+        }
         else if (!strcmp(argv[i], "--empty-regions") || !strcmp(argv[i], "--zero-damage")) empty_regions = 1;
         else if (!strcmp(argv[i], "--markers")) marker_fd = open("/proc/1/root/sys/kernel/tracing/trace_marker", O_WRONLY | O_CLOEXEC);
         else if (!strcmp(argv[i], "--rate") && i + 1 < argc) rate = number(argv[++i]);
@@ -91,12 +106,14 @@ int main(int argc, char **argv)
             if (!idle_ms && strcmp(value, "0")) return 64;
         }
         else if (!strcmp(argv[i], "--timings") && i + 1 < argc) timings_path = argv[++i];
-        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV] [--motion] [--fullscreen] [--rate N] [--prewait-render] [--markers] [--regions] [--empty-regions]\n", argv[0]); return 64; }
+        else { fprintf(stderr, "usage: %s [--cycles N] [--frames N] [--mailbox] [--replace] [--bgra] [--solid-red] [--resize] [--width N] [--height N] [--delay-ms N] [--idle-ms N] [--timings CSV] [--motion] [--fullscreen] [--rate N] [--prewait-render] [--markers] [--regions] [--many-regions [COLSxROWS]] [--empty-regions]\n", argv[0]); return 64; }
     }
     /* Damage is relative to the previous swapchain present. An empty list
      * means a full update, so let the colors keep changing to test it. */
-    if (regions && empty_regions) return 64;
-    if (regions) motion = 1;
+    if ((regions || many_regions) && empty_regions) return 64;
+    if (regions || many_regions) motion = 1;
+    if (many_regions && (many_cols * many_rows > 128 ||
+        width / many_cols < 3 || height / many_rows < 3)) return 64;
     if (!cycles || !frames || !width || !height || width > 10000 || height > 10000 || delay_ms > 10000 ||
         (resize && (width < 32 || height < 32)) || rate > 240 || (motion && (width < 64 || height < 32))) return 64;
     if (rate) delay_ms = 0;
@@ -189,7 +206,7 @@ int main(int argc, char **argv)
     const char *device_extensions_list[2] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
                                              VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME};
     uint32_t device_extension_count = 1;
-    if (regions || empty_regions) {
+    if (regions || empty_regions || many_regions) {
         uint32_t property_count = 0;
         CHECK(vkEnumerateDeviceExtensionProperties(physical, NULL, &property_count, NULL));
         if (!property_count || property_count > 4096) goto done;
@@ -374,16 +391,30 @@ int main(int argc, char **argv)
                 render_ready_us = (now_ns()-started)/1000;
             }
             VkPresentRegionKHR region = {0};
-            VkRectLayerKHR damage_rects[2];
+            VkRectLayerKHR damage_rects[128];
             VkPresentRegionsKHR regions_info = {.sType = VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR,
                 .swapchainCount = 1, .pRegions = &region};
             VkPresentInfoKHR present = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1, .pWaitSemaphores = &rendered[index],
                 .swapchainCount = 1, .pSwapchains = &swapchain, .pImageIndices = &index};
-            if (regions || empty_regions) {
+            if (regions || empty_regions || many_regions) {
                 if (empty_regions) {
                     region.rectangleCount = 0;
                     region.pRectangles = NULL;
+                } else if (many_regions) {
+                    /* A grid of small non-adjacent tiles (1px gutters so the
+                     * rectangles cannot coalesce into a bounding box). Each
+                     * present claims many damage pieces at once. */
+                    unsigned count = 0;
+                    for (unsigned r = 0; r < many_rows; ++r)
+                        for (unsigned c = 0; c < many_cols; ++c) {
+                            int32_t x = (int32_t)(c * (extent.width / many_cols)) + 1;
+                            int32_t y = (int32_t)(r * (extent.height / many_rows)) + 1;
+                            damage_rects[count++] = (VkRectLayerKHR){{x, y},
+                                {extent.width / many_cols - 2, extent.height / many_rows - 2}, 0};
+                        }
+                    region.rectangleCount = count;
+                    region.pRectangles = damage_rects;
                 } else if (frame == 0) {
                     damage_rects[0] = (VkRectLayerKHR){{0, 0}, extent, 0};
                     region.rectangleCount = 1;

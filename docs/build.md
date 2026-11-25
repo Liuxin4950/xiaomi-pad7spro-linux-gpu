@@ -1,6 +1,6 @@
 # 从固定源码构建
 
-> 当前发行版已于 2026-10-17 定为 [r3.5 最终版本](r3.5-efficiency.md)。本页方法继续供参考；早期版本、候选和测量按原日期保留，运行身份与边界以 [CURRENT-STATE](CURRENT-STATE.md) 为准。
+> Linux 基线仍为 r3.5；2026-11-11 已全新构建 r3.6-rc1 X11 及同源 loader。运行身份见 [CURRENT-STATE](CURRENT-STATE.md)，发布范围见 [r3.6-release](r3.6-release.md)。早期构建记录按原日期保留。
 
 当前唯一基线和重启状态见 [CURRENT-STATE](CURRENT-STATE.md)。
 
@@ -71,7 +71,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" "$bridge_prefix"
 - libhybris、WSI 和 Android headers 按固定上游源码构建，保留其许可证并应用项目补丁。
 - 修改版 bionic 是固定上游二进制运行依赖，当前流程没有从 Android 整体源码重建它；不能声称全部依赖均在本仓库从源码生成。
 - Android 原厂 Mali 驱动仍由用户固件提供，不包含在项目发布源码中。
-- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前完整补丁与实际 APK/进程状态见 CURRENT-STATE 和 r3.5 文档。APK 从空对象目录完整复现仍需独立验证。
+- `patches/termux-x11/` 单独管理显示端补丁。桥接构建不会重建、签名或安装 APK；当前 X11 0001–0017 已通过空对象目录的完整构建，产物与进程身份见 CURRENT-STATE；跨设备复现仍未验收。
 
 补丁可应用、构建/安装成功、GPU 设备提交成功、窗口像素正确和长期应用稳定是不同结论。更多验收范围见 [验证状态](development-status.md)、[验证方法](validation.md)和[功耗计划](benchmarks.md)。
 
@@ -106,4 +106,29 @@ python3 scripts/build-x11.py \
 
 默认只构建 arm64-v8a；`--abis arm64-v8a,armeabi-v7a,x86,x86_64` 才包含四 ABI，不把单 ABI 产物叫 universal。`build-report.json` 记录提交、子模块、补丁、编译器/工具链和产物哈希；`dependency-artifacts.json` 记录已解析外部模块版本及对应缓存文件校验，可能包含未使用的 classifier；它是依赖溯源，不能冒充每个实际参与构建的文件清单。版本名/BuildConfig 使用固定 X11 提交，不继承外层仓库 HEAD 或构建日期。APK 校验签名和 16 KiB ZIP 对齐，不承诺字节级可复现。
 
+2026-11-11：默认 versionName 为 `1.03.01-d55f1b7-gpu-r3.6-rc1`，可用 `--version-name` 显式指定；版本名不决定验收状态。构建同时生成 `x11-companion/`，内含同源 loader、两个 CLI 包装和 SHA256.json，供新 Termux 配置工具校验使用。上游打包文件名虽然带 universal，默认产物只含 arm64-v8a。同源导出不携带作者密钥；APK 使用上游公开测试证书。
+
+生成本机候选归档（新输出目录）：
+
+```sh
+python3 scripts/package-release.py --x11-build build/my-x11-candidate \
+  --output build/my-r3.6-candidate-delivery
+```
+
+工具核对补丁、APK、native 源码和 companion 校验，保存仓库工作树源码清单、对应 X11 源码、依赖报告和外层 SHA256SUMS。候选状态固定为未正式发布；不会安装或联网发布，不包含 Linux 二进制前缀和个人签名/ADB key。
+
 只调整 Java/打包时，可显式 `--reuse-native-build /path/to/prior-output`；脚本核对旧产物与新导出 native 源码、编译器/工具链、补丁和库哈希，拒绝不匹配的复用，并在报告区分 fresh 与 verified reuse。修改 native 源码或工具链后重新从空对象目录编译。
+
+
+## r3.6 Linux 候选（2026-11-25）
+
+本机独立候选使用：
+
+```sh
+bash scripts/build.sh --prefix /opt/pad7spro-gpu-r36-20261125 \
+  --work "$PWD/build/r3.6-linux-20261125" --jobs 4
+bash scripts/install.sh "$(cat build/r3.6-linux-20261125/last-stage.txt)" \
+  /opt/pad7spro-gpu-r36-20261125
+```
+
+该路径仅用于本机候选复现，不是所有设备通用固定路径。构建期间应保持独立 work 目录；目标前缀不可已存在。证据与哈希见 `evidence/r3.6-linux-candidate-20261125.json`。不要把 prefix 直接改名；RUNPATH、ICD 和 manifest 均在构建时固定。该候选没有激活生产入口。

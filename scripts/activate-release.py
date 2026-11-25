@@ -14,6 +14,7 @@ import tempfile
 
 LINK_DIR = Path('/usr/local/bin')
 DESKTOP_SCRIPT = Path(__file__).resolve().with_name('activate-desktop.py')
+ENTRY_LINKS = ('gpu-run', 'gpu-launcher', 'run-gpu', 'gpu-env')
 
 
 def digest(path):
@@ -66,7 +67,7 @@ def verify_release(prefix):
         path = prefix / name
         if not path.is_symlink() or str(path.readlink()) != target or not path.resolve().is_relative_to(prefix):
             raise ValueError('symlink mismatch: ' + name)
-    for name in ('gpu-run', 'gpu-launcher'):
+    for name in ENTRY_LINKS:
         if not os.access(prefix / 'bin' / name, os.X_OK):
             raise ValueError('missing executable: ' + name)
     return prefix
@@ -78,11 +79,15 @@ def build_plan(prefix, termux_home=None):
         command += ['--termux-home', str(termux_home)]
     desktop = json.loads(subprocess.check_output(command, text=True))
     links = {}
-    for name in ('gpu-run', 'gpu-launcher'):
+    for name in ENTRY_LINKS:
         link = LINK_DIR / name
-        if not link.is_symlink():
+        if link.is_symlink():
+            before = str(link.readlink())
+        elif name in ('gpu-run', 'gpu-launcher') or os.path.lexists(link):
             raise ValueError('expected existing symlink: ' + str(link))
-        links[str(link)] = dict(before=str(link.readlink()), after=str(prefix / 'bin' / name))
+        else:
+            before = None
+        links[str(link)] = dict(before=before, after=str(prefix / 'bin' / name))
     return dict(format=1, applied=False, state='planned', prefix=str(prefix), links=links,
                 desktop=desktop, desktop_command=command, entries=[])
 
@@ -115,7 +120,11 @@ def restore(backup, report, apply=False):
     # Validate every object before restoring any, including post-deploy user edits.
     for name, item in report['links'].items():
         link = Path(name)
-        if not link.is_symlink() or str(link.readlink()) not in (item['before'], item['after']):
+        if item['before'] is None:
+            valid = not os.path.lexists(link) or (link.is_symlink() and str(link.readlink()) == item['after'])
+        else:
+            valid = link.is_symlink() and str(link.readlink()) in (item['before'], item['after'])
+        if not valid:
             raise ValueError('link changed outside this transaction: ' + name)
     for item in report['entries']:
         path, saved = Path(item['path']), backup / item['backup']
@@ -144,7 +153,10 @@ def restore(backup, report, apply=False):
             if os.path.lexists(temporary):
                 os.unlink(temporary)
     for name, item in report['links'].items():
-        replace_link(Path(name), item['before'])
+        if item['before'] is None:
+            Path(name).unlink(missing_ok=True)
+        else:
+            replace_link(Path(name), item['before'])
     directories = set()
     for item in report['entries']:
         path = Path(item['path'])
@@ -168,7 +180,11 @@ def activate(prefix, backup, termux_home=None):
         write_report(backup, report)
         for name, item in report['links'].items():
             path = Path(name)
-            if not path.is_symlink() or str(path.readlink()) != item['before']:
+            if item['before'] is None:
+                valid = not os.path.lexists(path)
+            else:
+                valid = path.is_symlink() and str(path.readlink()) == item['before']
+            if not valid:
                 raise ValueError('link changed since planning: ' + name)
             replace_link(path, item['after'])
         subprocess.run(report['desktop_command'] + ['--apply', '--expected-plan',

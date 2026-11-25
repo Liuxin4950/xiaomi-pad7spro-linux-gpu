@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "date": "2026-11-25",
+  "release_id": "r3.6-linux-candidate-20261125",
+  "status": "installed-side-by-side-candidate-not-production",
+  "architecture": "aarch64",
+  "prefix": "/opt/pad7spro-gpu-r36-20261125",
+  "build_directory": "build/r3.6-linux-20261125",
+  "source_lock_sha256": "961828fbbc21b6eff7f2a5782fa99525bcbb3f1d25bbfb3b9e18013bc5c6b6ec",
+  "build_info_sha256": "e7f44de523cb524667cd1c5ed4220555b473da80dfa81edeaa8e250df7f0100b",
+  "install_manifest_sha256": "4c9d807705dffbfa09f822fdee1a79a84e282f4cb0278b226a0f6d695a9818bc",
+  "artifacts_sha256": {
+    "install-manifest.json": "4c9d807705dffbfa09f822fdee1a79a84e282f4cb0278b226a0f6d695a9818bc",
+    "build-info.json": "e7f44de523cb524667cd1c5ed4220555b473da80dfa81edeaa8e250df7f0100b",
+    "bin/gpu-run": "c048ca90c01b16ffa22ebd2187edf932691ace6f366c5ccff86e042fd4aac129",
+    "bin/gpu-env": "31bd2f813514b11e029bb04d26cbe37cb8e35fb3e0b6f9071fb092a75ad789bb",
+    "bin/run-gpu": "4d98085ce5c4cc36cc0c84c997661df51149fcf6ce290c1b4fddc3f197936eb1",
+    "lib/libsysvk.so": "7740d9ddbc53c0153b5c9a954e3f841af412e7dfcb42e9eb1a03f612d1f9e288",
+    "share/vulkan/implicit_layer.d/libVkLayer_window_system_integration.so": "9f80a3bcf01ad7205f52934104d8d84c2ee33dd9289f661c5ca095200b85fb00"
+  },
+  "verification": {
+    "fresh_aarch64_build": true,
+    "install_into_dedicated_prefix": true,
+    "doctor": true,
+    "vulkan_device": "Mali-G925-Immortalis",
+    "vulkan_submit_readback": true,
+    "present_swapchain_recreate": true,
+    "production_prefix_changed": false,
+    "desktop_restarted": false,
+    "x11_apk_replaced": false,
+    "ahb_allocate_send_receive_readback_release": true
+  },
+  "limits": [
+    "No real CC Switch/Trae content acceptance on this prefix yet",
+    "No transparency/alpha matrix acceptance",
+    "No physical 120 FPS or power claim",
+    "Current production remains /opt/pad7spro-gpu-fps-20261017 r3.5"
+  ]
+}

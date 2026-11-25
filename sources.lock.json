@@ -147,6 +147,18 @@
       {
         "path": "patches/termux-x11/0014-defer-tick-copy-wake.patch",
         "sha256": "5e6f06f65829e002e1a2bede13e1e1836a01e0256ed18f6b0f7e4bf351106c42"
+      },
+      {
+        "path": "patches/termux-x11/0015-cursor-surfacecontrol.patch",
+        "sha256": "f795259c659f29499fd5e37db6bc15fc9c260ece01ae3d8468078b086b2fa1cf"
+      },
+      {
+        "path": "patches/termux-x11/0016-cursor-independent-wake.patch",
+        "sha256": "c39cd903213475449f5c70a6f89df452ccd7a8b7759e4d51fbfba63c2a6b06d0"
+      },
+      {
+        "path": "patches/termux-x11/0017-mouse-unbuffered-input.patch",
+        "sha256": "83af392cc541478393b9c5a7d84a842aa58d4ba706787edb317b853b2dbf38a0"
       }
     ],
     "build": "Optional Android APK; built separately from the Linux bridge"

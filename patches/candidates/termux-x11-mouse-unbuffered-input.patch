@@ -1,0 +1,17 @@
+--- a/lorie/src/main/java/com/termux/x11/MainActivity.java
++++ b/lorie/src/main/java/com/termux/x11/MainActivity.java
+@@ -173,6 +173,14 @@
+         LorieView lorieView = findViewById(R.id.lorieView);
+         View lorieParent = (View) lorieView.getParent();
+ 
++        // Hover/relative mouse streams do not pass through ACTION_DOWN. Request
++        // direct input dispatch for their source classes instead of only touch.
++        if (SDK_INT >= VERSION_CODES.R) {
++            int mouseSources = InputDevice.SOURCE_CLASS_POINTER | InputDevice.SOURCE_CLASS_TRACKBALL;
++            lorieParent.requestUnbufferedDispatch(mouseSources);
++            lorieView.requestUnbufferedDispatch(mouseSources);
++        }
++
+         mInputHandler = new TouchInputHandler(this, new InputEventSender(this, lorieView));
+         mLorieKeyListener = (v, k, e) -> {
+             InputDevice dev = e.getDevice();

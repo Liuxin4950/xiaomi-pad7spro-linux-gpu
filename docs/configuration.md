@@ -64,7 +64,7 @@ gpu-run cc-switch
 
 新软件通常可先直接启动或用 `gpu-run auto BINARY`；只有框架自行禁用合成、采用其他窗口后端或要求驱动缺失功能时，才需要单独适配。AppImage、容器内应用以及自行改写图形环境的程序要核对实际执行文件和 renderer，不能承诺所有新软件自动兼容。
 
-CC Switch 的硬件入口保留 WebKit 加速合成、强制 SHM 传输，并通过 `libwebkit-gpu-policy.so` 纠正应用主动关闭硬件加速的真实策略 setter。Chromium/Electron 不加载这个适配库。显式 `webkit` 是针对已确认框架的选择，不是对任意原生程序的通用 preload。WebKitGTK WebGL2 尚不在本机已验证范围。
+CC Switch 保持普通 Zink/Vulkan GPU 桌面环境，但不再套用 WebKit 专用 `LD_PRELOAD` / `PAD_GPU_WEBKIT_POLICY=always` / 强制 SHM。受控对照中，同一份 CC Switch 数据快照下，普通硬件路径的“应用”列表正常显示；强制 WebKit 策略组合呈现空白内容层；仅设置 SHM 环境变量仍正常。故障定位到 CC Switch 专用强制硬件策略与当前 WebKit/Mali 组合不兼容，不是 WSI alpha 能力声明问题。其他明确需要专用 WebKit 策略的程序仍可使用 `gpu-run webkit BINARY`；WebKitGTK WebGL2 尚未覆盖。
 
 Trae 使用 `bin/trae-start`：只在启动最初 8 秒遇到精确 Oilpan cage 地址预留失败、确认 profile 无存活/不明单实例持有者，且没有 GPU、renderer、utility、JS 初始化或日志/GPU 缓存进展标记时，最多重新启动一次。正常运行不周期扫描进程；其他错误不自动重启，重复失败返回非零。这是受限地址空间下的启动容错，不是 GPU 修复，不改用户 profile、V8 内存参数或 ASLR 设置。
 

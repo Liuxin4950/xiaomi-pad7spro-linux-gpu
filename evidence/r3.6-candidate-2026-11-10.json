@@ -1,0 +1,31 @@
+{
+  "backup_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+  "candidate_sha256": "d237fa10ef008d1671791553ce87d7e459c0b4d7d22704d74dca0ae28a796c54",
+  "candidate_native_sha256": "d41b261c3d3324ea648e8199f17dcb576669a3a52a699731693a933fc046476e",
+  "installed_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+  "candidate_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+  "installed_changed": true,
+  "requires_user_arranged_restart": false,
+  "production_wsi_sha256": "d011bb7b220ab83bfb7c136e1e1b3190def27c013cb24775167c405073d77636",
+  "status": "candidate-installed-frontend-loaded-runtime-acceptance-incomplete",
+  "goal_complete": false,
+  "baseline": "r3.5-final-20261017",
+  "candidate_version": "1.03.01-d55f1b7-gpu-r3.6-cursor-candidate",
+  "upstream_cursor_commit": "bbb256c143bc3cda8f450cb5efe0e88428c9aabf",
+  "runtime_acceptance": "cursor-only move/shape/hide/hotspot and attested foreground return passed; cold-start/zoom/rotation/drag/IME incomplete",
+  "writer_status": "Mali Vulkan document and page navigation observed; exit 139; not accepted",
+  "tests": {
+    "cursor-final-regression.log": "15221845111d9a0ebf4a84b6151a2b941ea655863d59dd65f81ee1890f013bcb",
+    "r35-regression.log": "15221845111d9a0ebf4a84b6151a2b941ea655863d59dd65f81ee1890f013bcb",
+    "cursor-overlay-regression.log": "8019cc448be12f145cd98512bea0a6041aa949e223cf89715004a9d856880f96"
+  },
+  "patches": {
+    "patches/candidates/termux-x11-cursor-surfacecontrol-r36.patch": "31e4ff432610f85542a3568aaa800e7197359ab024e1ae20a1dc4806d86c3a07",
+    "patches/candidates/libreoffice-skia-xlib-shared-context.patch": "fd6eae331d2d9b80f70211ea8777e7b2085a54c7b3aa2c6fc4bac01945cd9c57"
+  },
+  "install_authorization": "user explicitly requested candidate APK install",
+  "installed_sha256": "d237fa10ef008d1671791553ce87d7e459c0b4d7d22704d74dca0ae28a796c54",
+  "termux_restarted": false,
+  "server_reloaded": false,
+  "runtime_evidence": "evidence/r3.6-cursor-runtime-2026-11-11.json"
+}

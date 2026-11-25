@@ -200,11 +200,8 @@ configure_hardware() {
   # RandR's advertised refresh is not proof of an MSC/scanout cap. The old
   # installed X11 server still ticks at Android's rate, so retain the cap.
   export PAD_GPU_FIFO_DISPLAY_PACED=0
-  export HYBRIS_LD_LIBRARY_PATH="$prefix/android-override:/apex/com.android.runtime/lib64/bionic:/system/lib64:/vendor/lib64:/vendor/lib64/hw"
-  export HYBRIS_VULKANPLATFORM=null
-  export VK_DRIVER_FILES="$prefix/share/vulkan/icd.d/sysvk_icd.json"
-  export VK_IMPLICIT_LAYER_PATH="$prefix/share/vulkan/implicit_layer.d"
-  export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink
+  [[ -r "$prefix/bin/gpu-env" ]] || { fail 'shared GPU environment helper missing'; return; }
+  source "$prefix/bin/gpu-env"
 }
 
 configure_software() {
@@ -294,7 +291,9 @@ main() {
     chromium) binary=$(application_binary chromium); angle=1 ;;
     trae) binary=$(application_binary trae); angle=1 ;;
     chatgpt) binary=$(application_binary chatgpt); angle=1 ;;
-    cc-switch) binary=/usr/bin/cc-switch; webkit=1 ;;
+    # CC Switch owns its WebKitGTK policy; do not force the generic WebKit
+    # preload/SHM adapter, which breaks its transparent content surfaces.
+    cc-switch) binary=/usr/bin/cc-switch ;;
     auto|electron|webkit|gl|vulkan)
       binary=${1:-}; [[ -n "$binary" ]] || { usage; return; }; shift
       [[ "$mode" != webkit ]] || webkit=1
@@ -307,8 +306,6 @@ main() {
   esac
   requested_binary=$binary
   resolve_binary || return
-  if [[ "$mode" == auto && ${managed_application:-} == cc-switch ]]; then webkit=1; fi
-  if [[ "$mode" == auto && ${binary##*/} == cc-switch ]]; then webkit=1; fi
   if [[ "$mode" == auto ]] && {
     is_angle_application "$requested_binary" || is_angle_application "$binary" || has_electron_distribution "$binary"
   }; then angle=1; fi

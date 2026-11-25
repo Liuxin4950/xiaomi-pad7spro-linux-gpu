@@ -1,0 +1,210 @@
+{
+  "format": 1,
+  "date": "2026-11-11",
+  "release_id": "r3.6-rc1",
+  "status": "prepared-local-candidate-not-formal-release",
+  "user_request": "自查代码和架构，收敛文档，完成r3.6正式发布和完善，换Termux快捷配置运行",
+  "formal_release_completed": false,
+  "runtime": {
+    "date": "2026-11-11",
+    "android_release": "17",
+    "android_sdk": "37",
+    "model": "25053RP5CC",
+    "firmware": "OS4.0.5.0.XOTCNXM",
+    "gpu_run": "/opt/pad7spro-gpu-fps-20261017/bin/gpu-run",
+    "installed_apk": {
+      "path": "/data/app/~~py5iUYt_j3ysM879ERNLEw==/com.termux.x11-LD4oLJlIt_hJ6BELWCbLhw==/base.apk",
+      "sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d"
+    },
+    "processes": [
+      {
+        "pid": 24729,
+        "command": "com.termux.x11",
+        "starttime": "1581140",
+        "apk_mappings": [
+          {
+            "path": "/data/app/~~py5iUYt_j3ysM879ERNLEw==/com.termux.x11-LD4oLJlIt_hJ6BELWCbLhw==/base.apk",
+            "apk_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d"
+          }
+        ]
+      },
+      {
+        "pid": 30068,
+        "command": "xfce4-session",
+        "starttime": "1280142",
+        "apk_mappings": []
+      },
+      {
+        "pid": 29793,
+        "command": "termux-x11 com.termux.x11 :1 -ac -dpi 120 -max-fps 120",
+        "starttime": "1280034",
+        "apk_mappings": [
+          {
+            "path": "/data/app/c041702f-e8cf-4e7b-8449-b7f1904cb611==deleted==/31edf992-f7d6-4de7-954e-1ff59824c8f6==deleted==/base.apk (deleted)",
+            "apk_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223",
+            "verified_via": "map_files"
+          }
+        ]
+      }
+    ],
+    "package_replaced_this_turn": false,
+    "desktop_restarted_this_turn": false
+  },
+  "new_artifacts": {
+    "apk": "build/r3.6-rc1-clean-20261111/candidate.apk",
+    "apk_sha256": "b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0",
+    "native_sha256": "17290b7735dcf6fe478fe69c0ac3d630dcd218d86a15a0ee4bd83ecb7fd5d9f1",
+    "certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "abis": [
+      "arm64-v8a"
+    ],
+    "version_name": "1.03.01-d55f1b7-gpu-r3.6-rc1",
+    "build_report_sha256": "db0a4d79a000716cfaf2861dacd348986c3ba3231fba86ae841b43429491d6bb",
+    "dependency_manifest_sha256": "0fd2de574c9002536d6d0777794c98efe61d140f6afb988b729abeaf5ddf8071",
+    "native_objects": "fresh",
+    "companion_sha256": {
+      "SHA256.json": "07fdb36f775ebe52215a001179119c1f0897ec363a4a035ab0adc3c46024a2af",
+      "loader.apk": "51d808861962096fea219fa20e48f02eca336ce806be404196a330180739e587",
+      "termux-x11": "6536f3484532769e250757abbc1cbecd7b669461959ccc856145442366750797",
+      "termux-x11-preference": "d177d9505ba4b58be69a9d3c11f6a466bb81b7dfb9d7eaab12f3860e8659a723"
+    },
+    "delivery_directory": "build/r3.6-rc1-delivery-20261111",
+    "delivery_checksums": "build/r3.6-rc1-delivery-20261111/SHA256SUMS"
+  },
+  "review_fixes": [
+    "locked cursor wake and Android input patches instead of manual source assembly",
+    "parameterized Termux HOME PREFIX and rootfs; file transactions and recovery",
+    "per-UID ADB server port for a new Termux installation",
+    "missing ADB key can be generated and explicitly authorized",
+    "removed duplicate startup adbd restart",
+    "Clipman TryExec executable path corrected",
+    "release builder version name explicit, no implied final acceptance",
+    "same-source signature-checking CLI loader included",
+    "publication guards verify native and Java/resource source plus binary checksums"
+  ],
+  "startup_sync": {
+    "status": "files-synchronized-no-restart",
+    "entries": [
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/debian-shell.sh",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/0",
+        "before_sha256": "0a397f314100869e3b2ab89412f17b30d2822ede6e3178cc843232263808c444",
+        "after_sha256": "6a487a4c63410b3c13d00196ab4920c845e82293b4af9ab12046aacc80a67a60",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": 448
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/debian-root.sh",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/1",
+        "before_sha256": "9cce3d3b889b71ae20271c00fa64971f4adbc3fc7ed5174ab686642be6e3b76c",
+        "after_sha256": "3e91ed730d10ba6a3b3e6452c217d447dcfbe1af8167a539b885892c1add6026",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": 448
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/debian-desktop.sh",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/2",
+        "before_sha256": "d8d53fa672b4be2e0af39bb113adad9cd88416d7cd1a206162910711e70f1ffc",
+        "after_sha256": "6dcc6d5634779077245973a51d043f9872944afd5cbac5b4cccddc2f732a161b",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": 448
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/mali-work/desktop-zink.sh",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/4",
+        "before_sha256": "8b7e5dfc38bf4c1a26a9be45827d3ca3e158b6c73e31b753fc6a789940b43f1b",
+        "after_sha256": "e0c815119b0383f0ed0b251ad9f800d06d352148dc85024ec570cdb1f59cfe74",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": 448
+      },
+      {
+        "path": "/proc/1/root/data/data/com.termux/files/home/.shortcuts/debian-zink.sh",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/5",
+        "before_sha256": "ff5a2986aa2ed00d6e0174b09c601b3364c5919343192bc2d3fb48a6798ada17",
+        "after_sha256": "944752d001b180d3c76b5ed105e58cf44b3422e633236987995890fe8c570c17",
+        "uid": 10305,
+        "gid": 10305,
+        "mode": 448
+      },
+      {
+        "path": "/root/.config/autostart/xfce4-clipman-plugin-autostart.desktop",
+        "backup": "build/r3.6-release-preparation-20261111/startup-backup/6",
+        "before_sha256": "61c18d8c2ee7d7eb133bf93d5b6739455fcef72abdd59e05112e419863d6c386",
+        "after_sha256": "a27842edb4a33ccae02db7ee6773d3e090d82815697bc03974aaa69d6d3418f8",
+        "uid": 0,
+        "gid": 0,
+        "mode": 420
+      }
+    ]
+  },
+  "verification": {
+    "python_tests": 68,
+    "logs": {
+      "unittests.log": {
+        "path": "build/r3.6-release-preparation-20261111/unittests.log",
+        "sha256": "a7b2795e1e1059cd71f1aaa755fa8a25adbaadc7516f080757ce8199e6d9cf43"
+      },
+      "copy-regression.log": {
+        "path": "build/r3.6-release-preparation-20261111/copy-regression.log",
+        "sha256": "15221845111d9a0ebf4a84b6151a2b941ea655863d59dd65f81ee1890f013bcb"
+      },
+      "cursor-regression.log": {
+        "path": "build/r3.6-release-preparation-20261111/cursor-regression.log",
+        "sha256": "4101c4c8e2d893f61b992584cee32a105d94b8a054fa1221a8b976d96da30a51"
+      },
+      "wake-regression.log": {
+        "path": "build/r3.6-release-preparation-20261111/wake-regression.log",
+        "sha256": "a23368d5cd8f403c005fdd0d3b3c805ef33724b2a483edbc461cd57d184dc86d"
+      }
+    },
+    "fresh_native_build": true,
+    "apk_alignment_and_signature_verified": true,
+    "new_termux_isolated_home_and_prefix": true,
+    "new_termux_real_android_install_and_cold_start": false,
+    "current_desktop_restarted": false,
+    "new_apk_installed": false
+  },
+  "reference_files": {
+    "reference/README.md": "b7c38218dd0bb93b032be291c0ab5762acc2a1f76ec1110c85304340e823af7a",
+    "reference/chroot/fcitx5.desktop": "3344a4487b0811813376c24a0f56f63c0d0d5581b96cec938ea87291ab7e0efc",
+    "reference/chroot/gpu-app.sh": "9f47ca56962561b5be355d277ae26913ff67d4aa149829815dfb2af2679a41e4",
+    "reference/chroot/gpu-launcher.desktop": "7fbb6c54bff6c46ececc4ea968b38fd6868b682d197e54bd338e3cc0bd945f38",
+    "reference/chroot/xfce4-clipman-plugin-autostart.desktop": "a27842edb4a33ccae02db7ee6773d3e090d82815697bc03974aaa69d6d3418f8",
+    "reference/chroot/xfce4-clipman.desktop": "019623d99f1c229ccba647ceb9e3f839273b5f970bb0a3b0bb15e4f52187a3ca",
+    "reference/perfetto-display.cfg": "273bc787ea6acf9cd42ed9b79a80ff4a9eaa240d4d3cab5c50e838876c50b768",
+    "reference/perfetto-gpu.cfg": "d9eacad9ca19ebf4efcb695db9f95b4dd223b9e5117888e73cc4cfe0b3710dfa",
+    "reference/termux/debian-desktop.sh": "6dcc6d5634779077245973a51d043f9872944afd5cbac5b4cccddc2f732a161b",
+    "reference/termux/debian-root.sh": "3e91ed730d10ba6a3b3e6452c217d447dcfbe1af8167a539b885892c1add6026",
+    "reference/termux/debian-shell.sh": "6a487a4c63410b3c13d00196ab4920c845e82293b4af9ab12046aacc80a67a60",
+    "reference/termux/debian-stop.sh": "1c0a31373b14ae0f2dd119e04b55ac86b8f25ace6fc04911a7bc40f5247e97c4",
+    "reference/termux/debian-zink-widget.sh": "944752d001b180d3c76b5ed105e58cf44b3422e633236987995890fe8c570c17",
+    "reference/termux/desktop-zink.sh": "e0c815119b0383f0ed0b251ad9f800d06d352148dc85024ec570cdb1f59cfe74"
+  },
+  "formal_release_gates": {
+    "fast_bluetooth_mouse_accepted": false,
+    "rc1_whole_session_cold_start": false,
+    "same_apk_loaded_at_frontend_and_server": false,
+    "fresh_termux_on_device": false,
+    "clean_rootfs_and_OS4_keepcaps_provisioning": false,
+    "public_binary_notices_review": false,
+    "physical_120fps_verified": false,
+    "power_savings_verified": false
+  },
+  "distribution": {
+    "local_only": true,
+    "public_release_created": false,
+    "git_tag_created": false,
+    "linux_binary_prefix_included": false,
+    "vendor_mali_included": false,
+    "personal_adb_or_signing_keys_included": false
+  },
+  "history_snapshots": [
+    "docs/history/2026-11-11-CURRENT-STATE-before-release-consolidation.md",
+    "docs/history/2026-11-11-tablet-handoff-before-release-consolidation.md",
+    "docs/history/2026-11-11-setup-before-termux-bootstrap.md"
+  ]
+}

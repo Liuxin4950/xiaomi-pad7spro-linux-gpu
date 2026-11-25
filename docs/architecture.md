@@ -63,7 +63,7 @@ flowchart TD
     G --> H[gpu-run 选择应用后端]
 ```
 
-`gpu-run` 不是必须手动打开的界面。会话启动时，它设置统一的驱动环境；原有应用图标再按需调用它选择后端。菜单中的 GPU 应用启动器只提供临时程序输入框。
+`gpu-run` 不是必须手动打开的界面。会话启动时，它设置统一的驱动环境；安装前缀还提供 `run-gpu`（默认 `auto`）和可 source 的 `gpu-env`，让新 chroot 或自定义登录会话复用同一 Mali 核心环境。原有应用图标再按需调用 `gpu-run` 选择后端。菜单中的 GPU 应用启动器只提供临时程序输入框。
 
 Chromium/Electron 的二维 Skia 使用原生 Vulkan，WebGL 使用 ANGLE Vulkan；普通 GL/Vulkan 主要依靠会话继承。CC Switch 需要额外纠正应用主动禁用 GPU 的策略。纯 CPU 绘制和业务计算不会自动迁移到 GPU。
 

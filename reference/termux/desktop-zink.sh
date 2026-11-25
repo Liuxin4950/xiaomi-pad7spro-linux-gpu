@@ -8,7 +8,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-source /data/data/com.termux/files/home/debian-shell.sh
+source "$SCRIPT_DIR/../debian-shell.sh"
 
 wait_socket() {
   local socket="$1" name="$2" n
@@ -105,9 +105,9 @@ export DISPLAY='$X11_DISPLAY'
 export PULSE_SERVER=tcp:127.0.0.1:4713
 unset LIBGL_ALWAYS_SOFTWARE LP_NUM_THREADS DEBIAN_LLVM_THREADS mesa_glthread vblank_mode PAD_GPU_PREFIX
 export PAD_GPU_X11_COLOR_MODE=bgra PAD_GPU_MAX_FPS='$PAD_GPU_MAX_FPS' PAD_GPU_SKIA_BACKEND=native
-export HYBRIS_VULKANPLATFORM=null
+source /usr/local/bin/gpu-env
 export XDG_RUNTIME_DIR=/run/user/0
 export GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx XMODIFIERS=@im=fcitx SDL_IM_MODULE=fcitx
-# gpu-run selects its own prefix, clears stale graphics variables, and passes the
-# same BGRA/WSI contract to every child. Preserve the desktop's Chinese locale.
-exec /usr/local/bin/gpu-run gl /usr/bin/env LANG=zh_CN.UTF-8 dbus-launch --exit-with-session startxfce4"
+# gpu-env establishes the session-wide Mali/Vulkan/Zink environment. gpu-run
+# applies app-specific renderer policy; preserve the desktop's Chinese locale.
+exec /usr/local/bin/run-gpu gl /usr/bin/env LANG=zh_CN.UTF-8 dbus-launch --exit-with-session startxfce4"

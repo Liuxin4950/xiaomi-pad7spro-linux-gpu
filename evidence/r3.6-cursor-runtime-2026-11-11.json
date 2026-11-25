@@ -1,0 +1,49 @@
+{
+  "date_local": "2026-11-11",
+  "state": "cursor-runtime-subset-accepted",
+  "goal_complete": false,
+  "installed_apk_sha256": "d237fa10ef008d1671791553ce87d7e459c0b4d7d22704d74dca0ae28a796c54",
+  "frontend_native_sha256": "d41b261c3d3324ea648e8199f17dcb576669a3a52a699731693a933fc046476e",
+  "frontend_pid": 22594,
+  "frontend_starttime": "11075961",
+  "server_pid": 28627,
+  "server_apk_sha256": "88346b5831c33e585d467bbf0f8255b972a05dca1ffb112a03bf683404625411",
+  "server_native_sha256": "b82d6c7977ad3a5f8e26cbda26126cba5de31bd3e6ede539768e424fbad6eb08",
+  "server_restarted": false,
+  "termux_restarted": false,
+  "acceptance": {
+    "accepted": true,
+    "scope": "cursor-only motion/shape/hide/hotspot and one foreground recovery",
+    "motion_commands": 225,
+    "main_surface_draws_during_motion": 0,
+    "physical_cursor_pixels": {
+      "red": 576,
+      "blue": 768
+    },
+    "viewport_offset": [
+      0,
+      82
+    ],
+    "recovery_main_surface_draws": 2,
+    "foreground_switch_verified": true,
+    "surface_unavailable_observed": true,
+    "limits": "Not physical FPS, input latency, whole-device power, zoom, rotation or cold-start acceptance."
+  },
+  "sample_count": 487,
+  "surface_unavailable_samples": 1,
+  "evidence_files": {
+    "build/r3.6-cursor-acceptance-verified-20261111/result.json": "135bafef79fb6ba360b7e678303bb9599d81cd685f4fea7ce071cdce44195e82",
+    "build/r3.6-cursor-acceptance-verified-20261111/audit.json": "7b1a6613d43571dd45f1b55dd995bb12a01a6db81ce90a720ab090eaeef54d52",
+    "build/r3.6-cursor-acceptance-verified-20261111/samples.jsonl": "02efff4414b9fbefd366301eb718dcd8c3936ed1b7c5fe2cf3d5393a3236aabc",
+    "build/r3.6-cursor-acceptance-verified-20261111/red-left.png": "93117a25386df4cb753e59086ee30576f79fa4d7bf4262be36958a5d99a4f07d",
+    "build/r3.6-cursor-acceptance-verified-20261111/red-right.png": "5847bef195f7366eaf11cf666c1b56d4c164f79ff0fa23113ea2105043c47d00",
+    "build/r3.6-cursor-acceptance-verified-20261111/hidden.png": "80fb73d796f37f983acee5bd9214aaac7ac3af8ff197f5242a03642c83f70106",
+    "build/r3.6-cursor-acceptance-verified-20261111/blue-wide.png": "4ffb98927d0539743372e706412091f01c15434b05b002ef8b02e556ed8b5edf",
+    "build/r3.6-cursor-acceptance-verified-20261111/surface-recovery.png": "4733165c5ab60df09d11f5f9434a4c3f96e651bb192bf1baceaa876db16fc6fd"
+  },
+  "limits": [
+    "no physical FPS, input latency or whole-device power claim",
+    "cold-start/zoom/rotation/drag/IME coverage remains incomplete",
+    "initial XFixes/color/no-pointer-readback samples and host assertion type error retained as unsuccessful or weaker samples"
+  ]
+}

@@ -98,6 +98,8 @@ DESTDIR="$stage" cmake --install "$run/wsi-build"
 mkdir -p "$deps/android-override" "$deps/share/vulkan/icd.d"
 install -m 644 "$work/sources/libc.so" "$deps/android-override/libc.so"
 install -m 755 "$repo/scripts/gpu-run.sh" "$deps/bin/gpu-run"
+install -m 755 "$repo/scripts/gpu-env.sh" "$deps/bin/gpu-env"
+install -m 755 "$repo/scripts/run-gpu.sh" "$deps/bin/run-gpu"
 python3 - "$deps" "$prefix" "$repo" "$run/source-inputs.json" <<'PY'
 import hashlib, json, platform, subprocess, sys
 from pathlib import Path

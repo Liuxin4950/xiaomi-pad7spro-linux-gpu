@@ -10,7 +10,7 @@ import tempfile
 
 def function(source, name):
     match = re.search(r'^(?:static\s+(?:inline\s+)?(?:__always_inline\s+)?)?(?:Bool|void)\s+'
-                      + name + r'\([^;{]*\)\s*\{', source, re.M)
+                      + name + r'\([^;{]*\)\s*(?:const\s*)?\{', source, re.M)
     if not match:
         raise ValueError('production function not found: ' + name)
     start, body = match.start(), match.end() - 1
@@ -62,10 +62,14 @@ def main():
         # interleavings and GL/fence ordering, rather than a duplicate model.
         renderer = (cpp / 'lorie/renderer.cpp').read_text()
         if 'lorieFrameGateBegin' in renderer:
-            (out / 'production-redraw.h').write_text(function(renderer, 'Renderer::redrawLocked'))
+            overlay = 'void Renderer::computePan(' in renderer
+            (out / 'production-redraw.h').write_text(
+                (function(renderer, 'Renderer::computePan') if overlay else '')
+                + function(renderer, 'Renderer::redrawLocked'))
             binary = out / 'renderer-regression'
             subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror',
                             '-fsanitize=undefined', '-fno-sanitize-recover=all',
+                            *(['-DTEST_CURSOR_OVERLAY=1'] if overlay else []),
                             '-I', str(out), '-I', str(cpp / 'lorie'),
                             str(Path(__file__).with_name('x11-renderer-regression.cpp')),
                             '-o', str(binary)], check=True)

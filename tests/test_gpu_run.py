@@ -17,7 +17,8 @@ keys = ('VK_DRIVER_FILES', 'VK_IMPLICIT_LAYER_PATH', 'VK_INSTANCE_LAYERS',
         'VK_ADD_DRIVER_FILES', 'HYBRIS_LD_LIBRARY_PATH', 'HYBRIS_LINKER_DIR',
         'HYBRIS_VULKANPLATFORM', 'LD_LIBRARY_PATH', 'MESA_LOADER_DRIVER_OVERRIDE',
         'GALLIUM_DRIVER', 'LIBGL_ALWAYS_SOFTWARE', 'DISABLE_WSI_LAYER', 'vblank_mode',
-        'DISPLAY', 'SENTINEL_APP_SETTING', 'PAD_GPU_PRESENT_CLOCK', 'PAD_GPU_MAX_FPS')
+        'DISPLAY', 'SENTINEL_APP_SETTING', 'PAD_GPU_PRESENT_CLOCK', 'PAD_GPU_MAX_FPS',
+        'LD_PRELOAD', 'PAD_GPU_WEBKIT_POLICY', 'WEBKIT_DMABUF_RENDERER_FORCE_SHM')
 print(json.dumps({'argv': sys.argv[1:], 'env': {key: os.environ.get(key) for key in keys}}))
 sys.exit(int(os.environ.get('TEST_EXIT', '0')))
 '''
@@ -73,6 +74,7 @@ class LauncherTests(unittest.TestCase):
                                  'library_path': './libVkLayer_window_system_integration.so'}}))
         (prefix / 'bin').mkdir(exist_ok=True)
         shutil.copy2(ROOT / 'scripts/gpu-run.sh', prefix / 'bin/gpu-run')
+        shutil.copy2(ROOT / 'scripts/gpu-env.sh', prefix / 'bin/gpu-env')
         for name in ('app', 'chromium', 'electron42', 'electron42-unknown', 'fake app',
                      'probe-vulkan', 'probe-ahb'):
             path = prefix / 'bin' / name
@@ -98,6 +100,27 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(data['env']['VK_DRIVER_FILES'], str(self.prefix / 'share/vulkan/icd.d/sysvk_icd.json'))
         self.assertEqual(data['env']['HYBRIS_VULKANPLATFORM'], 'null')
         self.assertEqual(self.checks.read_text(), 'android:1\nx11\n')
+
+    def test_cc_switch_does_not_force_webkit_policy(self):
+        data = self.data(self.run_launcher(
+            'cc-switch', env={'MOCK_ALIAS_BINARY': str(self.prefix / 'bin/app')}))
+        self.assertEqual(data['env']['MESA_LOADER_DRIVER_OVERRIDE'], 'zink')
+        self.assertEqual(data['env']['GALLIUM_DRIVER'], 'zink')
+        self.assertIsNone(data['env']['LD_PRELOAD'])
+        self.assertIsNone(data['env']['PAD_GPU_WEBKIT_POLICY'])
+        self.assertIsNone(data['env']['WEBKIT_DMABUF_RENDERER_FORCE_SHM'])
+
+    def test_cc_switch_update_helper_inherits_standard_hardware_path(self):
+        url = 'ccswitch://v1/import?resource=provider'
+        data = self.data(self.run_launcher(
+            'auto', '/opt/cc-switch-update-helper/launch', url,
+            env={'MOCK_ALIAS_BINARY': str(self.prefix / 'bin/app')}))
+        self.assertEqual(data['argv'], [url])
+        self.assertEqual(data['env']['MESA_LOADER_DRIVER_OVERRIDE'], 'zink')
+        self.assertEqual(data['env']['GALLIUM_DRIVER'], 'zink')
+        self.assertIsNone(data['env']['LD_PRELOAD'])
+        self.assertIsNone(data['env']['PAD_GPU_WEBKIT_POLICY'])
+        self.assertIsNone(data['env']['WEBKIT_DMABUF_RENDERER_FORCE_SHM'])
 
     def test_frame_limit_default_and_explicit_overrides(self):
         for requested, expected in [('', '120'), ('60', '60'), ('120', '120'),

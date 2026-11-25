@@ -2,11 +2,21 @@
 
 让已 root 的小米平板 7S Pro 中的 Debian arm64 chroot 图形软件调用 Android 原厂 Mali Vulkan 驱动，并通过 Termux:X11 显示。
 
-2026-10-17：用户明确以当前结果作为 **r3.5 最终版本**，发行标识 `r3.5-final-20261017`。本轮优化已收尾；未达到稳定真实 120 帧、长期功耗/输入延迟等项目作为已知限制保留，不再自动执行旧计划或更换 APK。
+当前生产：**r3.5 Linux 栈 + r3.6 输入候选**；已另行构建未切换的 r3.6 Linux 候选。2026-11-11 已整理 r3.6-rc1 的源码、构建与 Termux 接入工具；快速蓝牙鼠标仍有卡顿反馈，正式版验收未完成，不宣称稳定真实 120 FPS 或整机续航提升。
 
-当前身份、结果与边界见 [最终 r3.5 说明](docs/r3.5-efficiency.md)、[CURRENT-STATE](docs/CURRENT-STATE.md) 和[最终清单](evidence/r3.5-final-2026-10-17.json)。默认页面约 112–116 rAF/s，712704 个物理像素零差异；定版不代表稳定真实显示 120 帧或长期续航已验收。
+换 Termux 并保留 Debian/rootfs 时，在发布包解压目录运行：
 
-数据位置：公开证据和校验在 `evidence/`、`evidence/SHA256SUMS`；原始 CSV/JSON/trace/截图与 APK 仍保留在 `build/`。另有仓库外本地归档 `/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/`，包含源码快照、最终 APK、Linux 前缀、原始数据清单和压缩包、SHA256SUMS。该归档是本机私有备份，不自动发布到互联网；不含用户 profile、SDK 缓存或签名私钥。
+```sh
+bash scripts/bootstrap-termux.sh /data/linux/debian
+bash ~/debian-desktop.sh
+```
+
+bootstrap 安装依赖、写入可配置启动入口并备份原件；不替换 APK、不启动或停止桌面。先保存并正常结束旧桌面，再从新 Termux 启动。该入口以已存在的 GPU rootfs 为前提，不是原厂状态的一键装机。详见 [安装与更换 Termux](docs/setup.md)。
+
+- [唯一当前状态](docs/CURRENT-STATE.md)
+- [r3.6 发布候选、代码审查与剩余验收](docs/r3.6-release.md)
+- [r3.6 实现路线与可复现交付](docs/r3.6-implementation-plan.md)
+- [维护与回退](docs/tablet-handoff.md)
 
 ## 日常使用
 
@@ -23,6 +33,7 @@ Exec=/usr/local/bin/gpu-run auto /path/to/application
 `auto` 识别已知 Chromium/Electron 名称及保守的 Electron 发行布局；未知程序接收硬件环境。特殊框架可明确选择：
 
 ```sh
+run-gpu application              # 通用硬件 GPU 入口；默认 auto 识别应用
 gpu-run gl application           # OpenGL → Mesa Zink
 gpu-run vulkan application       # 原生 Vulkan
 gpu-run electron application     # Electron → ANGLE Vulkan
@@ -55,15 +66,15 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 |---|---|
 | 设备 | Xiaomi Pad 7S Pro，`25053RP5CC` |
 | GPU | Arm Immortalis-G925；实际 Vulkan 名称 `Mali-G925-Immortalis` |
-| Android / HyperOS | Android 16、API 36 / `OS3.0.303.0.WOTCNXM` |
+| Android / HyperOS | 本次回读 Android 17、API 37 / `OS4.0.5.0.XOTCNXM` |
 | Linux | Debian 13 arm64、root chroot、XFCE，关闭 XFWM 合成器 |
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
 | Termux:Widget | `0.15.0`，桌面快捷入口追随统一 gpu-run |
-| 当前 Termux:X11 APK | `1.03.01-d55f1b7-gpu-r3.5-repro`，SHA-256 `88346b58…`，以完整哈希区分同名构建 |
+| 当前 Termux:X11 APK | r3.6 鼠标输入候选，`5aed7953…`；server 仍映射旧包，详见 CURRENT-STATE |
 | 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
-设备型号/固件基线来自 2026-10-01；Termux、Widget、X11 和入口清单已于 2026-10-17 重新核对，见 [Termux 配套资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
+设备/系统/APK 身份本轮重新核对；历史应用测试按原日期保留。Termux 配套历史见 [参考资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
 
 | 应用/能力 | 当前状态 |
 |---|---|
@@ -72,7 +83,7 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Chromium | ANGLE Vulkan/Mali、WebGL/WebGL2、像素读回与 Android 画面通过 |
 | ChatGPT 桌面应用 | 独立实例 GPU 路径与窗口短测通过；不代表在线服务内容验收 |
 | Trae CN | 独立实例欢迎页与 GPU 短测通过；附精确条件的一次启动容错 |
-| CC Switch | WebKit 实际硬件策略、Mali 与窗口短测通过；使用 SHM 传输 |
+| CC Switch | 普通 Zink/Vulkan 硬件入口与实际窗口短测通过；不强制 WebKit preload/SHM 透明策略 |
 | 候选框/菜单 | 已有 X11 裁剪补丁在作者设备有验证；更换组件后仍需回归 |
 | sRGB、更高 OpenGL 特性、视频硬解 | 尚未覆盖或接通 |
 | 长时间稳定、休眠恢复、续航改善 | 尚未完成新版系统性验收 |
@@ -88,7 +99,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
 
 依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
 
-当前 Termux:X11 从固定提交及子模块干净构建，已部署至 0014，配合 WSI 0012；签名、完整哈希、两端映射与最终测试见[验收证据](evidence/deferred-copy-wake-2026-10-17.json)。本次为作者设备的 r3.5 定版及本地归档，不代表通用公开二进制包或其他设备已验证。
+X11 rc1 从固定提交、子模块及 0001–0017 补丁全新构建，未安装；配套 loader 同源构建。Linux WSI 保持 0012。当前包、已运行进程及发布身份分别见 CURRENT-STATE；历史 r3.5 验收见[原始证据](evidence/deferred-copy-wake-2026-10-17.json)。
 
 ## 文档
 

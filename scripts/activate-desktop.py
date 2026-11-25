@@ -12,7 +12,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 OLD = '/opt/mali-bridge-canary/bin/gpu-app.sh'
-RUNNER = '/usr/local/bin/gpu-run'
+RUNNER = '/usr/local/bin/run-gpu'
 
 
 def desktop_text(path, text):
@@ -93,6 +93,7 @@ def main():
         args.termux_home / 'mali-work/desktop-zink.sh': ROOT / 'reference/termux/desktop-zink.sh',
         args.termux_home / 'debian-desktop.sh': ROOT / 'reference/termux/debian-desktop.sh',
         args.termux_home / 'debian-shell.sh': ROOT / 'reference/termux/debian-shell.sh',
+        args.termux_home / 'debian-root.sh': ROOT / 'reference/termux/debian-root.sh',
         args.termux_home / 'debian-stop.sh': ROOT / 'reference/termux/debian-stop.sh',
         args.termux_home / '.shortcuts/debian-zink.sh': ROOT / 'reference/termux/debian-zink-widget.sh',
     }

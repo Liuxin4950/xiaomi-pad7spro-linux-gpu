@@ -8,25 +8,30 @@
 # ③ 当前桌面入口统一由 mali-work/desktop-zink.sh 调用 gpu-run；不再设置旧 mesa_glthread / vblank_mode。
 set -Eeuo pipefail
 
-ROOTFS="/data/linux/debian"
-PREFIX_DIR="${PREFIX:-/data/data/com.termux/files/usr}"
+COMMON_SELF=$(realpath "${BASH_SOURCE[0]}")
+# Installed beside this file; never source a file from the current directory.
+[[ ! -f "$(dirname "$COMMON_SELF")/debian-gpu.conf" ]] || source "$(dirname "$COMMON_SELF")/debian-gpu.conf"
+ROOTFS="${DEBIAN_ROOTFS:-/data/linux/debian}"
+PREFIX_DIR="${DEBIAN_TERMUX_PREFIX:-${PREFIX:-/data/data/com.termux/files/usr}}"
 # The Widget owns this runtime directory. Inherited TMPDIR may point to
 # /data/local/tmp (unavailable inside the chroot) when launched via adb.
 TMP_DIR="$PREFIX_DIR/tmp"
+# 固定 Termux 自己拥有的音频运行目录，避免沿用旧的失效 runtime 软链。
+export PULSE_RUNTIME_PATH="$TMP_DIR/debian-pulse"
 MOUNT=/system/bin/mount
 CHROOT=/system/bin/chroot
-COMMON_SELF=$(realpath "${BASH_SOURCE[0]}")
 MOUNT_LOCK="$TMP_DIR/debian-mount.lock"
 X11_PIDFILE="$TMP_DIR/debian-x11-$$.pid"
 VIRGL_PIDFILE="$TMP_DIR/debian-virgl-$$.pid"
 CURRENT_MODE=""
 MODE_LOCK=""
 AUX_PID=""
+ROOT_SESSION_PID=""
 
 say()  { printf '[debian] %s\n' "$*"; }
 warn() { printf '[debian][warn] %s\n' "$*" >&2; }
 die()  { printf '[debian][error] %s\n' "$*" >&2; exit 1; }
-root() { su -c "$1"; }
+source "$(dirname "$COMMON_SELF")/debian-root.sh"
 
 # Xiaomi Linux 自带的 Xwayland 占用全局 display :0。若这里也使用 :0，
 # chroot 里的 X11 客户端会优先连到错误的服务器并报 Authorization required。
@@ -127,6 +132,13 @@ bind_once() {
     || die "mount failed: $source -> $target"
 }
 
+rbind_once() {
+  local source="$1" target="$2"
+  mounted "$target" && return
+  root "mkdir -p '$target' && '$MOUNT' --rbind '$source' '$target'" \
+    || die "mount failed: $source -> $target"
+}
+
 # Android 按 fork 时刻所在应用的 cpuset 给进程定核, 且之后永不改变:
 # 小组件/后台态启动时整棵树会落在 background/foreground 等受限组,
 # 永远用不到全部核心(htop 里几个核恒 0%), 桌面/浏览器极卡。
@@ -150,10 +162,21 @@ mount_all() {
 
   promote_cgroup
   lock_mounts
-  root "mkdir -p '$ROOTFS/dev/pts' '$ROOTFS/dev/shm' '$ROOTFS/proc' '$ROOTFS/sys' '$ROOTFS/sdcard' '$ROOTFS/tmp' '$ROOTFS/run/user/0'"
+  root "mkdir -p '$ROOTFS/dev/pts' '$ROOTFS/dev/shm' '$ROOTFS/proc' '$ROOTFS/sys' '$ROOTFS/system' '$ROOTFS/apex' '$ROOTFS/sdcard' '$ROOTFS/tmp' '$ROOTFS/run/user/0'"
   bind_once /dev "$ROOTFS/dev"
   bind_once /proc "$ROOTFS/proc"
   bind_once /sys "$ROOTFS/sys"
+  # 2026-10-30: /system 绑入，让容器内 root 进程可直接调用 /system/bin/{pm,am,logcat,dumpsys,...}
+  # （会话经 su 启动，uid 0 / u:r:ksu:s0；pm install 等 root 操作可绕开 HyperOS 的 adb 安装限制）
+  # 必须 rbind：hybrid_mount 在 /system/{app,priv-app,framework,etc/{sysconfig,permissions}} 有 overlay
+  # 子挂载，普通 --bind 会丢；且 zink 入口随后见到已挂载会跳过它自己的 rbind（2026-10-30 实测）。
+  rbind_once /system "$ROOTFS/system"
+  # /system/bin/linker64 是指向 APEX 的软链，ART/libart 也在 APEX 里；普通 bind 不含子挂载，
+  # 不 rbind /apex 的话 chroot 内执行 /system/bin/* 会 ENOENT（2026-10-30 实测）。
+  rbind_once /apex "$ROOTFS/apex"
+  # binderfs 是 /dev 的子挂载（--bind /dev 不会带进来）；/dev/binder -> /dev/binderfs/binder，
+  # pm/am/dumpsys/settings 等 Android 命令全靠它（2026-10-30 实测）。
+  [[ ! -d /dev/binderfs ]] || rbind_once /dev/binderfs "$ROOTFS/dev/binderfs"
   mounted "$ROOTFS/dev/pts" || root "'$MOUNT' -t devpts devpts '$ROOTFS/dev/pts'"
   mounted "$ROOTFS/dev/shm" || root "'$MOUNT' -t tmpfs -o size=256M,mode=1777 tmpfs '$ROOTFS/dev/shm'"
   [[ ! -d /sdcard ]] || bind_once /sdcard "$ROOTFS/sdcard"
@@ -167,6 +190,8 @@ mount_all() {
   root "[ -s '$ROOTFS/etc/resolv.conf' ] || printf 'nameserver 8.8.8.8\nnameserver 8.8.4.4\n' > '$ROOTFS/etc/resolv.conf'" \
     || warn 'resolv.conf 兜底写入失败, 进容器后请手动检查'
   unlock_mounts
+  # debian_root_init already verified the local ADB transport. Do not restart
+  # adbd again for a second, unrelated chroot ADB client during desktop startup.
 }
 
 # 看门狗在 owner 死后最多重试 5s 读 pidfile; 若 pidfile 只按 mode 命名, 它会
@@ -253,9 +278,81 @@ cleanup_session() {
     [[ "$CURRENT_MODE" != desktop ]] || stop_graphics
     unlink "$TMP_DIR/debian-$CURRENT_MODE-session.sh" 2>/dev/null || true
   fi
+  if [[ "$ROOT_SESSION_PID" =~ ^[0-9]+$ ]]; then
+    kill "$ROOT_SESSION_PID" 2>/dev/null || true
+    wait "$ROOT_SESSION_PID" 2>/dev/null || true
+  fi
   release_mode
   exit "$rc"
 }
+
+# BEGIN session observation (test-extracted; no source-time side effects)
+# Sourced functions only. A failed ADB observation is NOT a dead desktop.
+# No mounts, signals, process replacement, or automatic ADB restart here.
+
+debian_session_status() {
+  local file="$1" expected_pid="${2:-}" expected_start="${3:-}"
+  safe_path "$file"
+  safe_path "$ROOTFS"
+  [[ -z "$expected_pid" || "$expected_pid" =~ ^[0-9]+$ ]] || return 74
+  [[ -z "$expected_start" || "$expected_start" =~ ^[0-9]+$ ]] || return 74
+  root "
+    pid='$expected_pid'
+    if [ -z \"\$pid\" ]; then
+      [ -r '$file' ] || exit 74
+      IFS= read -r pid < '$file' || exit 74
+    fi
+    case \"\$pid\" in ''|*[!0-9]*) exit 74 ;; esac
+    if [ ! -d /proc/\$pid ]; then printf 'gone\\n'; exit 0; fi
+    actual=\$(readlink /proc/\$pid/root) || exit 74
+    start=\$(sed 's/.*) //' /proc/\$pid/stat | awk '{print \$20}') || exit 74
+    case \"\$start\" in ''|*[!0-9]*) exit 74 ;; esac
+    if [ -n '$expected_start' ] && [ \"\$start\" != '$expected_start' ]; then
+      printf 'reused\\n'
+    elif [ \"\$actual\" = '$ROOTFS' ]; then
+      printf 'alive:%s:%s\\n' \"\$pid\" \"\$start\"
+    else
+      printf 'wrong-root\\n'
+    fi
+  "
+}
+
+debian_wait_for_session() {
+  local file="$1" status confirmed failures=0 delay=1 expected_pid='' expected_start=''
+  while :; do
+    # Cache PID + /proc starttime after observing a live process. A vanished
+    # pidfile or failed ADB observation must never be treated as a dead desktop.
+    if status=$(debian_session_status "$file" "$expected_pid" "$expected_start"); then
+      if [[ "$status" =~ ^alive:([0-9]+):([0-9]+)$ ]]; then
+        expected_pid="${BASH_REMATCH[1]}"
+        expected_start="${BASH_REMATCH[2]}"
+        if (( failures )); then
+          warn "session observation recovered after $failures failed probe(s); desktop preserved"
+        fi
+        failures=0
+        delay=1
+      elif [[ "$status" == gone || "$status" == wrong-root || "$status" == reused ]]; then
+        if confirmed=$(debian_session_status "$file" "$expected_pid" "$expected_start") && [[ "$confirmed" == "$status" ]]; then
+          warn "session exit confirmed by two successful probes: $status"
+          return 0
+        fi
+        failures=$((failures + 1))
+      else
+        failures=$((failures + 1))
+      fi
+    else
+      failures=$((failures + 1))
+    fi
+    if (( failures )); then
+      if (( failures == 1 )); then
+        warn 'session observation unavailable; NOT cleaning up the desktop (use debian-stop.sh only after saving work)'
+      fi
+      delay=$((delay < 16 ? delay * 2 : 30))
+    fi
+    sleep "$delay"
+  done
+}
+# END session observation
 
 run_session() {
   local mode="$1" body="$2" file pid n started=$SECONDS
@@ -263,19 +360,24 @@ run_session() {
   write_session "$mode" "$body"
   start_watchdog "$mode"
   trap cleanup_session EXIT INT TERM HUP QUIT
-  root "exec $CHROOT '$ROOTFS' /usr/bin/setsid /bin/bash /tmp/debian-$mode-session.sh"
-  # 实测(KSU): su 启动 chroot 长命令后 ~1s 即返回 rc=0, 会话进程变孤儿(ppid=1)
-  # 继续跑。因此不能靠 su 退出码判断会话结束——改为轮询会话 pid 文件,
-  # 等会话首领真正退出再走 cleanup, 恢复"前台阻塞"语义。
+  if [[ "$mode" == shell || "$mode" == cmd ]] && [[ -t 0 && -t 1 ]]; then
+    root_tty "exec $CHROOT '$ROOTFS' /usr/bin/setsid /bin/bash /tmp/debian-$mode-session.sh"
+    return $?
+  fi
+  # ADB 会阻塞到远端退出；后台等待保留原来的 PID 轮询、CPU 纠正和清理。
+  root "exec $CHROOT '$ROOTFS' /usr/bin/setsid /bin/bash /tmp/debian-$mode-session.sh" &
+  ROOT_SESSION_PID=$!
+  # 依据会话 PID 文件等待和纠正 CPU 分组；ADB 客户端在后台传递输出。
+  # 兼容 setsid/su 提前返回，且启动器退出时仍由原有清理和看门狗收尾。
   file="$ROOTFS$(mode_pidfile "$mode" "$$")"
   for n in $(seq 1 30); do          # 先等 pid 出现(会话启动失败的兜底)
     root "test -s '$file'" 2>/dev/null && break
     sleep 0.5
   done
   if ! root "test -s '$file'" 2>/dev/null; then
-    # 不再静默 return 0: 会话没起来必须让用户看见
-    warn "$mode session did not start within 15s; see logs in $TMP_DIR"
-    return 1
+    # Transport failure and an absent PID file are ambiguous. Returning here
+    # would run EXIT cleanup even if the desktop was actually started.
+    warn "$mode startup not yet confirmed after 15s; preserving possible session and retrying observation (logs: $TMP_DIR)"
   fi
   # 2026-09-28: 会话起来后把 chroot 内全部进程收进全核 cpuset 并补 cpuctl。
   # 原因: "promote→fork 会话"存在竞态窗口, Android 可能把启动器挪回受限组
@@ -289,15 +391,7 @@ run_session() {
       echo \"\$pid\" > /dev/cpuctl/top-app/tasks 2>/dev/null || true
     done
   " || true
-  while :; do
-    pid=$(root "cat '$file' 2>/dev/null" || true)
-    if [[ ! "$pid" =~ ^[0-9]+$ ]]; then
-      root "test -s '$file'" 2>/dev/null || break  # 文件已清=会话结束
-    elif root "[ \"\$(readlink /proc/$pid/root 2>/dev/null || true)\" != '$ROOTFS' ]"; then
-      break                                         # 会话首领已不在 chroot 内
-    fi
-    sleep 1
-  done
+  debian_wait_for_session "$file"
   # 会话瞬间结束(dsh 崩溃、登录 shell 立即退出)时给可见提示, 不再静默返回 0
   if (( SECONDS - started < 3 )); then
     warn "$mode session ended within $((SECONDS - started))s; if that was not intended, check logs in $TMP_DIR"
@@ -405,6 +499,9 @@ watch_session() {
     fi
   fi
 }
+
+# Initialize once per launcher, including callers that probe chroot before mount_all.
+debian_root_init
 
 # When sourced, only expose the functions above.
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then

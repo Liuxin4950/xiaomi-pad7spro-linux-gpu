@@ -31,6 +31,18 @@ def tree_hashes(path):
     return {p.relative_to(path).as_posix(): sha(p) for p in sorted(path.rglob('*')) if p.is_file()}
 
 
+def packaging_source_hashes(source):
+    result = {}
+    for path in sorted(source.rglob('*')):
+        relative = path.relative_to(source)
+        if {'build', '.gradle', '.cxx', '.git', 'jniLibs'}.intersection(relative.parts):
+            continue
+        if relative.is_relative_to('lorie/src/main/cpp') or not path.is_file():
+            continue
+        result[relative.as_posix()] = sha(path)
+    return result
+
+
 def export_tree(cache, commit, destination, revisions, relative='.'):
     # Export the declared commit, never working files or any .cxx/build objects.
     run(['git', '-C', cache, 'cat-file', '-e', commit + '^{commit}'])
@@ -75,11 +87,15 @@ def main():
     parser.add_argument('--abis', default='arm64-v8a', help='comma-separated; only listed ABIs are packaged')
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--native-only', action='store_true')
+    parser.add_argument('--version-name', default='1.03.01-d55f1b7-gpu-r3.6-rc1',
+                        help='APK identity; release status is recorded separately in the manifest')
     parser.add_argument('--reuse-native-build', type=Path,
                         help='reuse this tool\'s native output only after exact source/toolchain/hash checks')
     parser.add_argument('--gradle', type=Path, help='Gradle 9.3.1 executable, required for APK')
     parser.add_argument('--allow-downloads', action='store_true', help='allow Maven access; default Gradle offline')
     args = parser.parse_args()
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', args.version_name):
+        parser.error('invalid version name')
     abis = args.abis.split(',')
     if not 1 <= args.jobs <= 16 or len(set(abis)) != len(abis) or any(
             abi not in ('arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64') for abi in abis):
@@ -105,6 +121,7 @@ def main():
                   abis=abis, native_objects='fresh', host=host, ndk=args.ndk_version,
                   compiler_version=text([compiler, '--version']), compiler_sha256=sha(compiler),
                   toolchain_sha256=sha(ndk / 'build/cmake/android.toolchain.cmake'),
+                  version_name=args.version_name,
                   script_sha256=sha(Path(__file__)), patches=lock['patches'], native=[])
     report_path = args.output / 'build-report.json'
     def save():
@@ -178,7 +195,7 @@ def main():
     version_path = source / 'lorie/version.gradle'
     value = version_path.read_text()
     end = value.index('}()') + 3
-    version_path.write_text("ext.termuxX11VersionName = '1.03.01-d55f1b7-gpu-r3.5-repro'" + value[end:])
+    version_path.write_text("ext.termuxX11VersionName = '" + args.version_name + "'" + value[end:])
     for relative in ('lorie/build.gradle', 'lorie-app/build.gradle', 'shell-loader/build.gradle', 'shell-loader/stub/build.gradle'):
         path = source / relative
         replace_once(path, 'compileSdkVersion 34', 'compileSdk 36')
@@ -239,7 +256,7 @@ gradle.buildFinished { result ->
     environment['PAD_GPU_DEPENDENCY_MANIFEST'] = str(args.output / 'dependency-artifacts.json')
     command = [args.gradle, '--no-daemon', '--max-workers=' + str(args.jobs),
                '--init-script', init, '-Pandroid.aapt2FromMavenOverride=' + str(build_tools / 'aapt2'),
-               ':lorie-app:assembleStandaloneDebug']
+               ':lorie-app:assembleStandaloneDebug', ':shell-loader:assembleDebug']
     if not args.allow_downloads:
         command.insert(1, '--offline')
     run(command, cwd=source, env=environment)
@@ -247,6 +264,17 @@ gradle.buildFinished { result ->
     run([build_tools / 'zipalign', '-c', '-P', '16', '4', apk])
     run([build_tools / 'apksigner', 'verify', '--verbose', '--print-certs', apk])
     shutil.copy2(apk, args.output / 'candidate.apk')
+    companion = args.output / 'x11-companion'
+    companion.mkdir()
+    loader = source / 'shell-loader/build/outputs/apk/debug/shell-loader-debug.apk'
+    shutil.copy2(loader, companion / 'loader.apk')
+    for name in ('termux-x11', 'termux-x11-preference'):
+        wrapper = (source / 'shell-loader/scripts' / (name + '.in')).read_text()
+        wrapper = wrapper.replace('@APPLICATION_ID@', 'com.termux.x11').replace('@EMBEDDED_APPLICATION_ID@', 'com.termux')
+        (companion / name).write_text(wrapper)
+    (companion / 'SHA256.json').write_text(json.dumps(tree_hashes(companion), indent=2) + '\n')
+    report['companion_sha256'] = tree_hashes(companion)
+    report['packaging_source_sha256'] = packaging_source_hashes(source)
     report.update(state='apk-built-not-installed', apk_sha256=sha(apk),
                   dependency_manifest_sha256=sha(args.output / 'dependency-artifacts.json'),
                   reproducibility='fresh source and objects; byte identity not asserted')

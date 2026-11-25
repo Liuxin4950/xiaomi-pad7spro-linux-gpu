@@ -1,0 +1,1055 @@
+{
+  "date": "2026-11-11",
+  "issue": "User reports Bluetooth cursor stutter, flicker, latency and small jumps; Scene overlay reports 11-50 fps",
+  "status": "relative-capture-active-fast-motion-not-yet-accepted",
+  "confirmed_source_gap": "shouldWait gated overlay cursor changes on root frame permit, and threadLoop coupled overlay-only eligibility to absence of root/copy work",
+  "change": "shared cursor-only eligibility before root wait; publish eligible overlay changes and still service root/copy work in same iteration; retain crop-pan and unavailable-surface restrictions",
+  "apk": "build/cursor-stutter-20261111/termux-x11-r36-cursor-wake-candidate.apk",
+  "apk_sha256": "2cba32a872d3d290bef0566d6838398eae7ab6b397fc884fdbe3e025678511fb",
+  "native_sha256": "aeb45863544464984536fd75ee6636fad3fcb2d4fefa5a0ade2ba2692cdc7bb7",
+  "patch": "patches/candidates/termux-x11-cursor-independent-wake.patch",
+  "patch_sha256": "c39cd903213475449f5c70a6f89df452ccd7a8b7759e4d51fbfba63c2a6b06d0",
+  "regression": {
+    "old_wait_predicate": "fails independent cursor assertion",
+    "candidate_wait_predicate": "passes root permit/buffer pending, root damage pending, pan/absent surface/no overlay/no state/copy cases",
+    "existing_copy_renderer_and_null_state": "passed"
+  },
+  "runtime_before": {
+    "scope": "controlled XWarpPointer after X input, not Bluetooth end-to-end latency or physical FPS",
+    "probe_code": 0,
+    "seconds": 2.004425626,
+    "samples": 1304,
+    "server": {
+      "changes": 232,
+      "gap_p50_ms": 8.794714,
+      "gap_p95_ms": 10.85849,
+      "max_gap_ms": 15.904531
+    },
+    "overlay_snapshot": {
+      "changes": 229,
+      "gap_p50_ms": 8.89526,
+      "gap_p95_ms": 10.758932,
+      "max_gap_ms": 15.904531
+    },
+    "dirty_clear_observations": 188,
+    "dirty_sample_fraction": 0.5567484662576687
+  },
+  "user_input_capture": {
+    "seconds": 90,
+    "samples": 35950,
+    "kernel_events": 0,
+    "x_coordinate_changes": 0,
+    "overlay_changes": 0
+  },
+  "limits": [
+    "No actual Bluetooth motion captured in passive interval; no Bluetooth report-rate diagnosis",
+    "Controlled test measures shared coordinate and overlay publication, not physical FPS or end-to-end latency",
+    "Scene counting layer unverified; display120Hz is configuration only",
+    "Candidate installed; reported physical flicker/stutter improvement still awaiting real-user validation",
+    "Second-candidate 90s passive interval captured no real mouse motion; do not claim fast-movement acceptance"
+  ],
+  "production_apk_unchanged": false,
+  "desktop_restarted": false,
+  "user_authorization": "2026-11-11: \u5df2\u4fdd\u5b58\uff0c\u53ef\u4ee5\u5207\u6362\u9a8c\u8bc1",
+  "installation": {
+    "backup_sha256": "cdee031cdd778bc6f92c3c1f7cf45506db6801fd5ecc1fe3540b1fb4e519f223",
+    "candidate_sha256": "2cba32a872d3d290bef0566d6838398eae7ab6b397fc884fdbe3e025678511fb",
+    "server_before": 29793,
+    "server_generation": "1280034",
+    "desktop_before": 30068,
+    "desktop_generation": "1280142",
+    "install": "Success\n",
+    "start": "Starting: Intent { cmp=com.termux.x11/.MainActivity }\nWarning: Activity not started, intent has been delivered to currently running top-most instance.\nStatus: ok\nLaunchState: UNKNOWN (0)\nActivity: com.termux.x11/.MainActivity\nTotalTime: 0\nWaitTime: 10\nComplete\n",
+    "frontend_pid": 11555,
+    "frontend_maps_new_apk": true,
+    "server_and_desktop_unchanged": true
+  },
+  "real_mouse_after": {
+    "scope": "after installation real relative mouse reports, X shared coordinates and overlay publication; not physical presentation or input-to-photon latency",
+    "kernel_devices": {
+      "event15": 3757
+    },
+    "active_second_rule": "at least 30 kernel relative-motion SYN_REPORT packets in that second",
+    "active_seconds": 40,
+    "per_second": {
+      "0": {
+        "xserver": 111,
+        "overlay": 101,
+        "kernel_motion": 112
+      },
+      "1": {
+        "xserver": 112,
+        "overlay": 102,
+        "kernel_motion": 113
+      },
+      "2": {
+        "xserver": 90,
+        "overlay": 84,
+        "kernel_motion": 98
+      },
+      "3": {
+        "xserver": 99,
+        "overlay": 89,
+        "kernel_motion": 112
+      },
+      "4": {
+        "xserver": 88,
+        "overlay": 84,
+        "kernel_motion": 91
+      },
+      "5": {
+        "xserver": 109,
+        "overlay": 105,
+        "kernel_motion": 111
+      },
+      "6": {
+        "xserver": 110,
+        "overlay": 102,
+        "kernel_motion": 114
+      },
+      "7": {
+        "xserver": 109,
+        "overlay": 113,
+        "kernel_motion": 113
+      },
+      "8": {
+        "xserver": 105,
+        "overlay": 98,
+        "kernel_motion": 110
+      },
+      "9": {
+        "xserver": 54,
+        "overlay": 55,
+        "kernel_motion": 58
+      },
+      "10": {
+        "xserver": 105,
+        "overlay": 89,
+        "kernel_motion": 108
+      },
+      "11": {
+        "xserver": 66,
+        "overlay": 61,
+        "kernel_motion": 72
+      },
+      "12": {
+        "xserver": 62,
+        "overlay": 56,
+        "kernel_motion": 64
+      },
+      "13": {
+        "xserver": 106,
+        "overlay": 101,
+        "kernel_motion": 111
+      },
+      "14": {
+        "xserver": 105,
+        "overlay": 98,
+        "kernel_motion": 113
+      },
+      "15": {
+        "xserver": 92,
+        "overlay": 85,
+        "kernel_motion": 97
+      },
+      "16": {
+        "xserver": 107,
+        "overlay": 96,
+        "kernel_motion": 115
+      },
+      "17": {
+        "xserver": 60,
+        "overlay": 53,
+        "kernel_motion": 61
+      },
+      "18": {
+        "xserver": 55,
+        "overlay": 54,
+        "kernel_motion": 60
+      },
+      "19": {
+        "xserver": 45,
+        "overlay": 44,
+        "kernel_motion": 48
+      },
+      "20": {
+        "xserver": 109,
+        "overlay": 101,
+        "kernel_motion": 113
+      },
+      "21": {
+        "xserver": 104,
+        "overlay": 86,
+        "kernel_motion": 110
+      },
+      "22": {
+        "xserver": 78,
+        "overlay": 74,
+        "kernel_motion": 82
+      },
+      "23": {
+        "xserver": 97,
+        "overlay": 86,
+        "kernel_motion": 103
+      },
+      "24": {
+        "xserver": 109,
+        "overlay": 98,
+        "kernel_motion": 112
+      },
+      "25": {
+        "xserver": 75,
+        "overlay": 68,
+        "kernel_motion": 81
+      },
+      "26": {
+        "xserver": 107,
+        "overlay": 95,
+        "kernel_motion": 113
+      },
+      "27": {
+        "xserver": 86,
+        "overlay": 82,
+        "kernel_motion": 90
+      },
+      "28": {
+        "xserver": 88,
+        "overlay": 80,
+        "kernel_motion": 92
+      },
+      "29": {
+        "xserver": 86,
+        "overlay": 81,
+        "kernel_motion": 89
+      },
+      "30": {
+        "xserver": 58,
+        "overlay": 52,
+        "kernel_motion": 62
+      },
+      "31": {
+        "xserver": 23,
+        "overlay": 20,
+        "kernel_motion": 27
+      },
+      "32": {
+        "xserver": 86,
+        "overlay": 79,
+        "kernel_motion": 88
+      },
+      "33": {
+        "xserver": 109,
+        "overlay": 100,
+        "kernel_motion": 113
+      },
+      "34": {
+        "xserver": 108,
+        "overlay": 93,
+        "kernel_motion": 112
+      },
+      "35": {
+        "xserver": 110,
+        "overlay": 101,
+        "kernel_motion": 113
+      },
+      "36": {
+        "xserver": 70,
+        "overlay": 67,
+        "kernel_motion": 74
+      },
+      "37": {
+        "xserver": 75,
+        "overlay": 71,
+        "kernel_motion": 80
+      },
+      "38": {
+        "xserver": 34,
+        "overlay": 32,
+        "kernel_motion": 36
+      },
+      "39": {
+        "xserver": 91,
+        "overlay": 81,
+        "kernel_motion": 98
+      },
+      "40": {
+        "xserver": 55,
+        "overlay": 50,
+        "kernel_motion": 60
+      },
+      "41": {
+        "xserver": 26,
+        "overlay": 26,
+        "kernel_motion": 28
+      }
+    },
+    "kernel_report_gaps": {
+      "count": 3700,
+      "p50_ms": 8.782,
+      "p95_ms": 17.854,
+      "p99_ms": 61.711,
+      "max_ms": 556.914,
+      "over_25ms": 108,
+      "over_50ms": 47
+    },
+    "x_coordinate_gaps": {
+      "count": 3523,
+      "p50_ms": 8.817422,
+      "p95_ms": 18.590261,
+      "p99_ms": 66.404167,
+      "max_ms": 559.379871,
+      "over_25ms": 115,
+      "over_50ms": 49
+    },
+    "overlay_snapshot_gaps": {
+      "count": 3245,
+      "p50_ms": 9.232214,
+      "p95_ms": 23.76138,
+      "p99_ms": 77.001771,
+      "max_ms": 515.761798,
+      "over_25ms": 134,
+      "over_50ms": 52
+    },
+    "offset_modes": [
+      {
+        "offset": [
+          6,
+          2
+        ],
+        "samples": 18981
+      },
+      {
+        "offset": [
+          22,
+          24
+        ],
+        "samples": 1005
+      },
+      {
+        "offset": [
+          3,
+          2
+        ],
+        "samples": 76
+      },
+      {
+        "offset": [
+          -4,
+          2
+        ],
+        "samples": 75
+      }
+    ],
+    "moved_while_root_gate_closed": 1575
+  },
+  "user_acceptance": "Some improvement, but fast movement still stutters and jumps; not accepted as resolved",
+  "trace_note": "20s trace, 12.77s retained in ring. Cursor layer snapshots show no change of position in retained segment; cannot attribute fast movement symptom from this segment.",
+  "input_candidate": {
+    "apk": "build/cursor-stutter-20261111/termux-x11-r36-cursor-input-candidate.apk",
+    "apk_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d",
+    "native_sha256": "aeb45863544464984536fd75ee6636fad3fcb2d4fefa5a0ade2ba2692cdc7bb7",
+    "patch": "patches/candidates/termux-x11-mouse-unbuffered-input.patch",
+    "patch_sha256": "83af392cc541478393b9c5a7d84a842aa58d4ba706787edb317b853b2dbf38a0",
+    "purpose": "Android API30+ unbuffered pointer/trackball source class dispatch, covering hover/captured mouse beyond touch ACTION_DOWN",
+    "official_reference": "https://developer.android.com/reference/android/view/View#requestUnbufferedDispatch(int)",
+    "installation": {
+      "backup_sha256": "2cba32a872d3d290bef0566d6838398eae7ab6b397fc884fdbe3e025678511fb",
+      "candidate_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d",
+      "server_before": 29793,
+      "server_generation": "1280034",
+      "desktop_before": 30068,
+      "desktop_generation": "1280142",
+      "install": "Success\n",
+      "start": "Starting: Intent { cmp=com.termux.x11/.MainActivity }\nStatus: ok\nLaunchState: COLD\nActivity: com.termux.x11/.MainActivity\nTotalTime: 759\nWaitTime: 762\nComplete\n",
+      "frontend_pid": 24729,
+      "frontend_maps_new_apk": true,
+      "server_and_desktop_unchanged": true
+    }
+  },
+  "freezer_recurrence": {
+    "observed": "Termux shared UID 10305 cgroup.freeze=1 and cgroup.events frozen=1 after second install; all server threads get_signal; frontend Not connected",
+    "system_event": "2026-11-11T21:25:51.027936 FZ UID10305 ABNORMAL_MODE CPU_HIGH_LOAD caller32",
+    "recovery": "Normal am start of Termux thawed cgroup to0; then X11 brought foreground, shared state and cursor layer restored without server/XFCE restart",
+    "policy_regression": "PowerKeeper userTable com.termux.widget bgControl reverted to miuiAuto; derived whitelist lacked Widget",
+    "policy_restore": {
+      "before": "Row: 0 _id=34637, userId=0, pkgName=com.termux.widget, lastConfigured=1794387889396, bgControl=miuiAuto, bgLocation=NULL, bgDelayMin=NULL\n",
+      "change": "only existing userId=0 com.termux.widget bgControl: miuiAuto -> noRestrict",
+      "reason": "actual shared UID freezer and Greezer ABNORMAL_MODE observed; previous noRestrict had reverted",
+      "update": "",
+      "after": "Row: 0 _id=34637, userId=0, pkgName=com.termux.widget, lastConfigured=1794403936346, bgControl=noRestrict, bgLocation=NULL, bgDelayMin=NULL\n",
+      "derived_setting": "mark.via, com.omarea.vtools, com.termux, com.termux.widget, com.termux.x11, com.android.browser, com.android.chrome\n"
+    },
+    "policy_live_recognition": "Greezer latestNoControl fgservice|NO_RESTRICT_APP confirmed after restore",
+    "limits": "Explains observed disconnect/freezer; does not prove this caused all fast-pointer jumps or long-term policy persistence"
+  },
+  "second_candidate_capture": {
+    "seconds": 90,
+    "samples": 29103,
+    "kernel_events": 0,
+    "x_coordinate_changes": 0,
+    "overlay_changes": 0
+  },
+  "second_candidate_user_feedback": "\u548c\u7b2c\u4e00\u7248\u672c\u6ca1\u6709\u533a\u522b",
+  "synchronized_fast_sample": {
+    "seconds": 45,
+    "samples": 15191,
+    "kernel_events": 12426,
+    "x_coordinate_changes": 4333,
+    "overlay_changes": 4253
+  },
+  "synchronized_analysis": {
+    "scope": "after installation real relative mouse reports, X shared coordinates and overlay publication; not physical presentation or input-to-photon latency",
+    "kernel_devices": {
+      "event15": 4407
+    },
+    "active_second_rule": "at least 30 kernel relative-motion SYN_REPORT packets in that second",
+    "active_seconds": 41,
+    "per_second": {
+      "0": {
+        "xserver": 79,
+        "overlay": 75,
+        "kernel_motion": 80
+      },
+      "1": {
+        "xserver": 89,
+        "overlay": 90,
+        "kernel_motion": 93
+      },
+      "2": {
+        "xserver": 80,
+        "overlay": 79,
+        "kernel_motion": 100
+      },
+      "3": {
+        "xserver": 93,
+        "overlay": 94,
+        "kernel_motion": 95
+      },
+      "4": {
+        "xserver": 82,
+        "overlay": 83,
+        "kernel_motion": 82
+      },
+      "6": {
+        "xserver": 68,
+        "overlay": 71
+      },
+      "7": {
+        "xserver": 120,
+        "overlay": 125
+      },
+      "8": {
+        "xserver": 63,
+        "overlay": 67
+      },
+      "9": {
+        "xserver": 45,
+        "overlay": 46,
+        "kernel_motion": 62
+      },
+      "10": {
+        "xserver": 108,
+        "overlay": 105,
+        "kernel_motion": 113
+      },
+      "11": {
+        "xserver": 108,
+        "overlay": 107,
+        "kernel_motion": 113
+      },
+      "12": {
+        "xserver": 94,
+        "overlay": 92,
+        "kernel_motion": 95
+      },
+      "13": {
+        "xserver": 105,
+        "overlay": 100,
+        "kernel_motion": 106
+      },
+      "14": {
+        "xserver": 110,
+        "overlay": 107,
+        "kernel_motion": 113
+      },
+      "15": {
+        "xserver": 111,
+        "overlay": 116,
+        "kernel_motion": 113
+      },
+      "16": {
+        "xserver": 109,
+        "overlay": 106,
+        "kernel_motion": 114
+      },
+      "17": {
+        "xserver": 111,
+        "overlay": 111,
+        "kernel_motion": 113
+      },
+      "18": {
+        "xserver": 113,
+        "overlay": 114,
+        "kernel_motion": 113
+      },
+      "19": {
+        "xserver": 109,
+        "overlay": 105,
+        "kernel_motion": 113
+      },
+      "20": {
+        "xserver": 110,
+        "overlay": 108,
+        "kernel_motion": 114
+      },
+      "21": {
+        "xserver": 104,
+        "overlay": 103,
+        "kernel_motion": 112
+      },
+      "22": {
+        "xserver": 104,
+        "overlay": 101,
+        "kernel_motion": 112
+      },
+      "23": {
+        "xserver": 97,
+        "overlay": 92,
+        "kernel_motion": 114
+      },
+      "24": {
+        "xserver": 100,
+        "overlay": 96,
+        "kernel_motion": 112
+      },
+      "25": {
+        "xserver": 111,
+        "overlay": 106,
+        "kernel_motion": 113
+      },
+      "26": {
+        "xserver": 109,
+        "overlay": 108,
+        "kernel_motion": 113
+      },
+      "27": {
+        "xserver": 82,
+        "overlay": 81,
+        "kernel_motion": 88
+      },
+      "28": {
+        "xserver": 102,
+        "overlay": 96,
+        "kernel_motion": 112
+      },
+      "29": {
+        "xserver": 99,
+        "overlay": 101,
+        "kernel_motion": 113
+      },
+      "30": {
+        "xserver": 79,
+        "overlay": 82,
+        "kernel_motion": 112
+      },
+      "31": {
+        "xserver": 103,
+        "overlay": 97,
+        "kernel_motion": 113
+      },
+      "32": {
+        "xserver": 96,
+        "overlay": 91,
+        "kernel_motion": 112
+      },
+      "33": {
+        "xserver": 99,
+        "overlay": 99,
+        "kernel_motion": 113
+      },
+      "34": {
+        "xserver": 92,
+        "overlay": 87,
+        "kernel_motion": 111
+      },
+      "35": {
+        "xserver": 96,
+        "overlay": 93,
+        "kernel_motion": 111
+      },
+      "36": {
+        "xserver": 86,
+        "overlay": 86,
+        "kernel_motion": 114
+      },
+      "37": {
+        "xserver": 102,
+        "overlay": 96,
+        "kernel_motion": 112
+      },
+      "38": {
+        "xserver": 110,
+        "overlay": 105,
+        "kernel_motion": 112
+      },
+      "39": {
+        "xserver": 109,
+        "overlay": 107,
+        "kernel_motion": 112
+      },
+      "40": {
+        "xserver": 109,
+        "overlay": 104,
+        "kernel_motion": 113
+      },
+      "41": {
+        "xserver": 109,
+        "overlay": 105,
+        "kernel_motion": 114
+      },
+      "42": {
+        "xserver": 110,
+        "overlay": 106,
+        "kernel_motion": 112
+      },
+      "43": {
+        "xserver": 111,
+        "overlay": 106,
+        "kernel_motion": 112
+      },
+      "44": {
+        "xserver": 107,
+        "overlay": 104,
+        "kernel_motion": 113
+      }
+    },
+    "kernel_report_gaps": {
+      "count": 4406,
+      "p50_ms": 8.746,
+      "p95_ms": 12.835,
+      "p99_ms": 19.12,
+      "max_ms": 4556.158,
+      "over_25ms": 30,
+      "over_50ms": 12
+    },
+    "x_coordinate_gaps": {
+      "count": 4080,
+      "p50_ms": 8.734843,
+      "p95_ms": 16.800599,
+      "p99_ms": 34.417239,
+      "max_ms": 236.672474,
+      "over_25ms": 68,
+      "over_50ms": 28
+    },
+    "overlay_snapshot_gaps": {
+      "count": 3988,
+      "p50_ms": 8.803698,
+      "p95_ms": 18.290808,
+      "p99_ms": 34.916849,
+      "max_ms": 236.672474,
+      "over_25ms": 60,
+      "over_50ms": 26
+    },
+    "offset_modes": [
+      {
+        "offset": [
+          6,
+          2
+        ],
+        "samples": 11904
+      },
+      {
+        "offset": [
+          22,
+          24
+        ],
+        "samples": 1262
+      },
+      {
+        "offset": [
+          24,
+          24
+        ],
+        "samples": 46
+      },
+      {
+        "offset": [
+          9,
+          5
+        ],
+        "samples": 14
+      }
+    ],
+    "moved_while_root_gate_closed": 1161
+  },
+  "synchronized_limits": "Trace ring retained 1.986s of input; 45s raw mouse/X/overlay memory sample available. Snapshot/callback/present-call counts are distinct from physical unique screen content FPS. Long coordinate gaps may include user pauses and edge clamping; kernel motion during a gap is required before calling it a stall.",
+  "specific_gap": {
+    "start_monotonic_ns": 15252165187286,
+    "x_position_before": [
+      909,
+      781
+    ],
+    "x_position_after": [
+      114,
+      763
+    ],
+    "gap_ms": 91.13,
+    "kernel_motion_reports_during_gap": 10,
+    "termux_frozen_during_capture": false,
+    "scope": "observed input-to-X coordinate gap, source of that delay not yet proven"
+  },
+  "relative_capture_trial": {
+    "configured_preference": "pointerCapture=true",
+    "original_preference": false,
+    "backup": "build/cursor-stutter-20261111/real-fast-v3/before-pointer-capture.xml",
+    "broadcast_applied": {
+      "readback_pointerCapture": true,
+      "broadcast": "Broadcasting: Intent { act=com.termux.x11.CHANGE_PREFERENCE flg=0x400000 cmp=com.termux.x11/.LoriePreferences$Receiver (has extras) }\nBroadcast completed: result=2, data=\"Done\"\n",
+      "first_broadcast_quoted_receiver_incorrectly": true
+    },
+    "effective_capture": "Pointer Capture: RELATIVE, seq=1",
+    "no_apk_changed_for_trial": true,
+    "previous_45s_sample": "No movement captured before user click; preserved, not a passing sample",
+    "sample_summary": {
+      "seconds": 60,
+      "samples": 20085,
+      "kernel_events": 16154,
+      "x_coordinate_changes": 5367,
+      "overlay_changes": 5392
+    },
+    "sample_analysis": {
+      "scope": "after installation real relative mouse reports, X shared coordinates and overlay publication; not physical presentation or input-to-photon latency",
+      "kernel_devices": {
+        "event15": 5543
+      },
+      "active_second_rule": "at least 30 kernel relative-motion SYN_REPORT packets in that second",
+      "active_seconds": 50,
+      "per_second": {
+        "2": {
+          "overlay": 1
+        },
+        "9": {
+          "xserver": 15,
+          "overlay": 14,
+          "kernel_motion": 17
+        },
+        "10": {
+          "xserver": 85,
+          "overlay": 82,
+          "kernel_motion": 89
+        },
+        "11": {
+          "xserver": 87,
+          "overlay": 85,
+          "kernel_motion": 95
+        },
+        "12": {
+          "xserver": 82,
+          "overlay": 80,
+          "kernel_motion": 87
+        },
+        "13": {
+          "xserver": 104,
+          "overlay": 97,
+          "kernel_motion": 107
+        },
+        "14": {
+          "xserver": 95,
+          "overlay": 90,
+          "kernel_motion": 97
+        },
+        "15": {
+          "xserver": 97,
+          "overlay": 93,
+          "kernel_motion": 98
+        },
+        "16": {
+          "xserver": 104,
+          "overlay": 96,
+          "kernel_motion": 107
+        },
+        "17": {
+          "xserver": 107,
+          "overlay": 99,
+          "kernel_motion": 111
+        },
+        "18": {
+          "xserver": 109,
+          "overlay": 107,
+          "kernel_motion": 113
+        },
+        "19": {
+          "xserver": 110,
+          "overlay": 111,
+          "kernel_motion": 113
+        },
+        "20": {
+          "xserver": 109,
+          "overlay": 113,
+          "kernel_motion": 113
+        },
+        "21": {
+          "xserver": 111,
+          "overlay": 115,
+          "kernel_motion": 114
+        },
+        "22": {
+          "xserver": 109,
+          "overlay": 114,
+          "kernel_motion": 113
+        },
+        "23": {
+          "xserver": 110,
+          "overlay": 110,
+          "kernel_motion": 113
+        },
+        "24": {
+          "xserver": 108,
+          "overlay": 109,
+          "kernel_motion": 114
+        },
+        "25": {
+          "xserver": 107,
+          "overlay": 106,
+          "kernel_motion": 113
+        },
+        "26": {
+          "xserver": 111,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "27": {
+          "xserver": 110,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "28": {
+          "xserver": 110,
+          "overlay": 107,
+          "kernel_motion": 114
+        },
+        "29": {
+          "xserver": 109,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "30": {
+          "xserver": 98,
+          "overlay": 101,
+          "kernel_motion": 114
+        },
+        "31": {
+          "xserver": 108,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "32": {
+          "xserver": 108,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "33": {
+          "xserver": 82,
+          "overlay": 83,
+          "kernel_motion": 89
+        },
+        "34": {
+          "xserver": 109,
+          "overlay": 114,
+          "kernel_motion": 115
+        },
+        "35": {
+          "xserver": 111,
+          "overlay": 112,
+          "kernel_motion": 113
+        },
+        "36": {
+          "xserver": 111,
+          "overlay": 116,
+          "kernel_motion": 113
+        },
+        "37": {
+          "xserver": 113,
+          "overlay": 117,
+          "kernel_motion": 114
+        },
+        "38": {
+          "xserver": 108,
+          "overlay": 108,
+          "kernel_motion": 113
+        },
+        "39": {
+          "xserver": 108,
+          "overlay": 112,
+          "kernel_motion": 113
+        },
+        "40": {
+          "xserver": 112,
+          "overlay": 114,
+          "kernel_motion": 114
+        },
+        "41": {
+          "xserver": 110,
+          "overlay": 110,
+          "kernel_motion": 113
+        },
+        "42": {
+          "xserver": 111,
+          "overlay": 118,
+          "kernel_motion": 113
+        },
+        "43": {
+          "xserver": 109,
+          "overlay": 111,
+          "kernel_motion": 113
+        },
+        "44": {
+          "xserver": 111,
+          "overlay": 113,
+          "kernel_motion": 113
+        },
+        "45": {
+          "xserver": 111,
+          "overlay": 113,
+          "kernel_motion": 114
+        },
+        "46": {
+          "xserver": 112,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "47": {
+          "xserver": 110,
+          "overlay": 113,
+          "kernel_motion": 114
+        },
+        "48": {
+          "xserver": 110,
+          "overlay": 107,
+          "kernel_motion": 113
+        },
+        "49": {
+          "xserver": 109,
+          "overlay": 109,
+          "kernel_motion": 113
+        },
+        "50": {
+          "xserver": 112,
+          "overlay": 116,
+          "kernel_motion": 113
+        },
+        "51": {
+          "xserver": 110,
+          "overlay": 115,
+          "kernel_motion": 114
+        },
+        "52": {
+          "xserver": 113,
+          "overlay": 119,
+          "kernel_motion": 112
+        },
+        "53": {
+          "xserver": 113,
+          "overlay": 117,
+          "kernel_motion": 114
+        },
+        "54": {
+          "xserver": 110,
+          "overlay": 115,
+          "kernel_motion": 113
+        },
+        "55": {
+          "xserver": 111,
+          "overlay": 111,
+          "kernel_motion": 114
+        },
+        "56": {
+          "xserver": 114,
+          "overlay": 114,
+          "kernel_motion": 113
+        },
+        "57": {
+          "xserver": 109,
+          "overlay": 107,
+          "kernel_motion": 113
+        },
+        "58": {
+          "xserver": 112,
+          "overlay": 117,
+          "kernel_motion": 113
+        },
+        "59": {
+          "xserver": 113,
+          "overlay": 107,
+          "kernel_motion": 114
+        }
+      },
+      "kernel_report_gaps": {
+        "count": 5525,
+        "p50_ms": 8.745,
+        "p95_ms": 13.826,
+        "p99_ms": 18.525,
+        "max_ms": 248.247,
+        "over_25ms": 25,
+        "over_50ms": 6
+      },
+      "x_coordinate_gaps": {
+        "count": 5351,
+        "p50_ms": 8.664947,
+        "p95_ms": 15.358776,
+        "p99_ms": 20.452187,
+        "max_ms": 248.991224,
+        "over_25ms": 22,
+        "over_50ms": 5
+      },
+      "overlay_snapshot_gaps": {
+        "count": 5376,
+        "p50_ms": 8.515703,
+        "p95_ms": 17.122578,
+        "p99_ms": 21.532187,
+        "max_ms": 251.829532,
+        "over_25ms": 31,
+        "over_50ms": 5
+      },
+      "offset_modes": [
+        {
+          "offset": [
+            6,
+            2
+          ],
+          "samples": 13348
+        },
+        {
+          "offset": [
+            22,
+            24
+          ],
+          "samples": 4136
+        },
+        {
+          "offset": [
+            6,
+            -1
+          ],
+          "samples": 13
+        },
+        {
+          "offset": [
+            3,
+            2
+          ],
+          "samples": 10
+        }
+      ],
+      "moved_while_root_gate_closed": 1579
+    },
+    "limits": "Hover and relative samples used different user motion; not controlled A/B. Scene counter layer unverified. No physical input-to-photon latency measurement. User did not explicitly accept the relative-capture result.",
+    "trace": "build/cursor-stutter-20261111/relative-fast-v5/cursor-input-real.pftrace",
+    "callback_summary": {
+      "window_seconds": 11.992856,
+      "callbacks": 1208,
+      "callback_count_not_physical_fps": true
+    },
+    "on_demand_scheduler_hypothesis": "Not supported by joined sample: no >12.5ms callback gap found with overlay geometry already updated within 7.5ms of previous callback. No scheduling patch made."
+  }
+}

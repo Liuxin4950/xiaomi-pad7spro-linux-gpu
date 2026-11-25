@@ -1,0 +1,60 @@
+--- a/wsi/x11/surface_properties.cpp
++++ b/wsi/x11/surface_properties.cpp
+@@ -81,13 +81,15 @@
+ VkResult surface_properties::get_surface_capabilities(VkPhysicalDevice physical_device,
+                                                       VkSurfaceCapabilitiesKHR *surface_capabilities)
+ {
++   uint32_t width, height;
++   int depth;
++   if (!specific_surface->get_size_and_depth(&width, &height, &depth))
++      return VK_ERROR_SURFACE_LOST_KHR;
++
+    /* Image count limits */
+    get_surface_capabilities_common(physical_device, surface_capabilities);
+    surface_capabilities->minImageCount = 4;
+-
+-   int depth;
+-   specific_surface->get_size_and_depth(&surface_capabilities->currentExtent.width,
+-                                        &surface_capabilities->currentExtent.height, &depth);
++   surface_capabilities->currentExtent = { width, height };
+ 
+    /* Composite alpha */
+    surface_capabilities->supportedCompositeAlpha = static_cast<VkCompositeAlphaFlagBitsKHR>(
+@@ -104,7 +106,7 @@
+    TRY(check_surface_present_mode_query_is_supported(pSurfaceInfo, m_supported_modes));
+ 
+    /* Image count limits */
+-   get_surface_capabilities(physical_device, &pSurfaceCapabilities->surfaceCapabilities);
++   TRY(get_surface_capabilities(physical_device, &pSurfaceCapabilities->surfaceCapabilities));
+ 
+    m_compatible_present_modes.get_surface_present_mode_compatibility_common(pSurfaceInfo, pSurfaceCapabilities);
+ 
+--- a/wsi/x11/swapchain.cpp
++++ b/wsi/x11/swapchain.cpp
+@@ -1225,12 +1225,22 @@
+    if (m_timeline) m_timeline->record("display_clock_fps", 0, 0, m_display_clock_fps);
+    auto eid = xcb_generate_id(m_connection);
+    m_special_event = xcb_register_for_special_xge(m_connection, &xcb_present_id, eid, nullptr);
+-   xcb_present_select_input(m_connection, eid, m_window,
+-                            XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY | XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
+-                               XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY);
+-
+    if (m_special_event == nullptr)
+       return VK_ERROR_INITIALIZATION_FAILED;
++   // Consume protocol errors here; an unchecked BadWindow otherwise reaches
++   // the application's Xlib handler and may abort the entire application.
++   auto select_cookie = xcb_present_select_input_checked(
++      m_connection, eid, m_window, XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY |
++                                    XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
++                                    XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY);
++   auto select_error = xcb_request_check(m_connection, select_cookie);
++   if (select_error != nullptr)
++   {
++      free(select_error);
++      return VK_ERROR_SURFACE_LOST_KHR;
++   }
++   if (xcb_connection_has_error(m_connection))
++      return VK_ERROR_SURFACE_LOST_KHR;
+    m_event_thread_wakeup_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (m_event_thread_wakeup_fd < 0)
+       return VK_ERROR_INITIALIZATION_FAILED;
