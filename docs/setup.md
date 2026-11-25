@@ -91,6 +91,6 @@ bash scripts/install-global-env.sh --prefix "$bridge_prefix" \
 
 ## 升级 X11 和回退
 
-APK 和 loader 应使用同源产物，并核对 APK 证书、完整哈希及新进程实际映射。当前 rc1 未安装，不把生成发布包当成已升级。本仓库 AGENTS.md 第 7 条要求先完成候选、验证与备份，由用户安排安全切换；不能自动停止 Termux 或整个桌面。
+APK 和 loader 应使用同源产物，并核对 APK 证书、完整哈希及新进程实际映射。当前设备的 rc1 已安装，安装前 APK 已备份，前端/server 新进程映射一致。其他设备或干净 Termux 不应假设已安装；APK 更新会重启 X11 服务，应先保存桌面工作并按设备的安全切换流程执行。
 
 Linux 链接、Termux 文件、APK 是独立回退对象。不要全局 pkill、覆盖映射库、关闭系统服务或自动降到软件渲染。旧安装全文保存在 [历史快照](history/2026-11-11-setup-before-termux-bootstrap.md)。

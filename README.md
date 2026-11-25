@@ -2,7 +2,7 @@
 
 让已 root 的小米平板 7S Pro 中的 Debian arm64 chroot 图形软件调用 Android 原厂 Mali Vulkan 驱动，并通过 Termux:X11 显示。
 
-当前生产：**r3.5 Linux 栈 + r3.6 输入候选**；已另行构建未切换的 r3.6 Linux 候选。2026-11-11 已整理 r3.6-rc1 的源码、构建与 Termux 接入工具；快速蓝牙鼠标仍有卡顿反馈，正式版验收未完成，不宣称稳定真实 120 FPS 或整机续航提升。
+当前设备入口：**r3.6 Linux 候选 + r3.6-rc1 X11 APK**；正式版验收仍未完成。2026-11-11 已整理 r3.6-rc1 的源码、构建与 Termux 接入工具；快速蓝牙鼠标仍有卡顿反馈，正式版验收未完成，不宣称稳定真实 120 FPS 或整机续航提升。
 
 换 Termux 并保留 Debian/rootfs 时，在发布包解压目录运行：
 
@@ -71,7 +71,7 @@ WebKitGTK 适配使用 GPU 合成与共享内存帧传输，不能称作端到�
 | Mesa | 25.0.7；Zink 报告 OpenGL 3.2，仍缺部分基础 Vulkan 特性 |
 | Termux | `0.118.3` |
 | Termux:Widget | `0.15.0`，桌面快捷入口追随统一 gpu-run |
-| 当前 Termux:X11 APK | r3.6 鼠标输入候选，`5aed7953…`；server 仍映射旧包，详见 CURRENT-STATE |
+| 当前 Termux:X11 APK | r3.6-rc1，`b5f92532…`；前端/server 映射一致，详见 CURRENT-STATE |
 | 当前启动默认 | 原生分辨率，`X11_MAX_FPS=120`、`PAD_GPU_MAX_FPS=120` |
 
 设备/系统/APK 身份本轮重新核对；历史应用测试按原日期保留。Termux 配套历史见 [参考资源](reference/README.md)。其他机型、固件、GPU、proot 和非 root/sandbox 配置未验证。
@@ -99,7 +99,7 @@ bash scripts/install.sh "$(cat build/last-stage.txt)" /opt/pad7spro-gpu
 
 依赖安装、挂载条件、入口链接和设备迁移步骤见 [复现流程](docs/setup.md)及 [构建说明](docs/build.md)。`activate-desktop.py` 是作者设备的已知入口迁移工具，不能当作任意 rootfs 的全新安装器。
 
-X11 rc1 从固定提交、子模块及 0001–0017 补丁全新构建，未安装；配套 loader 同源构建。Linux WSI 保持 0012。当前包、已运行进程及发布身份分别见 CURRENT-STATE；历史 r3.5 验收见[原始证据](evidence/deferred-copy-wake-2026-10-17.json)。
+X11 rc1 从固定提交、子模块及 0001–0017 补丁全新构建并已在本设备安装；配套 loader 同源构建。Linux WSI 保持 0012。当前包、已运行进程及发布身份分别见 CURRENT-STATE；历史 r3.5 验收见[原始证据](evidence/deferred-copy-wake-2026-10-17.json)。
 
 ## 文档
 

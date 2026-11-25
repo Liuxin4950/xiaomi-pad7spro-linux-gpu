@@ -1,6 +1,6 @@
 # 当前状态（2026-11-25）
 
-**2026-11-25：全局 Linux GPU 入口已切到 r3.6 Linux 候选；现存应用进程仍可能映射 r3.5。Termux:X11 目前前端和 server 同映射旧的 r3.6 输入候选 APK；最新 rc1 APK 尚未安装，需安全切换会话。r3.6 正式验收仍未完成。** 快速蓝牙鼠标仍有用户报告的跳动，不能把候选改名 final 当作修复。
+**2026-11-25：全局 Linux GPU 入口已切到 r3.6 Linux 候选；现场进程检查未发现仍映射 r3.5 bridge 的图形应用。Termux:X11 r3.6-rc1 APK 已安装，前端和 server 已重启并映射相同的新包。CC Switch 已在 r3.6 Linux 前缀下重新打开并验证实际进程映射。r3.6 正式验收仍未完成。** 快速蓝牙鼠标仍有用户报告的跳动，不能把候选改名 final 当作修复。
 
 ## 唯一运行身份
 
@@ -11,20 +11,20 @@
 | 全局 Linux GPU 入口 | `/opt/pad7spro-gpu-r36-20261125`；`release.json` 为 `r3.6-linux-candidate`（已激活，非正式版） |
 | 统一入口 | `/usr/local/bin/gpu-run`、`gpu-launcher` |
 | WSI SHA-256 | `d011bb7b220ab83bfb7c136e1e1b3190def27c013cb24775167c405073d77636` |
-| 已安装 X11 / 前端与 server 映射 | `1.03.01-d55f1b7-gpu-r3.6-cursor-input-candidate`；两进程映射同一 APK `5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d` |
-| 新 X11 rc1 APK | `build/r3.6-rc1-clean-20261111/candidate.apk`，SHA `b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0`；已备份当前安装包，尚未替换 |
-| 本轮新构建 | `1.03.01-d55f1b7-gpu-r3.6-rc1`；未安装，完整哈希见发布证据 |
+| 已安装 X11 / 前端与 server 映射 | `1.03.01-d55f1b7-gpu-r3.6-rc1`；两进程映射同一 APK `b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0` |
+| 当前 CC Switch | PID 28773，maps 含 r3.6 sysvk/libhybris/WSI、Mali 驱动及 Mesa EGL；窗口启动成功 |
+| 当前 X11 APK | `1.03.01-d55f1b7-gpu-r3.6-rc1`；前端/server 均已映射，SHA `b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0` |
 | 显示与输入 | 原生分辨率，上限 120；相对捕获临时为 true，效果未验收 |
 
-本轮现场 PID 与 APK maps 已重新读取；APK 仍未替换，Termux:X11 与桌面未重启。新入口仅影响之后启动的应用，已经运行的进程保留旧映射。
+本轮 APK 已替换；Termux:X11 前端/server 新 PID 分别为 21872/21829，映射同一 APK inode。XFCE 已恢复。PID 为现场快照，之后需重新读取。
 
 ## 2026-11-25 Linux r3.6 候选已激活
 
 - 新候选前缀：`/opt/pad7spro-gpu-r36-20261125`；构建目录：`build/r3.6-linux-20261125/`。由锁定源码在 aarch64 fresh build，使用 `scripts/install.sh` 以独立前缀安装。
 - `gpu-run doctor`、`run-gpu --headless probe` 和 `gpu-run ahb` 报告 `AHB_ALLOCATE_SEND_RECEIVE_READBACK_RELEASE_OK`，`probe-present --motion` 已通过；探针识别 `Mali-G925-Immortalis` 并报告 `VULKAN_DEVICE_SUBMIT_READBACK_OK`、`VULKAN_SWAPCHAIN_RECREATE_PRESENT_OK`。
-- 已通过 `scripts/activate-release.py` 原子切换 `/usr/local/bin/{gpu-run,gpu-launcher,run-gpu,gpu-env}`，同步 Termux 启动脚本，备份在 `/opt/cc-switch-update-helper/backups/r3.6-activation-20261125/`。已有应用进程仍映射其启动时加载的 r3.5 库；当前 CC Switch PID 28967 仍映射旧前缀。没有停止桌面。
-- 当前 Termux:X11 前端 PID 13590 与 server PID 13550 都映射已安装的 `5aed7953…` APK。最新锁定 0015–0017 的 rc1 APK `b5f92532…` 已核验签名证书并备份当前 APK，但未替换/重启；安装需要安全会话窗口。
-- 详细实现路线、透明度处理边界和新 chroot 复现步骤见 [r3.6 实现路线](r3.6-implementation-plan.md)；构建证据见 `evidence/r3.6-linux-candidate-20261125.json`；激活及当前映射证据见 `evidence/r3.6-deployment-20261125.json`。
+- 已通过 `scripts/activate-release.py` 原子切换 `/usr/local/bin/{gpu-run,gpu-launcher,run-gpu,gpu-env}`，同步 Termux 启动脚本，备份在 `/opt/cc-switch-update-helper/backups/r3.6-activation-20261125/`。X11 重启后 XFCE 已恢复。CC Switch PID 28773 已经通过统一入口重新启动，maps 中可见 r3.6 sysvk/libhybris/WSI、Mali 与 Mesa EGL；短时启动日志报告主窗口已显示。Zink 对缺少两个基础 feature 有警告，尚未完成长时闪烁/透明度验收。
+- Termux:X11 最新锁定 0015–0017 的 rc1 APK 已安装，前端/server PID 21872/21829 均映射 APK `b5f92532…`（inode 2803251）。安装前旧 APK `5aed7953…` 已备份至 `/opt/cc-switch-update-helper/backups/r3.6-x11-apk-20261125/installed-before.apk`。
+- 详细实现路线、透明度处理边界和新 chroot 复现步骤见 [r3.6 实现路线](r3.6-implementation-plan.md)；构建证据见 `evidence/r3.6-linux-candidate-20261125.json`；激活、安装、当前映射证据见 `evidence/r3.6-deployment-20261125.json`。
 
 ## 2026-11-25 通用入口补充
 

@@ -34,12 +34,12 @@ python scripts/configure-termux.py --restore /实际备份目录 --apply
 
 | APK 本机原件 | 路径 |
 |---|---|
-| 当前鼠标候选 | `build/cursor-stutter-20261111/termux-x11-r36-cursor-input-candidate.apk` |
+| 当前 X11 r3.6-rc1 | `build/r3.6-rc1-clean-20261111/candidate.apk`，SHA `b5f92532…`；当前安装与前端/server maps 一致 |
 | 空 state 修复包 | `build/cursor-stutter-20261111/before-cursor-wake-installed.apk`（`cdee031c…`） |
 | r3.5 备份 | `build/r3.6-research-20261110/rollback/installed-r35.apk` |
-| 本轮新构建 | `build/r3.6-rc1-clean-20261111/candidate.apk`，未安装 |
+| 安装前 APK 备份 | `/opt/cc-switch-update-helper/backups/r3.6-x11-apk-20261125/installed-before.apk`，SHA `5aed7953…` |
 
-换 APK 先核对证书、完整哈希和备份，由用户保存工作并安排安全切换。server 仍映射旧包，不能写成整栈已升级。
+当前设备已替换 APK；前端和 server 新 PID 均映射相同 rc1 APK。后续更换仍须核对证书、完整哈希和备份，并确认设备上的工作已保存。
 
 Linux 回退把系统链接指回保留的完整前缀，正常重开目标应用，不覆盖映射中的库。r3.5 本地归档：`/opt/pad7spro-gpu-release-test/releases/r3.5-final-20261017/`。
 

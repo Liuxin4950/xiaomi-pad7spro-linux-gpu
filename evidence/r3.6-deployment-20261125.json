@@ -1,7 +1,7 @@
 {
   "format": 1,
   "date": "2026-11-25",
-  "state": "linux-entry-activated-x11-apk-pending-safe-session",
+  "state": "r3.6-linux-and-x11-rc1-active-app-smoke-tested-formal-gates-open",
   "active_linux_prefix": "/opt/pad7spro-gpu-r36-20261125",
   "previous_linux_prefix": "/opt/pad7spro-gpu-fps-20261017",
   "activation_backup": "/opt/cc-switch-update-helper/backups/r3.6-activation-20261125/restore-plan.json",
@@ -18,16 +18,36 @@
     "x11_swapchain_recreate_present": true
   },
   "live_processes": {
-    "cc_switch_pid": 28967,
-    "cc_switch_mapped_prefix": "/opt/pad7spro-gpu-fps-20261017",
-    "x11_frontend_pid": 13590,
-    "x11_server_pid": 13550,
+    "cc_switch_pid": 28773,
+    "cc_switch_mapped_prefix": "/opt/pad7spro-gpu-r36-20261125",
+    "x11_frontend_pid": 21872,
+    "x11_server_pid": 21829,
     "frontend_and_server_same_apk": true,
-    "current_apk_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d",
+    "current_apk_sha256": "b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0",
     "rc1_candidate_apk_sha256": "b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0",
     "rc1_candidate_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
     "apk_backup": "/opt/cc-switch-update-helper/backups/r3.6-x11-apk-20261125/installed-before.apk",
-    "apk_backup_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d"
+    "apk_backup_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d",
+    "frontend_server_base_apk_inode": "2803251",
+    "current_apk_version_name": "1.03.01-d55f1b7-gpu-r3.6-rc1",
+    "current_apk_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "cc_switch_mapped_modules": [
+      "libsysvk.so",
+      "libhybris-common.so.1.0.0",
+      "libVkLayer_window_system_integration.so",
+      "/vendor/lib64/hw/vulkan.mali.so",
+      "libEGL_mesa.so.0.0.0"
+    ],
+    "cc_switch_mali_threads": [
+      "mali-event-handler",
+      "mali-mem-purge"
+    ],
+    "cc_switch_window_started": true,
+    "cc_switch_log_warning": "Zink reports device lacks fillModeNonSolid and shaderClipDistance base requirements; no software fallback was requested.",
+    "x11_session_last_update_time": "2026-11-25 12:18:39",
+    "xfce_session_pid": 21979,
+    "xfce_session_prefix_environment": "/opt/pad7spro-gpu-r36-20261125",
+    "old_prefix_gpu_mapped_processes_after_restart": []
   },
   "actions_not_taken": {
     "apk_replaced": false,
@@ -36,8 +56,18 @@
   },
   "formal_release_completed": false,
   "limitations": [
-    "Existing graphical applications retain libraries loaded at startup until relaunched",
-    "APK replacement and X11 restart are pending a user-confirmed safe session window",
-    "CC Switch and Trae real content and transparency acceptance are still incomplete"
-  ]
+    "A single screenshot and short CC Switch smoke test do not establish flicker-free long-duration use or full alpha correctness",
+    "Trae application renderer/content not revalidated in this session",
+    "Bluetooth mouse acceptance, sleep/recovery, long-duration stability, physical 120 FPS and power claims remain open",
+    "r3.6 remains a candidate, not a formal release"
+  ],
+  "completed_actions": {
+    "apk_replaced": true,
+    "frontend_server_restarted_and_same_apk_mapped": true,
+    "r36_cc_switch_started": true,
+    "single_visible_screen_capture": true,
+    "xfce_session_running_with_r36_environment": true,
+    "cc_switch_actual_process_maps_verified": true,
+    "cc_switch_window_visible_in_single_capture": true
+  }
 }
