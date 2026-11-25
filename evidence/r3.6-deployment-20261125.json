@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "date": "2026-11-25",
+  "state": "linux-entry-activated-x11-apk-pending-safe-session",
+  "active_linux_prefix": "/opt/pad7spro-gpu-r36-20261125",
+  "previous_linux_prefix": "/opt/pad7spro-gpu-fps-20261017",
+  "activation_backup": "/opt/cc-switch-update-helper/backups/r3.6-activation-20261125/restore-plan.json",
+  "global_links": {
+    "gpu-run": "/opt/pad7spro-gpu-r36-20261125/bin/gpu-run",
+    "gpu-launcher": "/opt/pad7spro-gpu-r36-20261125/bin/gpu-launcher",
+    "run-gpu": "/opt/pad7spro-gpu-r36-20261125/bin/run-gpu",
+    "gpu-env": "/opt/pad7spro-gpu-r36-20261125/bin/gpu-env"
+  },
+  "verification": {
+    "doctor": true,
+    "mali_vulkan_submit_readback": true,
+    "ahb_roundtrip_release": true,
+    "x11_swapchain_recreate_present": true
+  },
+  "live_processes": {
+    "cc_switch_pid": 28967,
+    "cc_switch_mapped_prefix": "/opt/pad7spro-gpu-fps-20261017",
+    "x11_frontend_pid": 13590,
+    "x11_server_pid": 13550,
+    "frontend_and_server_same_apk": true,
+    "current_apk_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d",
+    "rc1_candidate_apk_sha256": "b5f92532382d60f4b3bc3ddedfc0ff79c5538614a8da6443afcccbfd30b7c9f0",
+    "rc1_candidate_certificate_sha256": "b6da01480eefd5fbf2cd3771b8d1021ec791304bdd6c4bf41d3faabad48ee5e1",
+    "apk_backup": "/opt/cc-switch-update-helper/backups/r3.6-x11-apk-20261125/installed-before.apk",
+    "apk_backup_sha256": "5aed79535688e4abb65eeb485de65fe2fdebe243911b98123b4d06e94b93996d"
+  },
+  "actions_not_taken": {
+    "apk_replaced": false,
+    "termux_x11_restarted": false,
+    "desktop_stopped": false
+  },
+  "formal_release_completed": false,
+  "limitations": [
+    "Existing graphical applications retain libraries loaded at startup until relaunched",
+    "APK replacement and X11 restart are pending a user-confirmed safe session window",
+    "CC Switch and Trae real content and transparency acceptance are still incomplete"
+  ]
+}
